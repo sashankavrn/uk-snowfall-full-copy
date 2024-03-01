@@ -175,8 +175,7 @@ class TransformBase:
         """
 
         self.logger.info('Exporting the records that have failed data quality checks...')
-        columns_to_drop = ["DataQualityRulesPass", "DataQualityRulesFail", "DataQualityRulesSkip", "DataQualityEvaluationResult"]
-        df.drop(*columns_to_drop)
+        self.dropping_dq_columns(df)
         workflow_run_id = self.aws_instance.get_glue_env_var('WORKFLOW_RUN_ID')
         error_path = f"s3://{bucket_name}/error/{s3_path_prefix}/{workflow_run_id}/dq_fail_rows/"
 
