@@ -4,7 +4,7 @@ from common_utilities.transform_base import TransformBase
 class SemanticIncidentIntraday(TransformBase):
 
 
-    def load_data(self):
+    def get_data(self):
         "Abstract method which will be overridden when this class is inherited"
         pass
 
@@ -12,7 +12,7 @@ class SemanticIncidentIntraday(TransformBase):
         "Abstract method which will be overridden when this class is inherited"
         pass
 
-    def export_data(self):
+    def save_data(self):
         "Abstract method which will be overridden when this class is inherited"
         pass
 

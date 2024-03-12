@@ -40,12 +40,12 @@ class TransformBase:
         self.spark = spark
         self.sc = sc
         self.glueContext = glueContext
-        self.sns_trigger = False
+        self.sns_trigger = False # TODO Should this be a default False param or not needed at all?
         self.aws_instance = AwsUtilities()
 
 
 
-    def load_data(self):
+    def get_data(self):
         "Abstract method which will be overridden when this class is inherited"
         pass
 
@@ -53,16 +53,16 @@ class TransformBase:
         "Abstract method which will be overridden when this class is inherited"
         pass
 
-    def export_data(self,df):
+    def save_data(self,df):
         "Abstract method which will be overridden when this class is inherited"
         pass
 
 
     def pipeline_flow(self):
         "Abstract method which runs each pipeline in order"
-        df = self.load_data()
-        self.transform_data(df)
-        self.export_data(df)
+        df = self.get_data()
+        tansformed_df = self.transform_data(df)
+        self.save_data(tansformed_df)
 
 
     def get_column_count_from_config(self, input_string):
