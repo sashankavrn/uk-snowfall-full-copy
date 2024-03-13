@@ -42,8 +42,8 @@ resource "aws_s3_object" "landing_folder" {
       problem_request     = "service_now/UK-SNowFall-ServiceNow-ProblemRequest/"
       service_offering    = "service_now/UK-SNowFall-ServiceNow-ServiceOffering/"
       service_request     = "service_now/UK-SNowFall-ServiceNow-ServiceRequest/"
-      sys_user            = "service_now/UK-SNowFall-ServiceNow-SysUser"
-      sys_user_group      = "service_now/UK-SNowFall-ServiceNow-Sys-User-Group"
+      sys_user            = "service_now/UK-SNowFall-ServiceNow-SysUser/"
+      sys_user_group      = "service_now/UK-SNowFall-ServiceNow-Sys-User-Group/"
       ods                 = "ods/"
     }
 }
