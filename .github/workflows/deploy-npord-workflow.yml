@@ -1,4 +1,4 @@
-name: Deployment to Development Environment
+name: Deployment to Non-Production Environment
 
 
 on:
