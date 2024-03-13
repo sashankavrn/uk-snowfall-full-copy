@@ -42,3 +42,6 @@ pip-delete-this-directory.txt
 # Byte-compiled / Optimized / DLL Files
 __pycache__/
 *$py.class
+
+# remove DS store files
+.DS_Store
