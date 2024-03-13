@@ -35,6 +35,10 @@ def lambda_handler(event, context):
         logger.info(f"Object Key is: {key}")
         target_key = target_key_generator(key, key_mapping)
 
+        if target_key is None:
+            logger.info('Folder has been uploaded. Existing Function..')
+            return
+
         logger.info(f"Target Key is: {target_key}")
 
         if target_key == 'amazon_connect':
