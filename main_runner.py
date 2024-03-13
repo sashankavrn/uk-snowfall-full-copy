@@ -21,26 +21,26 @@ class RunManager:
 
     def run(self, group, dataset):
         #TODO ANY PRIOR STEPS BEFORE WE PROCESS
-        run_grouping = getattr(sys.modules[__name__], f'run_{group}')
+        run_grouping = getattr(self, f'run_{group}')
         run_grouping(dataset)
 
     def run_preparation(self, dataset): #TODO THIS IS WHERE OBSCURE EXCEPTIONS AND OUR RESOLUTION SHOULD TAKE PLACE, THEN CONTINURE OR END
-        pipeline_instance = __fetch_pipeline_class__(group='preparation', dataset=dataset)
+        pipeline_instance = self.__fetch_pipeline_class__(group='preparation', dataset=dataset)
         pipeline_instance.process_flow()
-        run_processed(dataset) # Run processed after preparation
+        #run_processed(dataset) # Run processed after preparation
 
     def run_processed(self, dataset):
-        pipeline_instance = __fetch_pipeline_class__(group='processed', dataset=dataset)
+        pipeline_instance = self.__fetch_pipeline_class__(group='processed', dataset=dataset)
         pipeline_instance.process_flow()
 
     def run_semantic(self, dataset):
-        pipeline_instance = __fetch_pipeline_class__(group='semantic', dataset=dataset)
+        pipeline_instance = self.__fetch_pipeline_class__(group='semantic', dataset=dataset)
         pipeline_instance.process_flow()
 
     def __fetch_pipeline_class__(self, group, dataset):
         try:
-            module = importlib.import_module(f"pipeline.{group}.{dataset}" )
-            pipeline_class = getattr(module, snake_to_camel(f"{group}_{dataset}"))
+            module = importlib.import_module(f"pipeline.{group}.{group}_{dataset}" )
+            pipeline_class = getattr(module, self.snake_to_camel(f"{group}_{dataset}"))
             return pipeline_class(self.spark, self.spark_context, self.glue_context)
         except AttributeError as e:
             #TODO WHATEVER NEEDS TO HAPPEN HERE
