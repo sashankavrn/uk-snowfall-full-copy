@@ -70,7 +70,8 @@ class SemanticFranchiseeIncidents(TransformBase):
                     incident.short_description AS incident_short_description,
                     incident.incident_state AS incident_state,
                     CASE 
-                        WHEN incident.opened_date = incident.resolved_at_date THEN 'New and Resolved' 
+                        WHEN incident.opened_date = incident.resolved_at_date and incident.opened_date = date('{self.formatted_reporting_date}')
+                        THEN 'New and Resolved' 
                         ELSE incident.state 
                     END AS eod_incident_status,
                     incident.opened_date AS opened_at_date,
