@@ -1,0 +1,268 @@
+{
+    "location": {
+        "transform_json": [
+            "u_franchisee_regional_manager",
+            "u_regional_manager",
+            "u_fanchisee",
+            "u_franchisees_chief_ops_manager",
+            "u_franchisees_ops_manager",
+            "u_director",
+            "u_chief_ops_officer",
+            "u_franchisees_consultant",
+            "u_franchisees_director",
+            "u_ops_manager"
+        ],
+        "process_timestamp": [
+            "sys_updated_on",
+            "sys_created_on"
+        ],
+        "partition_columns": [
+            "sys_created_on_dt"
+        ],
+        "primary_key": "full_name",
+        "appflow_name":"UK-SNowFall-ServiceNow-Location"
+    },
+
+    "incidents": {
+        "transform_json": [
+            "u_franchisee_regional_manager",
+            "u_franchisees_consultant",
+            "u_franchisee_director",
+            "cmdb_ci",
+            "u_vendor",
+            "u_connect_chat",
+            "service_offering",
+            "closed_by",
+            "parent_incident",
+            "reopened_by",
+            "assigned_to",
+            "u_reopen_detail",
+            "u_chased_out_detail",
+            "u_franchisee_ops_manager",
+            "resolved_by",
+            "opened_by",
+            "sys_domain",
+            "u_franchisee",
+            "u_franchisees_chief_ops_manager",
+            "u_strike_details",
+            "business_service",
+            "caller_id",
+            "u_related_kb_article",
+            "assignment_group",
+            "u_last_assignment_group",
+            "problem_id",
+            "company",
+            "u_chased_in_detail",
+            "location",
+            "rfc"
+        ],
+        "add_seconds": [
+            "business_duration",
+            "u_time_store_may_close",
+            "u_time_dt_may_close",
+            "u_time_store_ok2operate",
+            "u_time_dt_down",
+            "u_time_dt_ok2operate",
+            "calendar_duration",
+            "u_time_store_down"
+        ],
+        "process_timestamp": [
+            "sys_updated_on",
+            "u_vista_dispatched_eta",
+            "u_vista_offsite",
+            "u_vista_onsite",
+            "u_call_back_time",
+            "u_last_assignment_time",
+            "u_techsee_agent_session_start_time",
+            "u_l1_5_assignment_time",
+            "u_customer_escalation_time",
+            "sys_created_on",
+            "closed_at",
+            "opened_at",
+            "work_end",
+            "reopened_time",
+            "resolved_at",
+            "u_reopen_date_time"
+        ],
+        "redact_pii_columns": [
+            "work_notes",
+            "description",
+            "close_notes",
+            "comments",
+            "u_chased_in_detail",
+            "comments_and_work_notes"
+        ],
+        "primary_key": "number",
+        "appflow_name_daily":"UK-SNowFall-ServiceNow-Incident-Daily",
+        "appflow_name_intraday":"UK-SNowFall-ServiceNow-Incident-Intraday"
+
+    },
+    "location_hierarchy":{
+        "primary_key":"STORE_NUMBER",
+        "redact_pii_columns":[
+            "OO_EMAIL",
+            "FS_EMAIL"
+        ]
+    },
+    "amazon_connect":{
+        "primary_key":"queue"
+    },
+    "adj_trading_hours":{
+        "primary_key":"STORE_NUMBER"
+    },
+    "trading_hours":{
+        "primary_key":"STORE_NUMBER"
+    },
+    "change_request": {
+        "transform_json": [
+            "assignment_group",
+            "business_service",
+            "cab_delegate",
+            "closed_by",
+            "cmdb_ci",
+            "opened_by",
+            "requested_by",
+            "service_offering",
+            "std_change_producer_version",
+            "sys_domain",
+            "u_change_implementer",
+            "assigned_to"
+        ],
+        "add_seconds": [
+            "business_duration",
+            "calendar_duration",
+            "time_worked"
+        ],
+        "process_timestamp": [
+            "sys_created_on",
+            "sys_updated_on",
+            "approval_set",
+            "end_date",
+            "work_start",
+            "start_date",
+            "closed_at",
+            "opened_at",
+            "work_end",
+            "cab_date_time",
+            "conflict_last_run"
+        ],
+        "primary_key":"number",
+        "redact_pii_columns":[
+            "comments_and_work_notes",
+            "description",
+            "comments"
+        ],
+        "appflow_name":"UK-SNowFall-ServiceNow-ChangeRequest"
+
+    },
+    "problem_record":{
+        "transform_json":[
+            "opened_by",
+            "sys_domain",
+            "u_franchisee",
+            "business_service",
+            "assignment_group",
+            "service_offering",
+            "u_related_kb",
+            "assigned_to",
+            "u_franchisees_consultant",
+            "location"
+        ],
+        "process_timestamp": [
+            "sys_updated_on",
+            "sys_created_on",
+            "opened_at",
+            "closed_at"
+        ],
+        "add_seconds": [
+            "business_duration",
+            "calendar_duration",
+            "time_worked"
+        ],
+        "redact_pii_columns": [
+            "work_notes",
+            "description",
+            "comments",
+            "comments_and_work_notes",
+            "u_string_1"
+        ],
+        "primary_key":"number",
+        "appflow_name":"UK-SNowFall-ServiceNow-ProblemRequest"
+    },
+    "service_offering":{
+        "transform_json":[
+            "parent",
+            "owned_by",
+            "managed_by",
+            "sys_domain",
+            "duplicate_of"
+        ],
+        "process_timestamp": [
+            "sys_updated_on",
+            "sys_created_on"
+        ],
+        "primary_key":"number",
+        "appflow_name":"UK-SNowFall-ServiceNow-ServiceOffering"
+    },
+    "service_request":{
+        "transform_json":[
+            "requested_for",
+            "opened_by",
+            "sys_domain",
+            "order_guide",
+            "request",
+            "assignment_group",
+            "closed_by",
+            "assigned_to",
+            "cat_item",
+            "business_service"
+        ],
+        "process_timestamp": [
+            "sys_updated_on",
+            "sys_created_on",
+            "closed_at",
+            "opened_at",
+            "approval_set",
+            "due_date"
+        ],
+        "redact_pii_columns": [
+            "work_notes",
+            "comments",
+            "comments_and_work_notes"
+        ],
+        "primary_key":"number",
+        "appflow_name":"UK-SNowFall-ServiceNow-ServiceRequest"
+    },
+    "sys_user_group":{
+        "transform_json":[
+            "manager"
+        ],
+        "process_timestamp": [
+            "sys_updated_on",
+            "sys_created_on"
+        ],
+        "partition_columns":[
+            "sys_created_on_dt"
+        ],
+        "primary_key":"sys_id",
+        "appflow_name":"UK-SNowFall-ServiceNow-SysUserGroup"
+    },
+    "sys_user":{
+        "transform_json":[
+            "building",
+            "sys_domain",
+            "cost_center",
+            "company",
+            "department",
+            "location"
+        ],
+        "process_timestamp": [
+            "last_login_time",
+            "sys_updated_on",
+            "sys_created_on"
+        ],
+        "primary_key":"sys_id",
+        "appflow_name":"UK-SNowFall-ServiceNow-SysUser"
+
+    }
+}

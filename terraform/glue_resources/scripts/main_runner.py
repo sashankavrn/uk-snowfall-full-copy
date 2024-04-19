@@ -1,14 +1,14 @@
 import importlib
 import sys
-from awsglue.transforms import *
-from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
+from pyspark.sql import SparkSession
 from snowfall_pipeline.common_utilities.snowfall_logger import SnowfallLogger
+from snowfall_pipeline.common_utilities.aws_utilities import AwsUtilities
 
 logger = SnowfallLogger.get_logger()
-  
+
 class RunManager:
 
     def __init__(self, spark_context):
@@ -27,7 +27,7 @@ class RunManager:
     def run_preparation(self, dataset): #TODO THIS IS WHERE OBSCURE EXCEPTIONS AND OUR RESOLUTION SHOULD TAKE PLACE, THEN CONTINURE OR END
         pipeline_instance = self.__fetch_pipeline_class__(group='preparation', dataset=dataset)
         pipeline_instance.process_flow()
-        #run_processed(dataset) # Run processed after preparation
+        self.run_processed(dataset) # Run processed after preparation
 
     def run_processed(self, dataset):
         pipeline_instance = self.__fetch_pipeline_class__(group='processed', dataset=dataset)
@@ -51,9 +51,17 @@ class RunManager:
         return ''.join(x.title() for x in components)
 
 def main():
-    group = "processed" #TODO THIS WOULD BE WHERE YOU GET YOUR ENV VARS
-    dataset = "incident_intraday"
-    sc = SparkContext.getOrCreate()
+    aws_instance = AwsUtilities()
+    group = aws_instance.get_workflow_properties('GROUP')
+    dataset = aws_instance.get_workflow_properties('DATASET')
+    
+    # Set timezone configuration before creating the SparkSession
+    spark = SparkSession.builder \
+        .config("spark.sql.session.timeZone", "Europe/London") \
+        .appName("snowfall_runner") \
+        .getOrCreate()
+    
+    sc = spark.sparkContext
     
     try:
         run_manager = RunManager(sc)
@@ -61,6 +69,8 @@ def main():
     except Exception as e: #TODO ULTIMATE EXCEPTION CATCH FOR ANYTHING OUTSIDE OF PROCESSING
         logger.critical(f"Unhandled exception occurred. Attempting to shut down spark context. Error details:")
         logger.exception(e)
+        raise e
 
 if __name__ == "__main__":
     main()
+

@@ -1,6 +1,5 @@
 name: Deployment to Development Environment
 
-
 on:
   push:
     branches:
@@ -9,10 +8,9 @@ on:
 env:
   AWS_REGION: eu-central-1
   ENVIRONMENT: development
-  AWS_ROLE_TO_ASSUME: arn:aws:iam::646303040748:role/github_access
-  STATE_BUCKET: dev-abbas-testing
-  VAR_FILE: dev.tfvars
-
+  AWS_ROLE_TO_ASSUME: arn:aws:iam::295446674139:role/UK-MKT-SNowfall-Dev-Deploy-Service-Role
+  STATE_BUCKET: eu-central1-dev-uk-snowfall-terraform-295446674139
+  VAR_FILE: ../dev.tfvars
 
 
 jobs:
@@ -25,6 +23,12 @@ jobs:
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v2
+
+    - name: Install Python 3
+      run: sudo apt-get update && sudo apt-get install -y python3
+
+    - name: Install boto3
+      run: python3 -m pip install boto3
 
     - name: Print Variable Values
       run: |
@@ -54,6 +58,7 @@ jobs:
         terraform apply -auto-approve tfplan
       env:
         AWS_REGION: ${{ env.AWS_REGION }}
+
 
     - name: Running the Glue Resources Stage
       run: |

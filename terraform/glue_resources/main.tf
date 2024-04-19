@@ -29,15 +29,6 @@ provider "aws" {
 }
 
 
-  # #Picks up from secrets in github
-  # provider "aws" {
-  #   region      = var.AWS_REGION
-  #   access_key = ""
-  #   secret_key = "1"
-  #   token = ""
-  # }
-  
-
 
 # Triggering the Scripts module
 module "scripts_module" {
@@ -85,14 +76,113 @@ resource "aws_glue_job" "main_runner_script" {
     max_concurrent_runs = 100
   }
 }
-#########################################################
+################## Triggering Workflows #######################################
 
-
-# Triggering the incidents-intraday
-module "incident_intraday_module" {
-  source = "./workflows/incidents_intraday"
+# Triggering the location
+module "location_module" {
+  source = "./workflows/location"
   resource_tags = merge(var.resource_tags,{Environment = var.environment})
   glue_job_name = aws_glue_job.main_runner_script.name
 
 }
 
+# Triggering the amazon_connect
+module "amazon_connect_module" {
+  source = "./workflows/amazon_connect"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+# Triggering the incident_intraday
+module "incident_intraday_module" {
+  source = "./workflows/incident_intraday"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+# Triggering the incident_daily
+module "incident_daily_module" {
+  source = "./workflows/incident_daily"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+# Triggering the location_hierarchy
+module "location_hierarchy_module" {
+  source = "./workflows/location_hierarchy"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+# Triggering the semantic_incidents_daily
+module "semantic_incidents_daily_module" {
+  source = "./workflows/semantic_incidents_daily"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+# Triggering the semantic_franchisee_incidents
+module "semantic_franchisee_incidents_module" {
+  source = "./workflows/semantic_franchisee_incidents"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+# Triggering the semantic_amazon_connect
+module "semantic_amazon_connect_module" {
+  source = "./workflows/semantic_amazon_connect"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+
+############ Glue Data Catalog Databases #########
+
+
+
+resource "aws_glue_catalog_database" "preparation_database" {
+  name = "uk_snowfall_preparation"
+  description = "Datasets that have been cleansed and validated and remain at the same level they were initally sourced"
+
+  lifecycle {
+    ignore_changes = [name,description]
+    prevent_destroy = false  # Allow Terraform to delete the database
+  }
+}
+
+resource "aws_glue_catalog_database" "processed_database" {
+  name = "uk_snowfall_processed"
+  description = "Datasets that have been transformed and enriched for ease of use"
+
+  lifecycle {
+    ignore_changes = [name,description]
+    prevent_destroy = false  # Allow Terraform to delete the database
+  }
+}
+
+resource "aws_glue_catalog_database" "semantic_database" {
+  name = "uk_snowfall_semantic"
+  description = "Datasets that have been aggregated and made available for reporting and analytics, with buisness logic built in"
+
+  lifecycle {
+    ignore_changes = [name,description]
+    prevent_destroy = false  # Allow Terraform to delete the database
+  }
+}
+
+resource "aws_glue_catalog_database" "microstrategy_database" {
+  name = "uk_snowfall_microstrategy"
+  description = "Playground for MicroStrategy"
+
+  lifecycle {
+    ignore_changes = [name,description]
+    prevent_destroy = false  # Allow Terraform to delete the database
+  }
+}

@@ -1,8 +1,14 @@
 import boto3
 import sys
+import json
+import zipfile
+import time
+import re
 from awsglue.utils import getResolvedOptions
+from pyspark.sql.utils import AnalysisException
 from snowfall_pipeline.common_utilities.snowfall_logger import SnowfallLogger
 from botocore.exceptions import ClientError
+
 
 class AwsUtilities:
 
@@ -112,8 +118,8 @@ class AwsUtilities:
             self.logger.error(f"Error in get_files_in_s3_path: {e}")
             return []
         return files_list
-
-
+    
+    
     def move_s3_object(self, bucket_name, source_object_key, destination_object_key):
         """Moves an object within S3 from one key to another.
 
@@ -142,7 +148,7 @@ class AwsUtilities:
             if c.response['Error']['Code'] == 'NoSuchKey':
                 self.logger.error(f"The source object '{source_object_key}' does not exist in S3.")
             else:
-                self.logger.error(f"Error in move_s3_object: {e}")
+                self.logger.error(f"Error in move_s3_object: {c}")
                 raise c
         except Exception as e:
             raise e
@@ -233,3 +239,172 @@ class AwsUtilities:
         except Exception as e:
             self.logger.error(f"Error in extract_appflow_records_processed: {e}")
             return None
+
+    def reading_json_from_zip(self):
+        """
+        Read JSON data from the zip file which is uploaded to glue.
+
+        Returns:
+            dict: JSON data read from the file.
+        
+        Raises:
+            FileNotFoundError: If the specified JSON file is not found in the zip archive.
+            json.JSONDecodeError: If the JSON data cannot be decoded.
+        """
+        # Path to your zip file
+        zip_file_path = "snowfall_pipeline.zip"
+
+        # Name of the JSON file inside the zip archive
+        json_file_name = "snowfall_pipeline/common_utilities/script_config.json"
+
+        # Open the zip file
+        with zipfile.ZipFile(zip_file_path, 'r') as zip_file:
+            # Check if the JSON file exists in the zip archive
+            if json_file_name in zip_file.namelist():
+                # Read the JSON file directly from the zip archive
+                with zip_file.open(json_file_name) as json_file:
+                    # Load JSON data
+                    json_data = json.load(json_file)
+                    return json_data
+            else:
+                raise FileNotFoundError("JSON file not found in the zip archive.")
+    
+
+
+    def create_athena_delta_table(self, database, table_name, s3_path_to_delta, output_location):
+        """
+        Create an Athena external table for Delta data.
+
+        Parameters:
+        - database (str): Name of the database (schema) where the table will be created.
+        - table_name (str): Name of the table to be created.
+        - s3_path_to_delta (str): S3 location where the Delta data is stored.
+        - output_location (str): S3 bucket location where query results will be stored.
+
+        Returns:
+        - str: Query execution ID.
+        """
+        # Initialize S3 client
+        s3_client = boto3.client('s3')
+
+        # Delete objects matching the pattern _delta_log_$folder$ which is created sometimes which will cause error
+        paginator = s3_client.get_paginator('list_objects_v2')
+        for page in paginator.paginate(Bucket=s3_path_to_delta.split('/')[2], Prefix=s3_path_to_delta.split('/')[3]):
+            for obj in page.get('Contents', []):
+                if re.match(r'.*/_delta_log_\$folder\$$', obj['Key']):
+                    s3_client.delete_object(Bucket=s3_path_to_delta.split('/')[2], Key=obj['Key'])
+
+        # Determine the full database name
+        databases = {
+            'raw': 'uk_snowfall_raw',
+            'preparation': 'uk_snowfall_preparation',
+            'processed': 'uk_snowfall_processed',
+            'semantic': 'uk_snowfall_semantic'
+        }
+
+        full_database_name = databases.get(database)
+        if full_database_name is None:
+            self.logger.error('No matching database name found')
+            raise Exception('No matching database name found')
+
+        # Initialize Athena client
+        client = boto3.client('athena')
+
+        sql_query = f"""CREATE EXTERNAL TABLE IF NOT EXISTS
+                    {full_database_name}.{table_name}
+                    LOCATION '{s3_path_to_delta}'
+                    TBLPROPERTIES ('table_type' = 'DELTA')
+                    """
+
+        try:
+            # Start query execution
+            self.logger.info(f"Starting the athena query: {sql_query}")
+            response = client.start_query_execution(
+                QueryString=sql_query,
+                ResultConfiguration={
+                    'OutputLocation': f"s3://{output_location}"
+                }
+            )
+
+            # Extract and return query execution ID
+            query_execution_id = response['QueryExecutionId']
+            return query_execution_id
+        except Exception as e:
+            # Log the error and continue
+            self.logger.info(f"An error occurred while creating Athena Delta table: {str(e)}")
+            return
+
+    def check_query_status(self, execution_id):
+        if execution_id is None:
+            self.logger.info('No Athena query execution ID passed in. Exiting the function.')
+            return False
+
+        athena_client = boto3.client('athena', region_name='eu-central-1')
+        start_time = time.time()
+
+        while True:
+            response = athena_client.get_query_execution(QueryExecutionId=execution_id)
+            status = response['QueryExecution']['Status']['State']
+
+            if status == 'SUCCEEDED':
+                return True
+            elif status in ['FAILED', 'CANCELLED']:
+                return False
+            if time.time() - start_time > 50:
+                raise TimeoutError("Query execution timed out")
+            time.sleep(1)
+
+
+    def update_table_columns_to_timestamp(self,db_name, table_name, columns_to_convert):
+        """
+        Update specified columns in a table to have the data type 'timestamp' in AWS Glue catalog.
+
+        Args:
+            db_name (str): The name of the database where the table is located.
+            table_name (str): The name of the table whose columns need to be updated.
+            columns_to_convert (list): A list of column names to convert to 'timestamp' data type.
+
+        Raises:
+            Exception: If no matching database name is found in the predefined databases.
+
+        """
+        try:
+            glue_client = boto3.client('glue', region_name='eu-central-1')
+
+            # Determine the full database name
+            databases = {
+                'raw': 'uk_snowfall_raw',
+                'preparation': 'uk_snowfall_preparation',
+                'processed': 'uk_snowfall_processed',
+                'semantic': 'uk_snowfall_semantic'
+            }
+
+            database_name = databases.get(db_name)
+            if database_name is None:
+                raise Exception('No matching database name found')
+
+            response = glue_client.get_table(DatabaseName=database_name, Name=table_name)
+            table = response['Table']
+            
+            new_columns = []
+            for column in table['StorageDescriptor']['Columns']:
+                if column['Name'] in columns_to_convert:
+                    column['Type'] = 'timestamp'
+                new_columns.append(column)
+
+            new_storage_descriptor = table['StorageDescriptor']
+            new_storage_descriptor['Columns'] = new_columns
+
+            table_input = {
+                'Name': table_name,
+                'StorageDescriptor': new_storage_descriptor,
+                'PartitionKeys': table['PartitionKeys'],
+                'TableType': table['TableType'],
+                'Parameters': table['Parameters'] 
+            }
+
+            glue_client.update_table(DatabaseName=database_name, TableInput=table_input)
+            self.logger.info(f"Schema updated for {table_name} in {database_name}.")
+
+        except Exception as e:
+            self.logger.error(f"An error occurred: {str(e)}")

@@ -12,6 +12,7 @@ terraform {
     encrypt = true
   }
 
+
 }
 
 #Picks up from secrets in github

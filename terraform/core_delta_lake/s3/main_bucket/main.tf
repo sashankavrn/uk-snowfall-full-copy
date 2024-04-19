@@ -13,6 +13,20 @@ resource "aws_s3_bucket_versioning" "landing_versioning" {
   }
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "landing_lifecycle_rules" {
+  depends_on = [ aws_s3_bucket_versioning.landing_versioning]
+  bucket = aws_s3_bucket.landing_bucket.id
+  rule {
+    id = "Removing objects with delete markers after 30 days"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+    status = "Enabled"
+  }
+}
+
+
 resource "aws_s3_bucket_policy" "allow_access_from_appflow_and_connect" {
   bucket = aws_s3_bucket.landing_bucket.id
   policy = data.template_file.bucket_policy.rendered
@@ -39,9 +53,9 @@ resource "aws_s3_object" "landing_folder" {
       incident_daily      = "service_now/UK-SNowFall-ServiceNow-Incident-Daily/"
       incident_intraday   = "service_now/UK-SNowFall-ServiceNow-Incident-Intraday/"
       location            = "service_now/UK-SNowFall-ServiceNow-Location/"
-      problem_request     = "service_now/UK-SNowFall-ServiceNow-ProblemRequest/"
+      problem_record     = "service_now/UK-SNowFall-ServiceNow-ProblemRecord/"
       service_offering    = "service_now/UK-SNowFall-ServiceNow-ServiceOffering/"
-      service_request     = "service_now/UK-SNowFall-ServiceNow-ServiceRequest/"
+      service_request      = "service_now/UK-SNowFall-ServiceNow-ServiceRequest/"
       sys_user            = "service_now/UK-SNowFall-ServiceNow-SysUser/"
       sys_user_group      = "service_now/UK-SNowFall-ServiceNow-Sys-User-Group/"
       ods                 = "ods/"
@@ -68,7 +82,7 @@ resource "aws_s3_bucket" "raw_bucket" {
   force_destroy = true
 }
 
-resource "aws_s3_bucket_versioning" "raw_verisoning" {
+resource "aws_s3_bucket_versioning" "raw_versioning" {
   bucket = aws_s3_bucket.raw_bucket.id
   versioning_configuration {
     status = "Enabled"
@@ -85,10 +99,10 @@ resource "aws_s3_object" "raw_folder" {
       archive                   = "archive/"
       amazon_connect            = "amazon_connect/"
       change_request            = "service_now/change_request/"
-      incident_today            = "service_now/incident/today/"
       incident_intraday         = "service_now/incident/intraday/"
+      incident_daily            = "service_now/incident/daily/"
       location                  = "service_now/location/"
-      problem_request           = "service_now/problem_request/"
+      problem_record            = "service_now/problem_record/"
       service_request           = "service_now/service_request/"
       service_offering          = "service_now/service_offering/"
       sys_user_group            = "service_now/sys_user_group/"
@@ -112,9 +126,22 @@ resource "aws_s3_bucket" "preparation_bucket" {
   force_destroy = true
 }
 
-resource "aws_s3_bucket_versioning" "preparation_verisoning" {
+resource "aws_s3_bucket_versioning" "preparation_versioning" {
   bucket = aws_s3_bucket.preparation_bucket.id
   versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "preparation_lifecycle_rules" {
+  depends_on = [aws_s3_bucket_versioning.preparation_versioning]
+    bucket = aws_s3_bucket.preparation_bucket.id
+  rule {
+    id = "Removing objects with delete markers after 30 days"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
     status = "Enabled"
   }
 }
@@ -128,10 +155,10 @@ resource "aws_s3_object" "preparation_folder" {
     for_each = {
       amazon_connect            = "amazon_connect/"
       change_request            = "service_now/change_request/"
-      incident_today            = "service_now/incident/today/"
       incident_intraday         = "service_now/incident/intraday/"
+      incident_daily            = "service_now/incident/daily/"
       location                  = "service_now/location/"
-      problem_request           = "service_now/problem_request/"
+      problem_record            = "service_now/problem_record/"
       service_request           = "service_now/service_request/"
       service_offering          = "service_now/service_offering/"
       sys_user_group            = "service_now/sys_user_group/"
@@ -159,13 +186,6 @@ resource "aws_s3_object" "temporary_folder" {
   source = "/dev/null" 
 }
 
-resource "aws_s3_object" "athena_folder" {
-  bucket = aws_s3_bucket.artifact_bucket.id
-  key    = "athena_query/" 
-  source = "/dev/null" 
-}
-
-
 #####################################################################################
 
 # ####### Creation of Processed Bucket ################
@@ -175,9 +195,22 @@ resource "aws_s3_bucket" "processed_bucket" {
   force_destroy = true
 }
 
-resource "aws_s3_bucket_versioning" "processed_verisoning" {
+resource "aws_s3_bucket_versioning" "processed_versioning" {
   bucket = aws_s3_bucket.processed_bucket.id
   versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "processed_lifecycle_rules" {
+  depends_on = [ aws_s3_bucket_versioning.processed_versioning]
+  bucket = aws_s3_bucket.processed_bucket.id
+  rule {
+    id = "Removing objects with delete markers after 30 days"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
     status = "Enabled"
   }
 }
@@ -191,10 +224,10 @@ resource "aws_s3_object" "processed_folder" {
     for_each = {
       amazon_connect            = "amazon_connect/"
       change_request            = "service_now/change_request/"
-      incident_today            = "service_now/incident/today/"
       incident_intraday         = "service_now/incident/intraday/"
+      incident_daily            = "service_now/incident/daily/"
       location                  = "service_now/location/"
-      problem_request           = "service_now/problem_request/"
+      problem_record            = "service_now/problem_record/"
       service_request           = "service_now/service_request/"
       service_offering          = "service_now/service_offering/"
       sys_user_group            = "service_now/sys_user_group/"
@@ -214,11 +247,43 @@ resource "aws_s3_bucket" "semantic_bucket" {
   force_destroy = true
 }
 
-resource "aws_s3_bucket_versioning" "semantic_verisoning" {
+resource "aws_s3_bucket_versioning" "semantic_versioning" {
   bucket = aws_s3_bucket.semantic_bucket.id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
- 
+resource "aws_s3_bucket_lifecycle_configuration" "semantic_lifecycle_rules" {
+  depends_on = [ aws_s3_bucket_versioning.semantic_versioning]
+  bucket = aws_s3_bucket.semantic_bucket.id
+  rule {
+    id = "Removing objects with delete markers after 30 days"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+    status = "Enabled"
+  }
+}
+
+###### Creation of Athena Bucket ##############
+resource "aws_s3_bucket" "athena_bucket" {
+  bucket = "eu-central1-${var.environment}-uk-snowfall-athena-${var.account_number}"
+  tags   = var.resource_tags
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "athena_lifecycle" {
+  bucket = aws_s3_bucket.athena_bucket.id
+
+  rule {
+    id     = "Delete After 30 Days"
+    status = "Enabled"
+
+    expiration {
+      days = 30
+    }
+  }
+}
+
