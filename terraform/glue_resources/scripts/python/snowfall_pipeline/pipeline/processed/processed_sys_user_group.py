@@ -152,7 +152,7 @@ class ProcessedSysUserGroup(TransformBase):
         else:
 
             # Merge data to the Delta table
-            merge_columns = ['sys_id','sys_created_on','created_month','created_year']
+            merge_columns = ['sys_id','sys_created_timestamp','created_month','created_year']
             self.merge_to_delta_table(df,save_output_path,merge_columns)
 
             # Vacuum the table

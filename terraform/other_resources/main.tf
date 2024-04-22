@@ -18,14 +18,6 @@ provider "aws" {
   region      = var.AWS_REGION
 }
 
-  # #Picks up from secrets in github
-  # provider "aws" {
-  #   region      = var.AWS_REGION
-  #   access_key = ""
-  #   secret_key = "1"
-  #   token = ""
-  # }
-
 
 # Triggering event bridge module
 module "event_bridge_module" {

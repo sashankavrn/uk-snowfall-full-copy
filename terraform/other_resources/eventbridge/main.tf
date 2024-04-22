@@ -163,3 +163,200 @@ resource "aws_cloudwatch_event_target" "incident_daily_rule" {
   role_arn = var.role_assumed_arn
 
 }
+
+
+resource "aws_cloudwatch_event_rule" "problem_record_event_rule" {
+  name = "uk-snowfall-problem-record-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "service_now/problem_record/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "problem_record_rule" {
+  rule      = aws_cloudwatch_event_rule.problem_record_event_rule.name
+  arn       = data.terraform_remote_state.glue_module.outputs.problem_record_workflow_trigger_arn
+  role_arn = var.role_assumed_arn
+
+}
+
+resource "aws_cloudwatch_event_rule" "service_offering_event_rule" {
+  name = "uk-snowfall-service-offering-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "service_now/service_offering/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "service_offering_rule" {
+  rule      = aws_cloudwatch_event_rule.service_offering_event_rule.name
+  arn       = data.terraform_remote_state.glue_module.outputs.service_offering_workflow_trigger_arn
+  role_arn = var.role_assumed_arn
+
+}
+
+resource "aws_cloudwatch_event_rule" "service_request_event_rule" {
+  name = "uk-snowfall-service-request-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "service_now/service_request/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "service_request_rule" {
+  rule      = aws_cloudwatch_event_rule.service_request_event_rule.name
+  arn       = data.terraform_remote_state.glue_module.outputs.service_request_workflow_trigger_arn
+  role_arn = var.role_assumed_arn
+
+}
+
+resource "aws_cloudwatch_event_rule" "sys_user_event_rule" {
+  name = "uk-snowfall-sys-user-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "service_now/sys_user/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "sys_user_rule" {
+  rule      = aws_cloudwatch_event_rule.sys_user_event_rule.name
+  arn       = data.terraform_remote_state.glue_module.outputs.sys_user_workflow_trigger_arn
+  role_arn = var.role_assumed_arn
+
+}
+
+resource "aws_cloudwatch_event_rule" "sys_user_group_event_rule" {
+  name = "uk-snowfall-sys-user-group-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "service_now/sys_user_group/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "sys_user_group_rule" {
+  rule      = aws_cloudwatch_event_rule.sys_user_group_event_rule.name
+  arn       = data.terraform_remote_state.glue_module.outputs.sys_user_group_workflow_trigger_arn
+  role_arn = var.role_assumed_arn
+
+}
+
+resource "aws_cloudwatch_event_rule" "adj_trading_hours_event_rule" {
+  name = "uk-snowfall-adj-trading-hours-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "ods/adj_trading_hours/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "adj_trading_hours_rule" {
+  rule      = aws_cloudwatch_event_rule.adj_trading_hours_event_rule.name
+  arn       = data.terraform_remote_state.glue_module.outputs.adj_trading_hours_workflow_trigger_arn
+  role_arn = var.role_assumed_arn
+
+}
+
+resource "aws_cloudwatch_event_rule" "trading_hours_event_rule" {
+  name = "uk-snowfall-trading-hours-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "ods/trading_hours/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "trading_hours_rule" {
+  rule      = aws_cloudwatch_event_rule.trading_hours_event_rule.name
+  arn       = data.terraform_remote_state.glue_module.outputs.trading_hours_workflow_trigger_arn
+  role_arn = var.role_assumed_arn
+
+}
