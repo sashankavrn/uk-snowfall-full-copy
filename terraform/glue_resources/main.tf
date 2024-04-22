@@ -118,6 +118,62 @@ module "location_hierarchy_module" {
 
 }
 
+# Triggering the Adj_trading_hours
+module "adj_trading_hours_module" {
+  source = "./workflows/adj_trading_hours"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+# Triggering the problem record
+module "problem_record_module" {
+  source = "./workflows/problem_record"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+# Triggering the service_offering
+module "service_offering_module" {
+  source = "./workflows/service_offering"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+# Triggering the service_request
+module "service_request_module" {
+  source = "./workflows/service_request"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+# Triggering the sys_user
+module "sys_user_module" {
+  source = "./workflows/sys_user"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+# Triggering the sys_user_group
+module "sys_user_group_module" {
+  source = "./workflows/sys_user_group"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
+# Triggering the trading_hours
+module "trading_hours_module" {
+  source = "./workflows/trading_hours"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
 # Triggering the semantic_incidents_daily
 module "semantic_incidents_daily_module" {
   source = "./workflows/semantic_incidents_daily"
