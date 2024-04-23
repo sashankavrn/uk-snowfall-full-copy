@@ -51,6 +51,10 @@
         {
             "fileName": "ods/ODS_SNOWFALL_ADJ_TRADING_HOURS",
             "destinationPath": "ods/adj_trading_hours"
+        },
+        {
+            "fileName": "restaurant_config",
+            "destinationPath": "restaurant_config"
         }
     ]
 }

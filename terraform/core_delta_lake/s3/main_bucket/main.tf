@@ -59,6 +59,7 @@ resource "aws_s3_object" "landing_folder" {
       sys_user            = "service_now/UK-SNowFall-ServiceNow-SysUser/"
       sys_user_group      = "service_now/UK-SNowFall-ServiceNow-Sys-User-Group/"
       ods                 = "ods/"
+      restaurant_config   = "restaurant_config/"
     }
 }
 
@@ -110,6 +111,7 @@ resource "aws_s3_object" "raw_folder" {
       location_trading_hrs      = "ods/trading_hours/"
       location_hierarchy        = "ods/location_hierarchy/"
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
+      restaurant_config         = "restaurant_config/"
     }
 }
 
