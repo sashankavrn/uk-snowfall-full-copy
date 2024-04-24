@@ -468,6 +468,9 @@ class ProcessedChangeRequest(TransformBase):
         Returns:
             DataFrame: The processed DataFrame.
         """
+        self.logger.info(f"Running the process_change_request function..")
+        self.logger.info(f"Records in dataframe: {df.count()}")
+
         # Extracting all stores with a comma in their name from locations DataFrame
         location_df = self.spark.read.format("delta").load(f"s3://{self.processed_bucket_name}/service_now/location/")
         filtered_rows = location_df.filter(location_df['restaurant_full_name'].contains(','))
@@ -524,6 +527,6 @@ class ProcessedChangeRequest(TransformBase):
         processed_df = df.join(broadcasted_location_df, df[column_name] == broadcasted_location_df["restaurant_full_name"], "left")
 
         columns_drop = ['restaurant_full_name','restaurant_id','restaurant_name']
-        processed_df = processed_df.drop(*columns_drop)
-
-        return processed_df.dropDuplicates()
+        processed_df = processed_df.drop(*columns_drop).dropDuplicates()
+        self.logger.info(f"After function process_change_request records in dataframe: {processed_df.count()}")
+        return processed_df

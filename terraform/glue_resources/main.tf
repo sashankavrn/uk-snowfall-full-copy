@@ -174,6 +174,14 @@ module "trading_hours_module" {
 
 }
 
+# Triggering the change_request
+module "change_request_module" {
+  source = "./workflows/change_request"
+  resource_tags = merge(var.resource_tags,{Environment = var.environment})
+  glue_job_name = aws_glue_job.main_runner_script.name
+
+}
+
 # Triggering the semantic_incidents_daily
 module "semantic_incidents_daily_module" {
   source = "./workflows/semantic_incidents_daily"
