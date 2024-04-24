@@ -6,7 +6,7 @@ resource "aws_glue_workflow" "incident_daily" {
   default_run_properties = {
 
     "DATASET"                = "incident_daily"
-    "GROUP"                  = "processed"
+    "GROUP"                  = "preparation"
   }
 }
 
@@ -14,7 +14,7 @@ resource "aws_glue_workflow" "incident_daily" {
 resource "aws_glue_trigger" "incident_daily" {
   name = "uk-snowfall-incident-daily-trigger"
   type = "EVENT"
-  enabled = true
+  enabled = false
   workflow_name = aws_glue_workflow.incident_daily.name
 
   actions {
