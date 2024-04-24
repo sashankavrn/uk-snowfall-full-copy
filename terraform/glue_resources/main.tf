@@ -46,9 +46,9 @@ resource "aws_glue_job" "main_runner_script" {
   role_arn = var.role_assumed_arn
   tags = var.resource_tags
   glue_version = "4.0"
+  max_capacity = 10
   timeout = 180
   description = "Main driver script for all pipelines"
-  worker_type = "G.4X"
 
 
   command {
