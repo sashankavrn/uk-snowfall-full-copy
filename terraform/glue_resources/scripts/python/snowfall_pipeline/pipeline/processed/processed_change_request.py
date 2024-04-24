@@ -530,3 +530,32 @@ class ProcessedChangeRequest(TransformBase):
         processed_df = processed_df.drop(*columns_drop).dropDuplicates()
         self.logger.info(f"After function process_change_request records in dataframe: {processed_df.count()}")
         return processed_df
+
+
+    @transformation_timer
+    def filter_quality_result(self, df, partition_column_drop = None):
+        """
+        Filter DataFrame records based on the DataQualityEvaluationResult.
+
+        Args:
+            df (DataFrame): The input Spark DataFrame.
+            partition_column_drop (list) : List of extra partition columns that need dropping before exporting
+
+        Returns:
+            DataFrame: The filtered DataFrame containing only passed records.
+        """
+
+        self.logger.info('Running the filter_quality_result function')
+
+        df_failed = df.filter(df["DataQualityEvaluationResult"] == "Failed")
+
+        if not df_failed.isEmpty():
+            self.logger.info('Handling failed records...')
+            workflow_run_id = self.aws_instance.get_glue_env_var('WORKFLOW_RUN_ID')
+            error_path = f"s3://{self.preparation_bucket_name}/error/{self.file_path}/{workflow_run_id}/dq_fail_rows/"
+            df.coalesce(1).write.json(error_path,mode="overwrite", lineSep="\n",ignoreNullFields = False)
+
+        # Filter DataFrame for passed records and return it
+        df_passed = df.filter(df["DataQualityEvaluationResult"] == "Passed")
+        self.logger.info('Returning the DataFrame with passed records')
+        return df_passed
