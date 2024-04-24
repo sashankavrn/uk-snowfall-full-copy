@@ -526,4 +526,4 @@ class ProcessedChangeRequest(TransformBase):
         columns_drop = ['restaurant_full_name','restaurant_id','restaurant_name']
         processed_df = processed_df.drop(*columns_drop)
 
-        return processed_df
+        return processed_df.dropDuplicates()
