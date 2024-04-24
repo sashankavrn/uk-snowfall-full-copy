@@ -45,3 +45,7 @@ output "sys_user_group_workflow_trigger_arn" {
 output "trading_hours_workflow_trigger_arn" {
   value = module.trading_hours_module.trading_hours_workflow_trigger_arn
 }
+
+output "change_request_workflow_trigger_arn" {
+  value = module.change_request_module.change_request_workflow_trigger_arn
+}
