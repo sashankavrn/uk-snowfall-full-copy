@@ -148,7 +148,7 @@ resource "aws_cloudwatch_event_rule" "incident_daily_event_rule" {
     },
     "object": {
       "key": [{
-        "prefix": "service_now/incident/daily/"
+        "prefix": "service_now/incident/daily123/"
       }]
     }
   },

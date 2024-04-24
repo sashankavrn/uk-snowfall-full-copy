@@ -14,7 +14,7 @@ resource "aws_glue_workflow" "incident_daily" {
 resource "aws_glue_trigger" "incident_daily" {
   name = "uk-snowfall-incident-daily-trigger"
   type = "EVENT"
-  enabled = false
+  enabled = true
   workflow_name = aws_glue_workflow.incident_daily.name
 
   actions {
