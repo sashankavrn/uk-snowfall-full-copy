@@ -6,7 +6,7 @@ resource "aws_glue_workflow" "incident_daily" {
   default_run_properties = {
 
     "DATASET"                = "incident_daily"
-    "GROUP"                  = "preparation"
+    "GROUP"                  = "processed"
   }
 }
 
