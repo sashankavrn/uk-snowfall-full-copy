@@ -124,10 +124,9 @@ unique_sql_query =  """
                 SELECT a.*
                 FROM my_dataframe a
                 INNER JOIN (
-                    SELECT number,u_site, MAX(to_timestamp(sys_updated_on, 'dd-MM-yyyy HH:mm:ss')) AS latest_timestamp
+                    SELECT number, MAX(to_timestamp(sys_updated_on, 'dd-MM-yyyy HH:mm:ss')) AS latest_timestamp
                     FROM my_dataframe
-                    GROUP BY number,u_site
+                    GROUP BY number
                 ) b ON a.number = b.number AND 
-                       a.u_site = b.u_site AND 
-                to_timestamp(a.sys_updated_on, 'dd-MM-yyyy HH:mm:ss') = b.latest_timestamp
-"""
+                  to_timestamp(a.sys_updated_on, 'dd-MM-yyyy HH:mm:ss') = b.latest_timestamp
+                """
