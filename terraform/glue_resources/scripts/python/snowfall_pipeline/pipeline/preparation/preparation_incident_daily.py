@@ -8,7 +8,7 @@ class PreparationIncidentDaily(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
-        self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
+        self.spark.conf.set("spark.sql.shuffle.partitions", "200") 
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
         self.pipeline_config = self.full_configs['incidents'] # have to hard code incidents here since have daily and intra
         self.dq_rule = dq_rules.get('incidents')

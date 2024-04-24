@@ -7,7 +7,7 @@ class ProcessedIncidentDaily(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
-        self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
+        self.spark.conf.set("spark.sql.shuffle.partitions", "200") 
         self.pipeline_config = self.full_configs['incidents']
         self.file_path = "service_now/incident/daily"
 
