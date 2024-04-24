@@ -49,6 +49,7 @@ resource "aws_glue_job" "main_runner_script" {
   max_capacity = 10
   timeout = 180
   description = "Main driver script for all pipelines"
+  worker_type = "G.4X"
 
 
   command {
