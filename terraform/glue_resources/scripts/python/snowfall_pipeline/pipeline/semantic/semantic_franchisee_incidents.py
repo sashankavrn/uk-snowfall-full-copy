@@ -128,7 +128,7 @@ class SemanticFranchiseeIncidents(TransformBase):
                     ON incident.restaurant_id = location.restaurant_id
                 INNER JOIN ods_location_hierarchy AS location_hierarchy
                     ON incident.restaurant_id = location_hierarchy.store_number
-                WHERE incident.sys_updated_date = '{self.formatted_reporting_date}' 
+                WHERE incident.sys_updated_date <= '{self.formatted_reporting_date}' 
             )
             SELECT 
             restaurant_id,
