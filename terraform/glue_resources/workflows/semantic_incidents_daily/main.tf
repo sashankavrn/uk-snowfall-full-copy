@@ -14,7 +14,8 @@ resource "aws_glue_workflow" "semantic_incidents_daily" {
 
 resource "aws_glue_trigger" "semantic_incident_trigger" {
   name = "uk-snowfall-semantic-incidents-trigger"
-  type = "ON_DEMAND"
+  type          = "SCHEDULED"
+  schedule      = "cron(0 6 * * ? *)"
   enabled = true
   workflow_name = aws_glue_workflow.semantic_incidents_daily.name
 

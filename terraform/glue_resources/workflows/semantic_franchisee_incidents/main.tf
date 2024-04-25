@@ -14,7 +14,8 @@ resource "aws_glue_workflow" "semantic_franchisee_incidents" {
 
 resource "aws_glue_trigger" "semantic_franchisee_incidents_trigger" {
   name = "uk-snowfall-semantic-franchisee-incidents-trigger"
-  type = "ON_DEMAND"
+  type          = "SCHEDULED"
+  schedule      = "cron(0 6 * * ? *)"
   enabled = true
   workflow_name = aws_glue_workflow.semantic_franchisee_incidents.name
 
