@@ -231,18 +231,11 @@ class SemanticFranchiseeIncidents(TransformBase):
 
         else:
 
-            # Load the Delta table as a DeltaTable
-            delta_table = DeltaTable.forPath(self.spark, save_output_path)
+            # Merge data to the Delta table
+            merge_columns = ['incident_id']
+            self.merge_to_delta_table(df,save_output_path,merge_columns)
 
-            # Delete rows with the specified reporting_date
-            delta_table.delete(f"reporting_date = '{self.formatted_reporting_date}'")
-
-            # Append the new DataFrame to the Delta table
-            df.write.format("delta").mode("append") \
-                .partitionBy('reporting_date') \
-                .save(save_output_path)
-
-            # Vaccum the Delta table
-            delta_table.vacuum(retentionHours=200)
-
+            # Vacuum the table
+            self.vacuum_table(save_output_path,48)
+        
         self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
