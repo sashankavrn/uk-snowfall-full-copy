@@ -1,89 +1,24 @@
-# Snowfall Data Pipeline
+# uk-snowfall Project Readme
 
-This repository contains all the necessary Infrastructure as Code (IaC) to build and manage the Snowfall data pipeline. The pipeline is designed to handle the following datasets:
+## Overview:
+The uk-snowfall project aims to create a comprehensive data lakehouse leveraging AWS services, particularly Glue, to ingest, process, and analyze data related to McDonald's restaurants and associated incidents. The infrastructure is managed and provisioned using Terraform, ensuring consistency and scalability.
 
-| Data item    | Item Description                     |
-|--------------|--------------------------------------|
-| 1            | incidents-daily                      |
-| 2            | incidents-intraday                   |
-| 3            | amazon-connect                       |
-| 4            | change-request                       |
-| 5            | location                             |
-| 6            | location-hierarchy                   |
-| 7            | location-hierarchy-adj-trading-hours |
-| 8            | location-hierarchy-trading-hours     |
-| 9            | problem-request                      |
-| 10           | service-offering                     |
-| 11           | service-request                      |
-| 12           | sys-user                             |
-| 13           | sys-user-group                       |
+## Modules:
+The project is organized into three main modules:
 
-## Infrastructure as Code (IaC)
+1. **core_delta_lake**: This module is responsible for provisioning core resources such as S3 buckets, Lambda functions, and other fundamental components required for the data lakehouse infrastructure.
 
-### Terraform
+2. **glue_resources**: The glue_resources module is where the majority of changes and customizations occur. It includes pipeline scripts for data ingestion, transformation, and management using AWS Glue services.
 
-- **`/terraform/`**: This directory contains Terraform configurations for provisioning the necessary infrastructure components.
+3. **other_resources**: This module encompasses additional resources like EventBridge triggers and soon-to-be-implemented Athena table creations. It complements the core_delta_lake and glue_resources modules by adding supplementary functionalities and integrations.
 
-    - `main.tf`: defines and loads the modules defined in resources
+## Pre-Deployment Requirements:
+Before deploying the infrastructure, ensure that a ServiceNow connector is configured in AppFlow. This connector facilitates seamless integration with ServiceNow for incident management and data synchronization. Once configured, specify the connector profile name in the variables for seamless integration.
 
-    - `variables.tf`: key environment variables that will allow deployment to the relavent account
-
-    - `development.tfvars`: values for running from the command line
-
-    - `resources`: 5 modules have been defined for building the required resources for
-
-| Resource item | Item Description                   |
-|---------------|------------------------------------|
-| 1             | s3                                 |
-| 2             | glue, shared scripts and workflows |
-| 3             | event bridge                       |
-| 4             | sns                                |
-
-
-
-
-### AWS Glue Scripts
-
-- **`/glue-scripts/`**: Here you'll find AWS Glue scripts for data transformation and ETL processes.
-
-    - `aws_utilities.py`: collection of functions designed to streamline and orchestrate various data-related tasks within the AWS ecosystem
-
-    - `script_config.py`: structured set of parameters and settings used to drive the orchestration of the workflows.
- 
-    - `transform.py`: key transformations on raw or source data.
- 
-    - `main.py`: main script to run the pipeline.
- 
-
-## Getting Started (WIP)
-
-To deploy the Snowfall data pipeline using Terraform, follow these steps:
-
-1. Clone this repository:
-
-    ```bash
-    git clone https://github.com/your-username/snowfall-data-pipeline.git
-    ```
-
-2. Navigate to the Terraform directory:
-
-    ```bash
-    cd snowfall-data-pipeline/terraform
-    ```
-
-3. Initialize Terraform:
-
-    ```bash
-    terraform init
-    ```
-
-4. Apply the Terraform configurations:
-
-    ```bash
-    terraform apply
-    ```
-
-5. Execute the Glue scripts in the AWS Glue console or using the AWS CLI.
-
----
-
+## Deployment Process:
+1. Configure ServiceNow connector in AppFlow.
+2. Specify connector profile name in variables.
+3. Utilize Terraform to deploy infrastructure modules in the following sequence:
+   a. core_delta_lake
+   b. glue_resources
+   c. other_resources
