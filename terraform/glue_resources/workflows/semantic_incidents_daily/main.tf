@@ -7,7 +7,7 @@ resource "aws_glue_workflow" "semantic_incidents_daily" {
 
     "DATASET"                = "daily_incidents"
     "GROUP"                  = "semantic"
-    "REPORTING_DATE"         = ""
+    "REPORTING_DATE"         = "2024-04-05"
   }
 }
 
