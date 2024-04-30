@@ -30,9 +30,11 @@ class SemanticDailyIncidents(TransformBase):
         else:
             # If max_date is empty, get yesterday's date
             report_date_obj = datetime.now() - timedelta(days=1)
+            opened_date_obj = datetime.now() - timedelta(days=45)
 
         # Format max_date to 'yyyy-mm-dd' format
         self.formatted_reporting_date = report_date_obj.strftime('%Y-%m-%d')
+        self.opened_date_obj_45days = opened_date_obj.strftime('%Y-%m-%d')
 
         self.logger.info(f"Reporting date selected: {self.formatted_reporting_date}")
 
@@ -83,7 +85,7 @@ class SemanticDailyIncidents(TransformBase):
                         RANK() OVER (PARTITION BY incident_number ORDER BY CAST(sys_updated_timestamp AS TIMESTAMP) DESC) AS rank
                     FROM service_now_incident_daily
                     WHERE (sys_updated_date = DATE('{self.formatted_reporting_date}') OR opened_date = DATE('{self.formatted_reporting_date}'))
-                
+                    and opened_date > date('{self.opened_date_obj_45days}')
                     UNION
                 
                     SELECT
