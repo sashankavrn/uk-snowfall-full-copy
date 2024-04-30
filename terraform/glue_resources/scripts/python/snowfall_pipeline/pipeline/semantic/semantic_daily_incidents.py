@@ -37,65 +37,90 @@ class SemanticDailyIncidents(TransformBase):
         self.logger.info(f"Reporting date selected: {self.formatted_reporting_date}")
 
         sql_query = f"""
-            with incidents_prep as (
-                select restaurant_id
-                     , restaurant_name
-                     , case when restaurant_id = -1 then restaurant_name
-                            else concat(cast(restaurant_id as string),' ',restaurant_name) 
-                            end as restaurant_full_name
-                     , incident_number                                                          as incident_id
-                     , short_description                                                        as incident_short_description
-                     , incident_state                                                           as incident_state
-                     , case when opened_date = resolved_at_date and opened_date = date('{self.formatted_reporting_date}') 
-                                        then 'New and Resolved' else state end                  as eod_incident_status
-                     , sys_updated_date                                                         as sys_updated_date
-                     , sys_updated_timestamp                                                    as sys_updated_timestamp
-                     , opened_date                                                              as opened_at_date
-                     , opened_timestamp                                                         as opened_at_timestamp
-                     , resolved_at_date                                                         as resolved_at_date
-                     , resolved_at_timestamp                                                    as resolved_at_timestamp
-                     , priority                                                                 as incident_priority_local
-                     , priority                                                                 as incident_priority_global
-                     , category                                                                 as incident_category
-                     , subcategory                                                              as incident_subcategory
-                     , assignment_group                                                         as assignment_group
-                     , service_offering                                                         as service_offering
-                     , u_vendor                                                                 as service_vendor
-                     , case when incident_state in ('Closed','Cancelled','Duplicate') then 1 else 0 end     as incident_resolved_flag
-                     , case when sys_updated_date = date('{self.formatted_reporting_date}') then 1 else 0 end    as latest_record_flag
-                     , date('{self.formatted_reporting_date}')                                        as reporting_date
-                from service_now_incident_daily   
-                where sys_updated_date <= date('{self.formatted_reporting_date}')
-            ), incidents as (
-                select *
-                     , case when incident_resolved_flag = 1 and latest_record_flag = 1 then 1 else 0 end    as incident_resolved_filter_flag
-                     , case when incident_resolved_flag = 0 then 1 else 0 end     as incident_unresolved_filter_flag
-                     , rank() over (partition by incident_id order by incident_resolved_flag desc, sys_updated_timestamp desc) as incident_rank
-                from incidents_prep
-            )
-            select
-                restaurant_id,
-                restaurant_name,
-                restaurant_full_name,
-                incident_id,
-                incident_short_description,
-                incident_state,
-                eod_incident_status,
-                opened_at_date,
-                opened_at_timestamp,
-                resolved_at_date,
-                resolved_at_timestamp,
-                incident_priority_local,
-                incident_priority_global,
-                incident_category,
-                incident_subcategory,
-                assignment_group,
-                service_offering,
-                service_vendor,
-                reporting_date,
-                sys_updated_date from incidents
-            where incident_rank = 1
-            and (incident_resolved_filter_flag = 1 or incident_unresolved_filter_flag = 1)
+                SELECT 
+                    restaurant_id,
+                    restaurant_name,
+                    restaurant_full_name,
+                    incident_id,
+                    incident_short_description,
+                    incident_state,
+                    eod_incident_status,
+                    opened_at_date,
+                    opened_at_timestamp,
+                    resolved_at_date,
+                    resolved_at_timestamp,
+                    incident_priority_local,
+                    incident_priority_global,
+                    incident_category,
+                    incident_subcategory,
+                    assignment_group,
+                    service_offering,
+                    service_vendor,
+                    reporting_date,
+                    sys_updated_date
+                FROM (
+                    SELECT
+                        restaurant_id,
+                        restaurant_name,
+                        CASE WHEN restaurant_id = -1 THEN restaurant_name ELSE CONCAT(CAST(restaurant_id AS string), ' ', restaurant_name) END AS restaurant_full_name,
+                        incident_number AS incident_id,
+                        short_description AS incident_short_description,
+                        incident_state AS incident_state,
+                        CASE WHEN opened_date = resolved_at_date AND opened_date = DATE('{self.formatted_reporting_date}') THEN 'New and Resolved' ELSE state END AS eod_incident_status,
+                        opened_date AS opened_at_date,
+                        opened_timestamp AS opened_at_timestamp,
+                        resolved_at_date AS resolved_at_date,
+                        resolved_at_timestamp AS resolved_at_timestamp,
+                        priority AS incident_priority_local,
+                        priority AS incident_priority_global,
+                        category AS incident_category,
+                        subcategory AS incident_subcategory,
+                        assignment_group,
+                        service_offering,
+                        u_vendor AS service_vendor,
+                        DATE('{self.formatted_reporting_date}') AS reporting_date,
+                        sys_updated_date,
+                        RANK() OVER (PARTITION BY incident_number ORDER BY CAST(sys_updated_timestamp AS TIMESTAMP) DESC) AS rank
+                    FROM service_now_incident_daily
+                    WHERE (sys_updated_date = DATE('{self.formatted_reporting_date}') OR opened_date = DATE('{self.formatted_reporting_date}'))
+                
+                    UNION
+                
+                    SELECT
+                        restaurant_id,
+                        restaurant_name,
+                        CASE WHEN restaurant_id = -1 THEN restaurant_name ELSE CONCAT(CAST(restaurant_id AS string), ' ', restaurant_name) END AS restaurant_full_name,
+                        incident_number AS incident_id,
+                        short_description AS incident_short_description,
+                        incident_state AS incident_state,
+                        CASE WHEN opened_date = resolved_at_date AND opened_date = DATE('{self.formatted_reporting_date}') THEN 'New and Resolved' ELSE state END AS eod_incident_status,
+                        opened_date AS opened_at_date,
+                        opened_timestamp AS opened_at_timestamp,
+                        resolved_at_date AS resolved_at_date,
+                        resolved_at_timestamp AS resolved_at_timestamp,
+                        priority AS incident_priority_local,
+                        priority AS incident_priority_global,
+                        category AS incident_category,
+                        subcategory AS incident_subcategory,
+                        assignment_group,
+                        service_offering,
+                        u_vendor AS service_vendor,
+                        DATE('{self.formatted_reporting_date}') AS reporting_date,
+                        sys_updated_date,
+                        RANK() OVER (PARTITION BY incident_number ORDER BY CAST(sys_updated_timestamp AS TIMESTAMP) DESC) AS rank
+                    FROM service_now_incident_daily
+                    WHERE 1=1 
+                    AND sys_updated_date < DATE('{self.formatted_reporting_date}')
+                    AND incident_number NOT IN (
+                        SELECT DISTINCT incident_number 
+                        FROM service_now_incident_daily 
+                        WHERE (sys_updated_date <= DATE('{self.formatted_reporting_date}') OR opened_date = DATE('{self.formatted_reporting_date}')) 
+                        AND state IN ('Closed','Cancelled','Duplicate')
+                    )
+                    AND incident_state NOT IN ('Closed','Cancelled','Duplicate')
+                ) dataset
+                WHERE 1=1 
+                AND rank = 1
         """
         self.logger.info(f"Running the SQL Query: {sql_query}")
 
