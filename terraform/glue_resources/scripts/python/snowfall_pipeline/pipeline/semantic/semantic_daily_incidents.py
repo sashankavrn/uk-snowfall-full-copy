@@ -30,7 +30,8 @@ class SemanticDailyIncidents(TransformBase):
         else:
             # If max_date is empty, get yesterday's date
             report_date_obj = datetime.now() - timedelta(days=1)
-            opened_date_obj = datetime.now() - timedelta(days=45)
+
+        opened_date_obj = datetime.now() - timedelta(days=45)
 
         # Format max_date to 'yyyy-mm-dd' format
         self.formatted_reporting_date = report_date_obj.strftime('%Y-%m-%d')
