@@ -821,7 +821,7 @@ class TransformBase:
                 to_timestamp(a.sys_updated_on, 'dd-MM-yyyy HH:mm:ss') = b.latest_timestamp
                 """
         df.createOrReplaceTempView("my_dataframe")
-        unique_df = self.spark.sql(sql_query)
+        unique_df = self.spark.sql(sql_query).dropDuplicates()
         final_count = unique_df.count()
         self.logger.info(f"{initial_count - final_count} rows have been removed after running get_unique_records function")
         return unique_df
