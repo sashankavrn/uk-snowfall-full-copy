@@ -70,7 +70,7 @@ class SemanticFranchiseeIncidents(TransformBase):
                     incident.short_description AS incident_short_description,
                     incident.incident_state AS incident_state,
                     CASE 
-                        WHEN incident.opened_date = incident.resolved_at_date and incident.opened_date = date('{self.formatted_reporting_date}')
+                        WHEN incident.opened_date = incident.resolved_at_date and incident.opened_date = incident.closed_date
                         THEN 'New and Resolved' 
                         ELSE incident.state 
                     END AS eod_incident_status,
@@ -119,7 +119,7 @@ class SemanticFranchiseeIncidents(TransformBase):
                     location_hierarchy.postcode AS postcode,
                     location_hierarchy.longitude AS longitude,
                     location_hierarchy.latitude AS latitude,
-                    incident.sys_updated_date as reporting_date,
+                    incident.sys_updated_date as sys_updated_date,
                     rank() over (partition by incident.incident_number order by cast(incident.sys_updated_timestamp as timestamp) desc) 
                     as incident_rank
                 FROM 
@@ -128,7 +128,7 @@ class SemanticFranchiseeIncidents(TransformBase):
                     ON incident.restaurant_id = location.restaurant_id
                 INNER JOIN ods_location_hierarchy AS location_hierarchy
                     ON incident.restaurant_id = location_hierarchy.store_number
-                WHERE incident.sys_updated_date = '{self.formatted_reporting_date}' 
+                WHERE incident.sys_updated_date <= '{self.formatted_reporting_date}' 
             )
             SELECT 
             restaurant_id,
@@ -171,7 +171,7 @@ class SemanticFranchiseeIncidents(TransformBase):
             postcode,
             longitude,
             latitude,
-            reporting_date 
+            sys_updated_date 
             FROM RankedIncidents
             WHERE incident_rank = 1;
         """
@@ -201,7 +201,7 @@ class SemanticFranchiseeIncidents(TransformBase):
         if self.athena_trigger:
             # Create the Delta table
             df.write.format("delta").mode("overwrite") \
-                .partitionBy('reporting_date') \
+                .partitionBy('sys_updated_date') \
                 .save(save_output_path)
 
             # Execute Athena query to create the table
