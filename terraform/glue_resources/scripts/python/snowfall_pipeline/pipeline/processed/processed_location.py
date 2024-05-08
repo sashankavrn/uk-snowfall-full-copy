@@ -51,7 +51,7 @@ class ProcessedLocation(TransformBase):
         df = self.filter_quality_result(df)
 
         # Step 5: Gets unique records
-        df = self.get_unique_records_sql(df)
+        df = self.get_unique_records_sql(df,unique_sql_query)  
 
         # Step 6: Drops unnecessary columns
         df = self.drop_columns_for_processed(df)
@@ -338,14 +338,7 @@ class ProcessedLocation(TransformBase):
 
         return df
 
-    @transformation_timer
-    def get_unique_records_sql(self,df):
-        """
-        Run the SQL query on the dataframe.
-        """
-        self.logger.info('Running the get_unique_records function.')
-        df.createOrReplaceTempView("my_dataframe")
-        query =  """
+unique_sql_query =  """
                 SELECT a.*
                 FROM my_dataframe a
                 INNER JOIN (
@@ -355,4 +348,3 @@ class ProcessedLocation(TransformBase):
                 ) b ON a.full_name = b.full_name AND 
                 to_timestamp(a.sys_updated_on, 'dd-MM-yyyy HH:mm:ss') = b.latest_timestamp
                 """
-        return self.spark.sql(query)
