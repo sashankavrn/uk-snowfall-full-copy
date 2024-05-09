@@ -68,7 +68,7 @@ class SemanticFranchiseeIncidents(TransformBase):
                     END AS restaurant_full_name,
                     incident.incident_number AS incident_id,
                     incident.short_description AS incident_short_description,
-                    incident.incident_state AS incident_state,
+                    incident.state AS incident_state,
                     CASE 
                         WHEN incident.opened_date = incident.resolved_at_date and incident.opened_date = incident.closed_date
                         THEN 'New and Resolved' 
