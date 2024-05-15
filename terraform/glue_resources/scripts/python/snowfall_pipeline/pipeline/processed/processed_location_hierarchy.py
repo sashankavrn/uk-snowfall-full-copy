@@ -112,6 +112,7 @@ class ProcessedLocationHierarchy(TransformBase):
             'fs_email': ('fs_email', 'string'),
             'fs_eid': ('fs_eid', 'string'),
             'fs_employee_no': ('fs_employee_no', 'string'),
+            'hierarchy_id': ('hierarchy_id', 'integer'),
             'cdc_timestamp':('cdc_timestamp','string')
         
         }

@@ -66,6 +66,7 @@ class SemanticFranchiseeIncidents(TransformBase):
                         WHEN incident.restaurant_id = -1 THEN incident.restaurant_name 
                         ELSE CONCAT(CAST(incident.restaurant_id AS string), ' ', incident.restaurant_name) 
                     END AS restaurant_full_name,
+                    location_hierarchy.hierarchy_id as restaurant_hierarchy_id,
                     incident.incident_number AS incident_id,
                     incident.short_description AS incident_short_description,
                     incident.state AS incident_state,
@@ -128,12 +129,13 @@ class SemanticFranchiseeIncidents(TransformBase):
                     ON incident.restaurant_id = location.restaurant_id
                 INNER JOIN ods_location_hierarchy AS location_hierarchy
                     ON incident.restaurant_id = location_hierarchy.store_number
-                WHERE incident.sys_updated_date = '{self.formatted_reporting_date}' 
+                WHERE incident.sys_updated_date <= '{self.formatted_reporting_date}' 
             )
             SELECT 
             restaurant_id,
             restaurant_name,
             restaurant_full_name,
+            restaurant_hierarchy_id,
             incident_id,
             incident_short_description,
             incident_state,
