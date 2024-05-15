@@ -734,16 +734,8 @@ class TransformBase:
         location_key = 'restaurant_full_name'
 
         # Perform the join
-        joined_df = df.join(location_df, F.col(joining_key) == F.col(location_key), how="left")
+        joined_df = df.join(location_df, F.col(joining_key) == F.col(location_key), how="outer")
 
-        # Update Data Quality columns
-        joined_df = joined_df.withColumn(
-            "DataQualityEvaluationResult",
-            F.when(
-                F.col(location_key).isNull(),
-                F.lit("Failed")
-            ).otherwise(F.lit("Passed"))
-        )
 
         return joined_df
     
