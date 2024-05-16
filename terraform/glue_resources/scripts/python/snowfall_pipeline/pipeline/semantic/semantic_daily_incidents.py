@@ -95,7 +95,7 @@ class SemanticDailyIncidents(TransformBase):
                         END AS inc_close_validate,
                         CAST(sys_updated_timestamp AS TIMESTAMP) AS sys_updated_timestamp
                     FROM service_now_incident_daily
-                    WHERE (sys_updated_date = date('{self.formatted_reporting_date}')OR opened_date = date({self.formatted_reporting_date}))
+                    WHERE (sys_updated_date = date('{self.formatted_reporting_date}')OR opened_date = date('{self.formatted_reporting_date}'))
                     AND state NOT IN ('Cancelled','Duplicate')
                     
                     UNION
