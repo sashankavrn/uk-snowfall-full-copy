@@ -31,16 +31,14 @@ class SemanticDailyIncidents(TransformBase):
             # If max_date is empty, get yesterday's date
             report_date_obj = datetime.now() - timedelta(days=1)
 
-        opened_date_obj = datetime.now() - timedelta(days=45)
-
         # Format max_date to 'yyyy-mm-dd' format
         self.formatted_reporting_date = report_date_obj.strftime('%Y-%m-%d')
-        self.opened_date_obj_45days = opened_date_obj.strftime('%Y-%m-%d')
+
 
         self.logger.info(f"Reporting date selected: {self.formatted_reporting_date}")
 
         sql_query = f"""
-                SELECT 
+            Select 
                     restaurant_id,
                     restaurant_name,
                     restaurant_full_name,
@@ -61,15 +59,23 @@ class SemanticDailyIncidents(TransformBase):
                     service_vendor,
                     reporting_date,
                     sys_updated_date
+            From(
+            SELECT *,
+                RANK() OVER (PARTITION BY incident_id ORDER BY CAST(sys_updated_timestamp AS TIMESTAMP) DESC) AS rank
                 FROM (
                     SELECT
                         restaurant_id,
                         restaurant_name,
-                        CASE WHEN restaurant_id = -1 THEN restaurant_name ELSE CONCAT(CAST(restaurant_id AS string), ' ', restaurant_name) END AS restaurant_full_name,
+                        CASE WHEN restaurant_id = -1 THEN restaurant_name 
+                            ELSE CONCAT(CAST(restaurant_id AS string), ' ', restaurant_name) 
+                        END AS restaurant_full_name,
                         incident_number AS incident_id,
                         short_description AS incident_short_description,
-                        incident_state AS incident_state,
-                        CASE WHEN opened_date = resolved_at_date AND opened_date = DATE('{self.formatted_reporting_date}') THEN 'New and Resolved' ELSE state END AS eod_incident_status,
+                        state AS incident_state,
+                        CASE WHEN opened_date = resolved_at_date 
+                            AND opened_date = date({self.formatted_reporting_date}) 
+                            THEN 'New and Resolved' ELSE state 
+                        END AS eod_incident_status,
                         opened_date AS opened_at_date,
                         opened_timestamp AS opened_at_timestamp,
                         resolved_at_date AS resolved_at_date,
@@ -81,22 +87,32 @@ class SemanticDailyIncidents(TransformBase):
                         assignment_group,
                         service_offering,
                         u_vendor AS service_vendor,
-                        DATE('{self.formatted_reporting_date}') AS reporting_date,
+                        date({self.formatted_reporting_date}) AS reporting_date,
                         sys_updated_date,
-                        RANK() OVER (PARTITION BY incident_number ORDER BY CAST(sys_updated_timestamp AS TIMESTAMP) DESC) AS rank
+                        closed_date,
+                        CASE when closed_date = date({self.formatted_reporting_date}) 
+                            OR closed_date is null then 1 else 0 
+                        END AS inc_close_validate,
+                        CAST(sys_updated_timestamp AS TIMESTAMP) AS sys_updated_timestamp
                     FROM service_now_incident_daily
-                    WHERE (sys_updated_date = DATE('{self.formatted_reporting_date}') OR opened_date = DATE('{self.formatted_reporting_date}'))
-                    and opened_date > date('{self.opened_date_obj_45days}')
+                    WHERE (sys_updated_date = date({self.formatted_reporting_date}) OR opened_date = date({self.formatted_reporting_date}))
+                    AND state NOT IN ('Cancelled','Duplicate')
+                    
                     UNION
-                
+                    
                     SELECT
                         restaurant_id,
                         restaurant_name,
-                        CASE WHEN restaurant_id = -1 THEN restaurant_name ELSE CONCAT(CAST(restaurant_id AS string), ' ', restaurant_name) END AS restaurant_full_name,
+                        CASE WHEN restaurant_id = -1 THEN restaurant_name 
+                            ELSE CONCAT(CAST(restaurant_id AS string), ' ', restaurant_name) 
+                        END AS restaurant_full_name,
                         incident_number AS incident_id,
                         short_description AS incident_short_description,
-                        incident_state AS incident_state,
-                        CASE WHEN opened_date = resolved_at_date AND opened_date = DATE('{self.formatted_reporting_date}') THEN 'New and Resolved' ELSE state END AS eod_incident_status,
+                        state AS incident_state,
+                        CASE WHEN opened_date = resolved_at_date 
+                            AND opened_date = date({self.formatted_reporting_date}) 
+                            THEN 'New and Resolved' ELSE state 
+                        END AS eod_incident_status,
                         opened_date AS opened_at_date,
                         opened_timestamp AS opened_at_timestamp,
                         resolved_at_date AS resolved_at_date,
@@ -108,22 +124,18 @@ class SemanticDailyIncidents(TransformBase):
                         assignment_group,
                         service_offering,
                         u_vendor AS service_vendor,
-                        DATE('{self.formatted_reporting_date}') AS reporting_date,
+                        date({self.formatted_reporting_date}) AS reporting_date,
                         sys_updated_date,
-                        RANK() OVER (PARTITION BY incident_number ORDER BY CAST(sys_updated_timestamp AS TIMESTAMP) DESC) AS rank
+                        closed_date,
+                        CASE when closed_date = date({self.formatted_reporting_date}) 
+                            OR closed_date is null then 1 else 1 
+                        END AS inc_close_validate,
+                        CAST(sys_updated_timestamp AS TIMESTAMP) AS sys_updated_timestamp
                     FROM service_now_incident_daily
-                    WHERE 1=1 
-                    AND sys_updated_date < DATE('{self.formatted_reporting_date}')
-                    AND incident_number NOT IN (
-                        SELECT DISTINCT incident_number 
-                        FROM service_now_incident_daily 
-                        WHERE (sys_updated_date <= DATE('{self.formatted_reporting_date}') OR opened_date = DATE('{self.formatted_reporting_date}')) 
-                        AND state IN ('Closed','Cancelled','Duplicate')
-                    )
-                    AND incident_state NOT IN ('Closed','Cancelled','Duplicate')
+                    WHERE sys_updated_date < date({self.formatted_reporting_date}) AND state NOT IN ('Closed','Cancelled','Duplicate')
                 ) dataset
-                WHERE 1=1 
-                AND rank = 1
+            )
+            WHERE inc_close_validate = 1 AND rank = 1
         """
         self.logger.info(f"Running the SQL Query: {sql_query}")
 
