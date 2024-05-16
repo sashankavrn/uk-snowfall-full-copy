@@ -73,7 +73,7 @@ class SemanticDailyIncidents(TransformBase):
                         short_description AS incident_short_description,
                         state AS incident_state,
                         CASE WHEN opened_date = resolved_at_date 
-                            AND opened_date = date({self.formatted_reporting_date}) 
+                            AND opened_date = date('{self.formatted_reporting_date}')
                             THEN 'New and Resolved' ELSE state 
                         END AS eod_incident_status,
                         opened_date AS opened_at_date,
@@ -87,15 +87,15 @@ class SemanticDailyIncidents(TransformBase):
                         assignment_group,
                         service_offering,
                         u_vendor AS service_vendor,
-                        date({self.formatted_reporting_date}) AS reporting_date,
+                        date('{self.formatted_reporting_date}')AS reporting_date,
                         sys_updated_date,
                         closed_date,
-                        CASE when closed_date = date({self.formatted_reporting_date}) 
+                        CASE when closed_date = date('{self.formatted_reporting_date}')
                             OR closed_date is null then 1 else 0 
                         END AS inc_close_validate,
                         CAST(sys_updated_timestamp AS TIMESTAMP) AS sys_updated_timestamp
                     FROM service_now_incident_daily
-                    WHERE (sys_updated_date = date({self.formatted_reporting_date}) OR opened_date = date({self.formatted_reporting_date}))
+                    WHERE (sys_updated_date = date('{self.formatted_reporting_date}')OR opened_date = date({self.formatted_reporting_date}))
                     AND state NOT IN ('Cancelled','Duplicate')
                     
                     UNION
@@ -110,7 +110,7 @@ class SemanticDailyIncidents(TransformBase):
                         short_description AS incident_short_description,
                         state AS incident_state,
                         CASE WHEN opened_date = resolved_at_date 
-                            AND opened_date = date({self.formatted_reporting_date}) 
+                            AND opened_date = date('{self.formatted_reporting_date}')
                             THEN 'New and Resolved' ELSE state 
                         END AS eod_incident_status,
                         opened_date AS opened_at_date,
@@ -124,15 +124,15 @@ class SemanticDailyIncidents(TransformBase):
                         assignment_group,
                         service_offering,
                         u_vendor AS service_vendor,
-                        date({self.formatted_reporting_date}) AS reporting_date,
+                        date('{self.formatted_reporting_date}')AS reporting_date,
                         sys_updated_date,
                         closed_date,
-                        CASE when closed_date = date({self.formatted_reporting_date}) 
+                        CASE when closed_date = date('{self.formatted_reporting_date}')
                             OR closed_date is null then 1 else 1 
                         END AS inc_close_validate,
                         CAST(sys_updated_timestamp AS TIMESTAMP) AS sys_updated_timestamp
                     FROM service_now_incident_daily
-                    WHERE sys_updated_date < date({self.formatted_reporting_date}) AND state NOT IN ('Closed','Cancelled','Duplicate')
+                    WHERE sys_updated_date < date('{self.formatted_reporting_date}')AND state NOT IN ('Closed','Cancelled','Duplicate')
                 ) dataset
             )
             WHERE inc_close_validate = 1 AND rank = 1
