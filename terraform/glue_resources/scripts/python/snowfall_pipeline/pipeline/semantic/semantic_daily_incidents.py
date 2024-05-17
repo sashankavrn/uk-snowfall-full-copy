@@ -58,7 +58,18 @@ class SemanticDailyIncidents(TransformBase):
                     service_offering,
                     service_vendor,
                     reporting_date,
-                    sys_updated_date
+                    sys_updated_date,
+                    closed_date,
+                    sys_updated_timestamp,
+                    closed_timestamp,
+                    reopened_date,
+                    reopened_timestamp,
+                    hold_reason,
+                    contact_type,
+                    impact,
+                    severity,
+                    urgency,
+                    active_flag
             From(
             SELECT *,
                 RANK() OVER (PARTITION BY incident_id ORDER BY CAST(sys_updated_timestamp AS TIMESTAMP) DESC) AS rank
@@ -93,7 +104,16 @@ class SemanticDailyIncidents(TransformBase):
                         CASE when closed_date = date('{self.formatted_reporting_date}')
                             OR closed_date is null then 1 else 0 
                         END AS inc_close_validate,
-                        CAST(sys_updated_timestamp AS TIMESTAMP) AS sys_updated_timestamp
+                        sys_updated_timestamp,
+                        closed_timestamp,
+                        reopened_time_date AS reopened_date,
+                        reopened_timestamp,
+                        hold_reason,
+                        contact_type,
+                        impact,
+                        severity,
+                        urgency,
+                        active_flag
                     FROM service_now_incident_daily
                     WHERE (sys_updated_date = date('{self.formatted_reporting_date}') 
                     OR opened_date = date('{self.formatted_reporting_date}'))
@@ -131,7 +151,16 @@ class SemanticDailyIncidents(TransformBase):
                         CASE when state NOT IN ('Closed')
                             OR closed_date is null then 1 else 0 
                         END AS inc_close_validate,
-                        CAST(sys_updated_timestamp AS TIMESTAMP) AS sys_updated_timestamp
+                        sys_updated_timestamp,
+                        closed_timestamp,
+                        reopened_time_date AS reopened_date,
+                        reopened_timestamp,
+                        hold_reason,
+                        contact_type,
+                        impact,
+                        severity,
+                        urgency,
+                        active_flag
                     FROM service_now_incident_daily
                     WHERE sys_updated_date < date('{self.formatted_reporting_date}') 
                     AND state NOT IN ('Cancelled','Duplicate')
@@ -175,7 +204,10 @@ class SemanticDailyIncidents(TransformBase):
             if self.aws_instance.check_query_status(execution_query_id) is True:
                 timestamp_columns = [
                     'opened_at_timestamp',
-                    'resolved_at_timestamp'
+                    'resolved_at_timestamp',
+                    'sys_updated_timestamp',
+                    'closed_timestamp',
+                    'reopened_timestamp'
                 ]
                 self.aws_instance.update_table_columns_to_timestamp('semantic', 'view_daily_incident_snapshot',
                                                                     timestamp_columns)
