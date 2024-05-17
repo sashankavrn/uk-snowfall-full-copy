@@ -95,7 +95,8 @@ class SemanticDailyIncidents(TransformBase):
                         END AS inc_close_validate,
                         CAST(sys_updated_timestamp AS TIMESTAMP) AS sys_updated_timestamp
                     FROM service_now_incident_daily
-                    WHERE (sys_updated_date = date('{self.formatted_reporting_date}')OR opened_date = date('{self.formatted_reporting_date}'))
+                    WHERE (sys_updated_date = date('{self.formatted_reporting_date}') 
+                    OR opened_date = date('{self.formatted_reporting_date}'))
                     AND state NOT IN ('Cancelled','Duplicate')
                     
                     UNION
@@ -127,12 +128,13 @@ class SemanticDailyIncidents(TransformBase):
                         date('{self.formatted_reporting_date}')AS reporting_date,
                         sys_updated_date,
                         closed_date,
-                        CASE when closed_date = date('{self.formatted_reporting_date}')
-                            OR closed_date is null then 1 else 1 
+                        CASE when state NOT IN ('Closed')
+                            OR closed_date is null then 1 else 0 
                         END AS inc_close_validate,
                         CAST(sys_updated_timestamp AS TIMESTAMP) AS sys_updated_timestamp
                     FROM service_now_incident_daily
-                    WHERE sys_updated_date < date('{self.formatted_reporting_date}')AND state NOT IN ('Closed','Cancelled','Duplicate')
+                    WHERE sys_updated_date < date('{self.formatted_reporting_date}') 
+                    AND state NOT IN ('Cancelled','Duplicate')
                 ) dataset
             )
             WHERE inc_close_validate = 1 AND rank = 1
