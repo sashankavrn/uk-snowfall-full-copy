@@ -117,8 +117,7 @@ class SemanticDailyIncidents(TransformBase):
                     FROM service_now_incident_daily
                     WHERE (sys_updated_date = date('{self.formatted_reporting_date}') 
                     OR opened_date = date('{self.formatted_reporting_date}'))
-                    AND state NOT IN ('Cancelled','Duplicate')
-                    
+                                        
                     UNION
                     
                     SELECT
@@ -163,7 +162,7 @@ class SemanticDailyIncidents(TransformBase):
                         active_flag
                     FROM service_now_incident_daily
                     WHERE sys_updated_date < date('{self.formatted_reporting_date}') 
-                    AND state NOT IN ('Cancelled','Duplicate')
+                    
                 ) dataset
             )
             WHERE inc_close_validate = 1 AND rank = 1
