@@ -1,6 +1,7 @@
 from snowfall_pipeline.common_utilities.transform_base import TransformBase
 from datetime import datetime, timedelta
 from delta.tables import DeltaTable
+import boto3
 
 
 class SemanticDailyIncidents(TransformBase):
@@ -10,7 +11,6 @@ class SemanticDailyIncidents(TransformBase):
         self.spark.conf.set("spark.sql.shuffle.partitions", "5")
         self.reporting_date = self.aws_instance.get_workflow_properties('REPORTING_DATE')
         self.file_path = "service_now/incident/daily"
-
 
     def get_data(self):
         df = self.spark.read.format("delta").load(f"s3://{self.processed_bucket_name}/{self.file_path}/")
@@ -33,7 +33,6 @@ class SemanticDailyIncidents(TransformBase):
 
         # Format max_date to 'yyyy-mm-dd' format
         self.formatted_reporting_date = report_date_obj.strftime('%Y-%m-%d')
-
 
         self.logger.info(f"Reporting date selected: {self.formatted_reporting_date}")
 
@@ -196,7 +195,8 @@ class SemanticDailyIncidents(TransformBase):
                 .save(save_output_path)
 
             # Execute Athena query to create the table
-            execution_query_id = self.aws_instance.create_athena_delta_table('semantic', 'view_daily_incident_snapshot',
+            execution_query_id = self.aws_instance.create_athena_delta_table('semantic',
+                                                                             'view_daily_incident_pre_snapshot',
                                                                              save_output_path,
                                                                              self.athena_output_path)
             # Change string data type to timestamp via glue schema
@@ -208,7 +208,7 @@ class SemanticDailyIncidents(TransformBase):
                     'closed_timestamp',
                     'reopened_timestamp'
                 ]
-                self.aws_instance.update_table_columns_to_timestamp('semantic', 'view_daily_incident_snapshot',
+                self.aws_instance.update_table_columns_to_timestamp('semantic', 'view_daily_incident_pre_snapshot',
                                                                     timestamp_columns)
 
         else:
@@ -227,4 +227,70 @@ class SemanticDailyIncidents(TransformBase):
             # Vaccum the Delta table
             delta_table.vacuum(retentionHours=200)
 
+        # create semantic daily view
+        self.create_snapshot_view(save_output_path)
+        self.logger.info("View 'view_daily_incident_snapshot' created successfully.")
         self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
+
+    def create_snapshot_view(self, output_path):
+        # Load the Delta table into a DataFrame
+        df_daily_incidents_pre_snapshot = self.spark.read.format("delta").load(output_path)
+
+        # Register as a temporary view
+        df_daily_incidents_pre_snapshot.createOrReplaceTempView("view_daily_incident_pre_snapshot")
+
+        snapshot_view_query = """
+        CREATE OR REPLACE VIEW view_daily_incident_snapshot AS 
+        SELECT
+          restaurant_id,
+          restaurant_name,
+          restaurant_full_name,
+          incident_id,
+          incident_short_description,
+          incident_state,
+          eod_incident_status,
+          opened_at_date,
+          CAST(opened_at_timestamp AS timestamp) AS opened_at_timestamp,
+          resolved_at_date,
+          CAST(resolved_at_timestamp AS timestamp) AS resolved_at_timestamp,
+          first_value(incident_priority_local) OVER (PARTITION BY incident_id ORDER BY CAST(sys_updated_timestamp AS timestamp) DESC) AS incident_priority_local,
+          incident_priority_global,
+          incident_category,
+          incident_subcategory,
+          assignment_group,
+          service_offering,
+          service_vendor,
+          reporting_date,
+          sys_updated_date,
+          closed_date,
+          CAST(sys_updated_timestamp AS timestamp) AS sys_updated_timestamp,
+          CAST(closed_timestamp AS timestamp) AS closed_timestamp,
+          reopened_date,
+          CAST(reopened_timestamp AS timestamp) AS reopened_timestamp,
+          hold_reason,
+          contact_type,
+          impact,
+          severity,
+          urgency,
+          active_flag
+        FROM
+            view_daily_incident_pre_snapshot
+        WHERE (NOT (Incident_id IN (SELECT DISTINCT Incident_id
+        FROM
+            view_daily_incident_pre_snapshot
+        WHERE (incident_state IN ('Cancelled', 'Duplicate'))
+        )))
+        """
+        execution_query_id = self.aws_instance.create_athena_view(
+            'semantic',
+            'view_daily_incident_snapshot', snapshot_view_query,
+            self.athena_output_path
+        )
+
+        # Check query status and log accordingly
+        if self.aws_instance.check_query_status(execution_query_id):
+            self.logger.info("View 'view_daily_incident_snapshot' created successfully.")
+            self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
+        else:
+            self.logger.error("Failed to create view 'view_daily_incident_snapshot'.")
+            self.logger.info(f'Failed running the {self.__class__.__name__} pipeline!')

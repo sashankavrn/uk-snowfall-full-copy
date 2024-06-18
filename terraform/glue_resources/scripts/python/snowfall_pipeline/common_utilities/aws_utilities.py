@@ -30,7 +30,6 @@ class AwsUtilities:
         else:
             return default
 
-
     def get_workflow_properties(self, key, id=None, name=None):
         """Retrieves properties of a Glue workflow run.
 
@@ -53,12 +52,12 @@ class AwsUtilities:
         try:
             glue_client = boto3.client('glue')
             response = glue_client.get_workflow_run_properties(Name=name, RunId=id)
-            self.logger.info(f"Successfully retrieved workflow properties for the key {key} which is {response['RunProperties'][key]}")
+            self.logger.info(
+                f"Successfully retrieved workflow properties for the key {key} which is {response['RunProperties'][key]}")
             return response['RunProperties'][key]
         except Exception as e:
             self.logger.error(f"Error in get_workflow_properties: {e}")
             raise e
-
 
     def get_workflow_run_data(self, id=None, name=None):
         """Retrieves data of a specific Glue workflow run.
@@ -86,7 +85,6 @@ class AwsUtilities:
         except Exception as e:
             self.logger.error(f"Error in get_workflow_run_data: {e}")
             raise e
-
 
     def get_files_in_s3_path(self, s3_path):
         """Lists files in a specified S3 path.
@@ -118,8 +116,7 @@ class AwsUtilities:
             self.logger.error(f"Error in get_files_in_s3_path: {e}")
             return []
         return files_list
-    
-    
+
     def move_s3_object(self, bucket_name, source_object_key, destination_object_key):
         """Moves an object within S3 from one key to another.
 
@@ -152,7 +149,6 @@ class AwsUtilities:
                 raise c
         except Exception as e:
             raise e
-
 
     def send_sns_message(self, message, topic_arn=None):
         """Sends a customized message to an SNS topic based on Glue workflow status.
@@ -201,7 +197,6 @@ class AwsUtilities:
             self.logger.error(f"Error sending message to SNS topic: {e}")
             return None
 
-
     def extract_appflow_records_processed(self, filenames, appflow_name):
         """Extracts and sums the number of records processed by AWS AppFlow.
 
@@ -214,7 +209,7 @@ class AwsUtilities:
         """
         if appflow_name is None:
             return None
-        
+
         output_list = []
         for filename in filenames:
             parts = filename.split('-')
@@ -268,8 +263,6 @@ class AwsUtilities:
                     return json_data
             else:
                 raise FileNotFoundError("JSON file not found in the zip archive.")
-    
-
 
     def create_athena_delta_table(self, database, table_name, s3_path_to_delta, output_location):
         """
@@ -354,8 +347,65 @@ class AwsUtilities:
                 raise TimeoutError("Query execution timed out")
             time.sleep(1)
 
+    def create_athena_view(self, database, view_name, view_query, output_location):
+        """
+        Create an Athena view.
 
-    def update_table_columns_to_timestamp(self,db_name, table_name, columns_to_convert):
+        Parameters:
+        - database (str): Name of the database (schema) where the view will be created.
+        - view_name (str): Name of the view to be created.
+        - view_query (str): SQL query defining the view.
+        - output_location (str): S3 bucket location where query results will be stored.
+
+        Returns:
+        - str: Query execution ID.
+        """
+
+        # Determine the full database name
+        databases = {
+            'raw': 'uk_snowfall_raw',
+            'preparation': 'uk_snowfall_preparation',
+            'processed': 'uk_snowfall_processed',
+            'semantic': 'uk_snowfall_semantic'
+        }
+
+        full_database_name = databases.get(database)
+        if full_database_name is None:
+            self.logger.error(f"No matching database name found for '{database}'")
+            raise Exception(f"No matching database name found for '{database}'")
+
+        # Initialize Athena client
+        client = boto3.client('athena')
+
+        sql_query = f"""{view_query}"""
+
+        try:
+            # Start query execution
+            self.logger.info(f"Starting the Athena query to create view '{view_name}': {sql_query}")
+            response = client.start_query_execution(
+                QueryString=sql_query,
+                ResultConfiguration={
+                    'OutputLocation': f"s3://{output_location}"
+                }
+            )
+
+            # Extract and return query execution ID
+            query_execution_id = response['QueryExecutionId']
+
+            # Check status of the query execution
+            if self.check_query_status(query_execution_id):
+                self.logger.info(f"Athena view '{view_name}' creation successful.")
+                return query_execution_id
+            else:
+                self.logger.error(f"Athena view '{view_name}' creation failed or was cancelled.")
+                raise Exception(f"Athena view '{view_name}' creation failed or was cancelled.")
+
+        except Exception as e:
+            # Log the error and continue
+            self.logger.error(f"An error occurred while creating Athena view '{view_name}': {str(e)}")
+            raise
+
+    def update_table_columns_to_timestamp(self, db_name, table_name, columns_to_convert):
         """
         Update specified columns in a table to have the data type 'timestamp' in AWS Glue catalog.
 
@@ -385,7 +435,7 @@ class AwsUtilities:
 
             response = glue_client.get_table(DatabaseName=database_name, Name=table_name)
             table = response['Table']
-            
+
             new_columns = []
             for column in table['StorageDescriptor']['Columns']:
                 if column['Name'] in columns_to_convert:
@@ -400,7 +450,7 @@ class AwsUtilities:
                 'StorageDescriptor': new_storage_descriptor,
                 'PartitionKeys': table['PartitionKeys'],
                 'TableType': table['TableType'],
-                'Parameters': table['Parameters'] 
+                'Parameters': table['Parameters']
             }
 
             glue_client.update_table(DatabaseName=database_name, TableInput=table_input)
