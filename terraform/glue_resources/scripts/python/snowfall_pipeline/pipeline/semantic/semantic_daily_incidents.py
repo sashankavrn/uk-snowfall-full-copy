@@ -227,9 +227,9 @@ class SemanticDailyIncidents(TransformBase):
             # Vaccum the Delta table
             delta_table.vacuum(retentionHours=200)
 
-        # create semantic daily view
-        self.create_snapshot_view(save_output_path)
-        self.logger.info("View 'view_daily_incident_snapshot' created successfully.")
+        # create semantic daily view - Uncomment the below line to create view if not exist
+        # self.create_snapshot_view(save_output_path)
+        # self.logger.info("View 'view_daily_incident_snapshot' created successfully.")
         self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
 
     def create_snapshot_view(self, output_path):
