@@ -21,7 +21,7 @@ dq_rules = {
         ]""",
 
     "amazon_connect": """Rules = [
-        ColumnCount <= 90,
+        ColumnCount <= 120,
         RowCount > 0,
         IsComplete "queue",
         IsComplete "file_upload_date"
