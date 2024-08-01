@@ -16,7 +16,7 @@ resource "aws_glue_trigger" "semantic_amazon_connect_trigger" {
   name          = "uk-snowfall-semantic-amazon-connect-trigger"
   type          = "SCHEDULED"
   schedule      = "cron(0 3 * * ? *)"
-  enabled       = true
+  enabled       = false
   workflow_name = aws_glue_workflow.semantic_amazon_connect.name
 
   actions {
