@@ -1,0 +1,6 @@
+environment = "nprod"
+account_number = "404060908217"
+role_assumed_arn = "arn:aws:iam::404060908217:role/UK-MKT-NProd-GLUE-ROLE"
+terraform_bucket_name = "eu-central1-nprod-uk-snowfall-terraform-404060908217"
+connector_profile_name = "UK-SnowFall-ServiceNow-Prod"
+aws_role_to_assume = "arn:aws:iam::404060908217:role/UK-MKT-SNowfall-NProd-Deploy-Service-Role"

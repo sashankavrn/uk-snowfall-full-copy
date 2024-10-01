@@ -13,7 +13,6 @@ terraform {
   }
 }
 
-
 data "terraform_remote_state" "core_module" {
   backend = "s3"
   config = {
@@ -23,230 +22,74 @@ data "terraform_remote_state" "core_module" {
   }
 }
 
-#Picks up from secrets in github
+# Provider configuration
 provider "aws" {
-  region      = var.AWS_REGION
+  region = var.AWS_REGION
 }
-
-
 
 # Triggering the Scripts module
 module "scripts_module" {
   source = "./scripts"
   artifact_bucket_name = data.terraform_remote_state.core_module.outputs.artifact_bucket_name
-
 }
 
-
-
-#### Creating the main runner script that will pass into each module ######
-
+# Main Glue job runner script
 resource "aws_glue_job" "main_runner_script" {
   name     = "uk-snowfall-main-script-runner"
   role_arn = var.role_assumed_arn
-  tags = var.resource_tags
+  tags     = var.resource_tags
   glue_version = "4.0"
   max_capacity = 4
-  timeout = 180
+  timeout     = 180
   description = "Main driver script for all pipelines"
-
 
   command {
     script_location = module.scripts_module.output_main_runner_script_path
-    python_version = 3
-       
+    python_version  = 3
   }
+
   default_arguments = {
-    
     "--enable-continuous-cloudwatch-log" = "true"
-    "--enable-continuous-log-filter"     = "true"
-    "--enable-metrics"                   = "true"
-    "--enable-observability-metrics"     = "true"
-    "--datalake-formats"                 = "delta"
-    "--enable-auto-scaling"              = "true"
-    "--conf"                             = "spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog"
-    "--SNS_TOPIC_ARN"                    = data.terraform_remote_state.core_module.outputs.snowfall_topic_arn
-    "--TempDir"                          = data.terraform_remote_state.core_module.outputs.temporary_folder_path
-    "--extra-py-files"                   = module.scripts_module.output_libraries_path
-    "--ACCOUNT_NUMBER"                   = var.account_number
-    "--ENVIRONMENT"                      = var.environment
+    "--enable-continuous-log-filter"      = "true"
+    "--enable-metrics"                    = "true"
+    "--enable-observability-metrics"      = "true"
+    "--datalake-formats"                  = "delta"
+    "--enable-auto-scaling"               = "true"
+    "--conf"                              = "spark.sql.extensions=io.delta.sql.DeltaSparkSessionExtension --conf spark.sql.catalog.spark_catalog=org.apache.spark.sql.delta.catalog.DeltaCatalog"
+    "--SNS_TOPIC_ARN"                     = data.terraform_remote_state.core_module.outputs.snowfall_topic_arn
+    "--TempDir"                           = data.terraform_remote_state.core_module.outputs.temporary_folder_path
+    "--extra-py-files"                    = module.scripts_module.output_libraries_path
+    "--ACCOUNT_NUMBER"                    = var.account_number
+    "--ENVIRONMENT"                       = var.environment
   }
 
   execution_property {
     max_concurrent_runs = 100
   }
 }
-################## Triggering Workflows #######################################
 
-# Triggering the location
-module "location_module" {
-  source = "./workflows/location"
+# Workflow details in the workflows/main.tf file
+module "workflows" {
+  source = "./workflows/glue_workflow"
   resource_tags = merge(var.resource_tags,{Environment = var.environment})
   glue_job_name = aws_glue_job.main_runner_script.name
-
 }
-
-# Triggering the amazon_connect
-module "amazon_connect_module" {
-  source = "./workflows/amazon_connect"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the incident_intraday
-module "incident_intraday_module" {
-  source = "./workflows/incident_intraday"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the incident_daily
-module "incident_daily_module" {
-  source = "./workflows/incident_daily"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the location_hierarchy
-module "location_hierarchy_module" {
-  source = "./workflows/location_hierarchy"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the Adj_trading_hours
-module "adj_trading_hours_module" {
-  source = "./workflows/adj_trading_hours"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the problem record
-module "problem_record_module" {
-  source = "./workflows/problem_record"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the service_offering
-module "service_offering_module" {
-  source = "./workflows/service_offering"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the service_request
-module "service_request_module" {
-  source = "./workflows/service_request"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the sys_user
-module "sys_user_module" {
-  source = "./workflows/sys_user"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the sys_user_group
-module "sys_user_group_module" {
-  source = "./workflows/sys_user_group"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the trading_hours
-module "trading_hours_module" {
-  source = "./workflows/trading_hours"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the change_request
-module "change_request_module" {
-  source = "./workflows/change_request"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the semantic_incidents_daily
-module "semantic_incidents_daily_module" {
-  source = "./workflows/semantic_incidents_daily"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the semantic_franchisee_incidents
-module "semantic_franchisee_incidents_module" {
-  source = "./workflows/semantic_franchisee_incidents"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
-# Triggering the semantic_amazon_connect
-module "semantic_amazon_connect_module" {
-  source = "./workflows/semantic_amazon_connect"
-  resource_tags = merge(var.resource_tags,{Environment = var.environment})
-  glue_job_name = aws_glue_job.main_runner_script.name
-
-}
-
 
 ############ Glue Data Catalog Databases #########
 
-
-
-resource "aws_glue_catalog_database" "preparation_database" {
-  name = "uk_snowfall_preparation"
-  description = "Datasets that have been cleansed and validated and remain at the same level they were initally sourced"
-
-  lifecycle {
-    ignore_changes = [name,description]
-    prevent_destroy = false  # Allow Terraform to delete the database
+resource "aws_glue_catalog_database" "databases" {
+  for_each = {
+    "preparation" = "uk_snowfall_preparation"
+    "processed"   = "uk_snowfall_processed"
+    "semantic"    = "uk_snowfall_semantic"
+    "microstrategy" = "uk_snowfall_microstrategy"
   }
-}
 
-resource "aws_glue_catalog_database" "processed_database" {
-  name = "uk_snowfall_processed"
-  description = "Datasets that have been transformed and enriched for ease of use"
+  name        = each.value
+  description = "Datasets that have been ${each.key == "preparation" ? "cleansed and validated" : each.key == "processed" ? "transformed and enriched" : each.key == "semantic" ? "aggregated and available for reporting" : "a playground for MicroStrategy"}"
 
   lifecycle {
-    ignore_changes = [name,description]
-    prevent_destroy = false  # Allow Terraform to delete the database
-  }
-}
-
-resource "aws_glue_catalog_database" "semantic_database" {
-  name = "uk_snowfall_semantic"
-  description = "Datasets that have been aggregated and made available for reporting and analytics, with buisness logic built in"
-
-  lifecycle {
-    ignore_changes = [name,description]
-    prevent_destroy = false  # Allow Terraform to delete the database
-  }
-}
-
-resource "aws_glue_catalog_database" "microstrategy_database" {
-  name = "uk_snowfall_microstrategy"
-  description = "Playground for MicroStrategy"
-
-  lifecycle {
-    ignore_changes = [name,description]
+    ignore_changes = [name, description]
     prevent_destroy = false  # Allow Terraform to delete the database
   }
 }
