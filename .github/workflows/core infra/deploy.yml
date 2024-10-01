@@ -1,24 +1,33 @@
-name: Deployment to Non-Production Environment
+name: Core Delta Lake Deployment
 
 on:
-  push:
-    branches:
-      - nprod
-
-env:
-  AWS_REGION: eu-central-1
-  ENVIRONMENT: non-production
-  AWS_ROLE_TO_ASSUME: arn:aws:iam::404060908217:role/UK-MKT-SNowfall-NProd-Deploy-Service-Role
-  STATE_BUCKET: eu-central1-nprod-uk-snowfall-terraform-404060908217
-  VAR_FILE: ../nonprod.tfvars
-
+  workflow_dispatch:  # Allows manual trigger
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        options:
+        - dev
+        - nprod
+        - prod
 
 jobs:
   terraform:
+    concurrency:
+      group: ${{ github.event.inputs.environment == 'dev' && 'deploy-development' || github.event.inputs.environment == 'nprod' && 'deploy-nprod' || github.event.inputs.environment == 'prod' && 'deploy-production' || 'default' }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
+
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      # Dynamically assign the role to assume based on the environment
+      AWS_ROLE_TO_ASSUME: ${{ github.event.inputs.environment == 'dev' && secrets.AWS_ROLE_TO_ASSUME_DEV || github.event.inputs.environment == 'nprod' && secrets.AWS_ROLE_TO_ASSUME_NPROD || github.event.inputs.environment == 'prod' && secrets.AWS_ROLE_TO_ASSUME_PROD }}
+      STATE_BUCKET: ${{ github.event.inputs.environment == 'dev' && secrets.STATE_BUCKET_DEV || github.event.inputs.environment == 'nprod' && secrets.STATE_BUCKET_NPROD || github.event.inputs.environment == 'prod' && secrets.STATE_BUCKET_PROD }}
+      VAR_FILE: ${{ secrets.VAR_FILE }}
 
     steps:
     - name: Checkout Repository
@@ -32,7 +41,7 @@ jobs:
 
     - name: Print Variable Values
       run: |
-        echo "ENVIRONMENT: ${{ env.ENVIRONMENT }}"
+        echo "ENVIRONMENT: ${{ github.event.inputs.environment }}"
         echo "AWS_ROLE_TO_ASSUME: ${{ env.AWS_ROLE_TO_ASSUME }}"
         echo "STATE_BUCKET: ${{ env.STATE_BUCKET }}"
         echo "VAR_FILE: ${{ env.VAR_FILE }}"
@@ -53,16 +62,6 @@ jobs:
     - name: Running the Core Delta Lake Stage
       run: |
         cd terraform/core_delta_lake
-        terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
-        terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
-        terraform apply -auto-approve tfplan
-      env:
-        AWS_REGION: ${{ env.AWS_REGION }}
-
-
-    - name: Running the Glue Resources Stage
-      run: |
-        cd terraform/glue_resources
         terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
         terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
         terraform apply -auto-approve tfplan

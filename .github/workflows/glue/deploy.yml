@@ -1,0 +1,75 @@
+name: Deployment Workflow
+
+on:
+  push:
+    branches:
+      - development
+      - main
+  tags:
+    - v*
+  env:
+    # Set the environment dynamically based on the trigger type
+    ENVIRONMENT: ${{ github.ref == 'refs/heads/development' && 'dev' || github.ref == 'refs/heads/main' && 'nprod' || startsWith(github.ref, 'refs/tags/v') && 'prod' }}
+
+jobs:
+  terraform:
+    concurrency:
+      group: ${{ github.ref == 'refs/heads/development' && 'deploy-development' || github.ref == 'refs/heads/main' && 'deploy-nprod' || startsWith(github.ref, 'refs/tags/v') && 'deploy-production' || 'default' }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      # Dynamically assign the role to assume based on the environment
+      AWS_ROLE_TO_ASSUME: ${{ github.ref == 'refs/heads/development' && secrets.AWS_ROLE_TO_ASSUME_DEV || github.ref == 'refs/heads/main' && secrets.AWS_ROLE_TO_ASSUME_NPROD || startsWith(github.ref, 'refs/tags/v') && secrets.AWS_ROLE_TO_ASSUME_PROD }}
+      STATE_BUCKET: ${{ github.ref == 'refs/heads/development' && secrets.STATE_BUCKET_DEV || github.ref == 'refs/heads/main' && secrets.STATE_BUCKET_NPROD || startsWith(github.ref, 'refs/tags/v') && secrets.STATE_BUCKET_PROD }}
+      VAR_FILE: ${{ secrets.VAR_FILE }}
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Install Python 3
+      run: sudo apt-get update && sudo apt-get install -y python3
+
+    - name: Install boto3
+      run: python3 -m pip install boto3
+
+    - name: Load Environment Variables
+      run: |
+          echo "Loading environment variables..."
+          echo "VAR_FILE=${{ secrets.VAR_FILE }}" >> $GITHUB_ENV
+
+    - name: Print Variable Values
+      run: |
+        echo "ENVIRONMENT: $ENVIRONMENT"
+        echo "AWS_ROLE_TO_ASSUME: $AWS_ROLE_TO_ASSUME"
+        echo "STATE_BUCKET: $STATE_BUCKET"
+        echo "VAR_FILE: $VAR_FILE"
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-region: ${{ env.AWS_REGION }}
+        role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+        role-session-name: GitHubActions
+        web-identity-token-file: ${{ steps.oidc-token.outputs.token }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 1.7.4
+
+      #Deployment Steps
+    - name: Running the Glue Resources Stage
+      run: |
+        cd terraform/glue_resources
+        terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
+        terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
+        terraform apply -auto-approve tfplan
+      env:
+        AWS_REGION: ${{ env.AWS_REGION }}
+
