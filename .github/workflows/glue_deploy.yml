@@ -39,6 +39,16 @@ jobs:
       - name: Install boto3
         run: python3 -m pip install boto3
 
+      - name: Validate Tag Origin
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          git fetch --all
+          BRANCH=$(git branch -r --contains ${GITHUB_SHA} | grep 'origin/main' || true)
+          if [ -z "$BRANCH" ]; then
+            echo "This tag is not based on main. Aborting deployment."
+            exit 1
+          fi
+
       - name: Load AWS Role and State Bucket
         id: load_env
         run: |
