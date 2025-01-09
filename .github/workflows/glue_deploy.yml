@@ -1,4 +1,4 @@
-name: Deployment Workflow
+name: Glue Workflow Deployment
 
 on:
   push:
