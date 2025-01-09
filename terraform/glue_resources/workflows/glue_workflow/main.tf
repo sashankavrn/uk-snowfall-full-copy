@@ -226,6 +226,11 @@ resource "aws_glue_workflow" "glue_workflows" {
     "DATASET" = each.value.dataset
     "GROUP"   = each.value.group
   }, each.value.reporting_date != null ? { REPORTING_DATE = each.value.reporting_date } : {})
+
+  lifecycle {
+    prevent_destroy = true   # Prevent the workflow from being destroyed
+    ignore_changes = [name, description]  # Ignore changes to these attributes
+  }
 }
 
 # Create AWS Glue Triggers dynamically
@@ -250,5 +255,10 @@ resource "aws_glue_trigger" "glue_triggers" {
       batch_size   = each.value.batch_size
       batch_window = each.value.batch_window
     }
+  }
+
+  lifecycle {
+    prevent_destroy = true  # Prevent the trigger from being destroyed
+    ignore_changes = [name, description]  # Ignore changes to these attributes
   }
 }
