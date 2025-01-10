@@ -115,7 +115,7 @@ locals {
       batch_size      = null
       batch_window    = null
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0 6 * * ? *)"
+      schedule        = "cron(0 3 * * ? *)"
       reporting_date  = ""
     },
     "semantic_franchisee_incidents" = {
