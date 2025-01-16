@@ -90,6 +90,6 @@ resource "aws_glue_catalog_database" "databases" {
 
   lifecycle {
     ignore_changes = [name, description]
-    prevent_destroy = false  # Allow Terraform to delete the database
+    prevent_destroy = true  # Prevent the database from being destroyed
   }
 }

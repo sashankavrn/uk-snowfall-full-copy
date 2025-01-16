@@ -23,6 +23,11 @@ data "terraform_remote_state" "glue_module" {
   }
 }
 
+locals {
+  workflow_trigger_arns = data.terraform_remote_state.glue_module.outputs.workflow_trigger_arns
+}
+
+
 resource "aws_cloudwatch_event_rule" "location_event_rule" {
   name = "uk-snowfall-location-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
@@ -46,7 +51,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "location_rule" {
   rule      = aws_cloudwatch_event_rule.location_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.location_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["location"]
   role_arn = var.role_assumed_arn
 
 }
@@ -75,7 +80,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "amazon_connect_rule" {
   rule      = aws_cloudwatch_event_rule.amazon_connect_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.amazon_connect_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["amazon_connect"]
   role_arn = var.role_assumed_arn
 
 }
@@ -103,7 +108,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "incident_intraday_rule" {
   rule      = aws_cloudwatch_event_rule.incident_intraday_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.incident_intraday_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["incident_intraday"]
   role_arn = var.role_assumed_arn
 
 }
@@ -131,7 +136,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "location_hierarchy_rule" {
   rule      = aws_cloudwatch_event_rule.location_hierarchy_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.location_hierarchy_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["location_hierarchy"]
   role_arn = var.role_assumed_arn
 
 }
@@ -159,7 +164,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "incident_daily_rule" {
   rule      = aws_cloudwatch_event_rule.incident_daily_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.incident_daily_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["incident_daily"]
   role_arn = var.role_assumed_arn
 
 }
@@ -188,7 +193,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "problem_record_rule" {
   rule      = aws_cloudwatch_event_rule.problem_record_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.problem_record_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["problem_record"]
   role_arn = var.role_assumed_arn
 
 }
@@ -216,7 +221,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "service_offering_rule" {
   rule      = aws_cloudwatch_event_rule.service_offering_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.service_offering_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["service_offering"]
   role_arn = var.role_assumed_arn
 
 }
@@ -244,7 +249,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "service_request_rule" {
   rule      = aws_cloudwatch_event_rule.service_request_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.service_request_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["service_request"]
   role_arn = var.role_assumed_arn
 
 }
@@ -272,7 +277,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "sys_user_rule" {
   rule      = aws_cloudwatch_event_rule.sys_user_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.sys_user_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["sys_user"]
   role_arn = var.role_assumed_arn
 
 }
@@ -300,7 +305,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "sys_user_group_rule" {
   rule      = aws_cloudwatch_event_rule.sys_user_group_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.sys_user_group_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["sys_user_group"]
   role_arn = var.role_assumed_arn
 
 }
@@ -328,7 +333,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "adj_trading_hours_rule" {
   rule      = aws_cloudwatch_event_rule.adj_trading_hours_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.adj_trading_hours_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["adj_trading_hours"]
   role_arn = var.role_assumed_arn
 
 }
@@ -356,7 +361,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "trading_hours_rule" {
   rule      = aws_cloudwatch_event_rule.trading_hours_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.trading_hours_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["trading_hours"]
   role_arn = var.role_assumed_arn
 
 }
@@ -384,7 +389,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "change_request_rule" {
   rule      = aws_cloudwatch_event_rule.change_request_event_rule.name
-  arn       = data.terraform_remote_state.glue_module.outputs.change_request_workflow_trigger_arn
+  arn       = local.workflow_trigger_arns["change_request"]
   role_arn = var.role_assumed_arn
 
 }
