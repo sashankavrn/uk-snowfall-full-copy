@@ -121,7 +121,7 @@ class SemanticFranchiseeIncidents(TransformBase):
                     location_hierarchy.longitude AS longitude,
                     location_hierarchy.latitude AS latitude,
                     incident.sys_updated_date as sys_updated_date,
-                    rank() over (partition by incident.incident_number order by cast(incident.sys_updated_timestamp as timestamp) desc) 
+                    row_number() over (partition by incident.incident_number order by cast(incident.sys_updated_timestamp as timestamp) desc) 
                     as incident_rank
                 FROM 
                     service_now_incident_daily as incident
