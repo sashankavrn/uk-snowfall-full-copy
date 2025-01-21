@@ -59,7 +59,7 @@ resource "aws_appflow_flow" "incidents_intraday_flow" {
     trigger_type = "Scheduled"
     trigger_properties {
       scheduled {
-        schedule_expression = "cron(0/15 6-20 ? * MON-FRI *)"
+        schedule_expression = "cron(0 6-20 ? * MON-FRI *)"
         data_pull_mode      = "Incremental"
 
         first_execution_from = null
