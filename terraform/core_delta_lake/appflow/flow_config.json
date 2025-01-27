@@ -130,7 +130,7 @@
             "triggerType": "Scheduled",
             "triggerProperties": {
                 "Scheduled": {
-                    "scheduleExpression": "cron(0/15 6-20 ? * MON-FRI *)",
+                    "scheduleExpression": "cron(30 6-20 ? * MON-FRI *)",
                     "dataPullMode": "Incremental",
                     "timezone": "GMT"
                 }

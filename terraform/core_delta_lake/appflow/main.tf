@@ -8,6 +8,9 @@ resource "null_resource" "create_appflow" {
           ConnectorProfileName = var.connector_profile_name
         }
     }
+    triggers = {
+        flow_config_hash = filemd5("${path.module}/flow_config.json")
+    }
 }
 
 resource "null_resource" "delete_appflow" {
