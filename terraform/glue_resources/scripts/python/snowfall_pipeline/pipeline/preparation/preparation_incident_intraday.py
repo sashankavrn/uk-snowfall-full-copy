@@ -8,18 +8,16 @@ class PreparationIncidentIntraday(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
-        self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
+        self.spark.conf.set("spark.sql.shuffle.partitions", "1")
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
         self.pipeline_config = self.full_configs['incidents']
         self.dq_rule = dq_rules.get('incidents')
         self.file_path = "service_now/incident/intraday"
         self.list_of_files = self.aws_instance.get_files_in_s3_path(f"{self.raw_bucket_name}/{self.file_path}/")
 
-
     def get_data(self):
         df = self.read_data_from_s3(self.raw_bucket_name,self.file_path,'json',self.pipeline_config.get('appflow_name_intraday'))
         return df
-
 
     def transform_data(self, df):
         """
@@ -58,14 +56,40 @@ class PreparationIncidentIntraday(TransformBase):
         df = self.redact_pii_columns(df,self.pipeline_config.get('redact_pii_columns'))
 
         # Step 6: Extract Unique Rows
-        df = self.get_unique_records_sql(df,unique_sql_query)    
+        df = self.get_unique_records_sql(df,unique_sql_query)
 
         # Step 7: Add CDC columns
         df = self.adding_cdc_columns(df)
 
         return df
 
+    def merge_to_delta_table_local(self, df, save_output_path, matching_columns):
+        """
+        Merge data from DataFrame to the Delta table using specified column matching criteria.
 
+        Parameters:
+            df (DataFrame): The DataFrame to be merged.
+            save_output_path (str): The path to the Delta table to merge into.
+            matching_columns (list): A list of column names for matching records.
+        """
+        # Ensure the Delta table exists
+        delta_table = DeltaTable.forPath(self.spark, save_output_path)
+
+        # Create the matching condition based on the provided columns
+        condition = " AND ".join([f"target.{col} = source.{col}" for col in matching_columns])
+
+        # Perform the merge operation directly using DeltaTable API
+        delta_table.alias("target").merge(
+            df.alias("source"),
+            condition
+        ).whenMatchedUpdate(
+            condition=None,  # Optional: Specify custom conditions for updates if necessary
+            set={col: "source." + col for col in df.columns}  # Map source columns to target columns
+        ).whenNotMatchedInsert(
+            values={col: "source." + col for col in df.columns}  # Insert all columns from source
+        ).execute()
+
+        self.logger.info("Merge operation completed successfully.")
 
     def save_data(self, df):
         """
@@ -74,14 +98,14 @@ class PreparationIncidentIntraday(TransformBase):
         Parameters:
         - df (DataFrame): Input DataFrame to be saved.
 
-        """        
+        """
         # Define the S3 save path
         save_output_path = f"s3://{self.preparation_bucket_name}/{self.file_path}/"
 
         # Check if Delta table needs to be created
         if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
             self.athena_trigger = True
-            
+
         # Determine whether to create or merge to the Delta table
         if self.athena_trigger:
 
@@ -90,26 +114,25 @@ class PreparationIncidentIntraday(TransformBase):
 
             # Execute Athena query to create the table
             self.aws_instance.create_athena_delta_table('preparation', 'service_now_incident_intraday', save_output_path, self.athena_output_path)
-            
+
         else:
 
             # Merge data to the Delta table
             merge_columns = ['number','sys_created_on','state']
-            self.merge_to_delta_table(df,save_output_path,merge_columns)
+            self.merge_to_delta_table_local(df,save_output_path,merge_columns)
 
             # Vacuum the table
             self.vacuum_table(save_output_path,48)
 
-        
         # Move files to the Archive folder
         for file_name in self.list_of_files:
             self.aws_instance.move_s3_object(self.raw_bucket_name, file_name, f"archive/{file_name}")
-        
+
         # If error detected from DQ failing then will raise
         if self.sns_trigger:
             message = "Records in the error folder that have failed DQ rules"
             self.aws_instance.send_sns_message(message)
-        
+
         self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
 
 
