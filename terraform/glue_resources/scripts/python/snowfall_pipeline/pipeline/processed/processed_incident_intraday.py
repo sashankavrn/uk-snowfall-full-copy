@@ -7,7 +7,7 @@ class ProcessedIncidentIntraday(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
-        self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
+        self.spark.conf.set("spark.sql.shuffle.partitions", "1")
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "false")
         self.pipeline_config = self.full_configs['incidents']
         self.file_path = "service_now/incident/intraday"
@@ -524,7 +524,33 @@ class ProcessedIncidentIntraday(TransformBase):
 
         return df
 
+    def merge_to_delta_table_local(self, df, save_output_path, matching_columns):
+        """
+        Merge data from DataFrame to the Delta table using specified column matching criteria.
 
+        Parameters:
+            df (DataFrame): The DataFrame to be merged.
+            save_output_path (str): The path to the Delta table to merge into.
+            matching_columns (list): A list of column names for matching records.
+        """
+        # Ensure the Delta table exists
+        delta_table = DeltaTable.forPath(self.spark, save_output_path)
+
+        # Create the matching condition based on the provided columns
+        condition = " AND ".join([f"target.{col} = source.{col}" for col in matching_columns])
+
+        # Perform the merge operation directly using DeltaTable API
+        delta_table.alias("target").merge(
+            df.alias("source"),
+            condition
+        ).whenMatchedUpdate(
+            condition=None,  # Optional: Specify custom conditions for updates if necessary
+            set={col: "source." + col for col in df.columns}  # Map source columns to target columns
+        ).whenNotMatchedInsert(
+            values={col: "source." + col for col in df.columns}  # Insert all columns from source
+        ).execute()
+
+        self.logger.info("Merge operation completed successfully (merge_to_delta_table_local).")
 
     def save_data(self, df):
             """
@@ -581,7 +607,7 @@ class ProcessedIncidentIntraday(TransformBase):
 
                 # Merge data to the Delta table
                 merge_columns = ['incident_number','sys_created_timestamp','state']
-                self.merge_to_delta_table(df,save_output_path,merge_columns)
+                self.merge_to_delta_table_local(df,save_output_path,merge_columns)
 
                 # Vacuum the table
                 self.vacuum_table(save_output_path,48)

@@ -89,7 +89,7 @@ class PreparationIncidentIntraday(TransformBase):
             values={col: "source." + col for col in df.columns}  # Insert all columns from source
         ).execute()
 
-        self.logger.info("Merge operation completed successfully.")
+        self.logger.info("Merge operation completed successfully (merge_to_delta_table_local).")
 
     def save_data(self, df):
         """
