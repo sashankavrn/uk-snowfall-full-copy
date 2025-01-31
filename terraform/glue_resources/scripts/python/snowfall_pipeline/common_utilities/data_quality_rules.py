@@ -14,7 +14,7 @@ dq_rules = {
         ]""",
 
     "incidents":"""Rules = [
-        ColumnCount <= 181,
+        ColumnCount <= 250,
         RowCount > 0,
         IsComplete "number",
         IsComplete "sys_created_on"

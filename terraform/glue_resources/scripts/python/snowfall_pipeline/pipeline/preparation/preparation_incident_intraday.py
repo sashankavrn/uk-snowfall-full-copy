@@ -1,25 +1,23 @@
 from snowfall_pipeline.common_utilities.transform_base import TransformBase
 from snowfall_pipeline.common_utilities.data_quality_rules import dq_rules
 from delta.tables import DeltaTable
-
+from pyspark.sql import functions as F
 
 
 class PreparationIncidentIntraday(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
-        self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
+        self.spark.conf.set("spark.sql.shuffle.partitions", "5")
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
         self.pipeline_config = self.full_configs['incidents']
         self.dq_rule = dq_rules.get('incidents')
         self.file_path = "service_now/incident/intraday"
         self.list_of_files = self.aws_instance.get_files_in_s3_path(f"{self.raw_bucket_name}/{self.file_path}/")
 
-
     def get_data(self):
         df = self.read_data_from_s3(self.raw_bucket_name,self.file_path,'json',self.pipeline_config.get('appflow_name_intraday'))
         return df
-
 
     def transform_data(self, df):
         """
@@ -58,13 +56,25 @@ class PreparationIncidentIntraday(TransformBase):
         df = self.redact_pii_columns(df,self.pipeline_config.get('redact_pii_columns'))
 
         # Step 6: Extract Unique Rows
-        df = self.get_unique_records_sql(df,unique_sql_query)    
+        df = self.get_unique_records_sql(df,unique_sql_query)
 
         # Step 7: Add CDC columns
         df = self.adding_cdc_columns(df)
 
         return df
 
+    def delete_old_data(self, save_output_path):
+        """
+        Deletes records older than today from the Delta table.
+        """
+        delta_table = DeltaTable.forPath(self.spark, save_output_path)
+
+        # Delete records where cdc_timestamp is from a previous day
+        delta_table.delete(
+            condition=(F.col("cdc_timestamp").cast("date") < F.current_date())
+        )
+
+        self.logger.info(f"Deleted old records before merging new data")
 
 
     def save_data(self, df):
@@ -74,14 +84,14 @@ class PreparationIncidentIntraday(TransformBase):
         Parameters:
         - df (DataFrame): Input DataFrame to be saved.
 
-        """        
+        """
         # Define the S3 save path
         save_output_path = f"s3://{self.preparation_bucket_name}/{self.file_path}/"
 
         # Check if Delta table needs to be created
         if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
             self.athena_trigger = True
-            
+
         # Determine whether to create or merge to the Delta table
         if self.athena_trigger:
 
@@ -90,26 +100,31 @@ class PreparationIncidentIntraday(TransformBase):
 
             # Execute Athena query to create the table
             self.aws_instance.create_athena_delta_table('preparation', 'service_now_incident_intraday', save_output_path, self.athena_output_path)
-            
+
         else:
+
+            self.delete_old_data(save_output_path)
+            self.logger.info(f"Optimizing Delta table and logs at {save_output_path}.")
+            # Run OPTIMIZE command to compact small files in the Delta table and optimize the Delta logs
+            optimize_query = f"OPTIMIZE delta.`{save_output_path}`"
+            self.spark.sql(optimize_query)
 
             # Merge data to the Delta table
             merge_columns = ['number','sys_created_on','state']
             self.merge_to_delta_table(df,save_output_path,merge_columns)
 
             # Vacuum the table
-            self.vacuum_table(save_output_path,48)
+            self.vacuum_table(save_output_path,24)
 
-        
         # Move files to the Archive folder
         for file_name in self.list_of_files:
             self.aws_instance.move_s3_object(self.raw_bucket_name, file_name, f"archive/{file_name}")
-        
+
         # If error detected from DQ failing then will raise
         if self.sns_trigger:
             message = "Records in the error folder that have failed DQ rules"
             self.aws_instance.send_sns_message(message)
-        
+
         self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
 
 

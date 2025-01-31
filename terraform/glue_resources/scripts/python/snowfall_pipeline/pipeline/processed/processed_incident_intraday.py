@@ -1,13 +1,14 @@
 from snowfall_pipeline.common_utilities.transform_base import TransformBase
 from snowfall_pipeline.common_utilities.decorators import transformation_timer
 from delta.tables import DeltaTable
+from pyspark.sql import functions as F
 
 
 class ProcessedIncidentIntraday(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
-        self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
+        self.spark.conf.set("spark.sql.shuffle.partitions", "5")
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "false")
         self.pipeline_config = self.full_configs['incidents']
         self.file_path = "service_now/incident/intraday"
@@ -524,7 +525,18 @@ class ProcessedIncidentIntraday(TransformBase):
 
         return df
 
+    def delete_old_data(self, save_output_path):
+        """
+        Deletes records older than today from the Delta table.
+        """
+        delta_table = DeltaTable.forPath(self.spark, save_output_path)
 
+        # Delete records where cdc_timestamp is from a previous day
+        delta_table.delete(
+            condition=(F.col("cdc_timestamp").cast("date") < F.current_date())
+        )
+
+        self.logger.info(f"Deleted old records before merging new data")
 
     def save_data(self, df):
             """
@@ -578,6 +590,11 @@ class ProcessedIncidentIntraday(TransformBase):
                     self.aws_instance.update_table_columns_to_timestamp('processed','service_now_incident_intraday',timestamp_columns)
                 
             else:
+                self.delete_old_data(save_output_path)
+                self.logger.info(f"Optimizing Delta table and logs at {save_output_path}.")
+                # Run OPTIMIZE command to compact small files in the Delta table and optimize the Delta logs
+                optimize_query = f"OPTIMIZE delta.`{save_output_path}`"
+                self.spark.sql(optimize_query)
 
                 # Merge data to the Delta table
                 merge_columns = ['incident_number','sys_created_timestamp','state']
@@ -585,7 +602,6 @@ class ProcessedIncidentIntraday(TransformBase):
 
                 # Vacuum the table
                 self.vacuum_table(save_output_path,48)
-
 
             # If error detected from DQ failing then will raise
             if self.sns_trigger:
