@@ -1,6 +1,7 @@
 from snowfall_pipeline.common_utilities.transform_base import TransformBase
 from snowfall_pipeline.common_utilities.decorators import transformation_timer
 from delta.tables import DeltaTable
+from pyspark.sql import functions as F
 
 
 class ProcessedIncidentIntraday(TransformBase):
@@ -524,6 +525,18 @@ class ProcessedIncidentIntraday(TransformBase):
 
         return df
 
+    def delete_old_data(self, save_output_path):
+        """
+        Deletes records older than today from the Delta table.
+        """
+        delta_table = DeltaTable.forPath(self.spark, save_output_path)
+
+        # Delete records where cdc_timestamp is from a previous day
+        delta_table.delete(
+            condition=(F.col("cdc_timestamp").cast("date") < F.current_date())
+        )
+
+        self.logger.info(f"Deleted old records before merging new data")
 
     def save_data(self, df):
             """
@@ -577,7 +590,7 @@ class ProcessedIncidentIntraday(TransformBase):
                     self.aws_instance.update_table_columns_to_timestamp('processed','service_now_incident_intraday',timestamp_columns)
                 
             else:
-
+                self.delete_old_data(save_output_path)
                 self.logger.info(f"Optimizing Delta table and logs at {save_output_path}.")
                 # Run OPTIMIZE command to compact small files in the Delta table and optimize the Delta logs
                 optimize_query = f"OPTIMIZE delta.`{save_output_path}`"
