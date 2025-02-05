@@ -39,15 +39,15 @@ jobs:
       - name: Install boto3
         run: python3 -m pip install boto3
 
-#      - name: Validate Tag Origin
-#        if: startsWith(github.ref, 'refs/tags/v')
-#        run: |
-#          git fetch --all
-#          BRANCH=$(git branch -r --contains ${GITHUB_SHA} | grep 'origin/main' || true)
-#          if [ -z "$BRANCH" ]; then
-#            echo "This tag is not based on main. Aborting deployment."
-#            exit 1
-#          fi
+      - name: Validate Tag Origin
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          git fetch --all
+          BRANCH=$(git branch -r --contains ${GITHUB_SHA} | grep 'origin/main' || true)
+          if [ -z "$BRANCH" ]; then
+            echo "This tag is not based on main. Aborting deployment."
+            exit 1
+          fi
 
       - name: Load AWS Role and State Bucket
         id: load_env
@@ -70,18 +70,13 @@ jobs:
           echo "STATE_BUCKET: $STATE_BUCKET"
           echo "VAR_FILE: $VAR_FILE"
 
-      - name: Debug GitHub OIDC Token
-        run: |
-          echo "Fetching GitHub OIDC Token..."
-          curl -sSL -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq .
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           role-session-name: GitHubActions
-          #web-identity-token-file: ${{ steps.oidc-token.outputs.token }}
+          web-identity-token-file: ${{ steps.oidc-token.outputs.token }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v1
