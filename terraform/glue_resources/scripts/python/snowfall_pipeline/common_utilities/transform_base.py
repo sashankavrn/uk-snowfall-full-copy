@@ -442,6 +442,7 @@ class TransformBase:
         elif file_format == 'delta':
 
             source_df = self.spark.read.format("delta").load(f"s3://{bucket_name}/{file_path}/")
+            self.logger.info("Successfully read all Delta records.")
             # Find the maximum date in the 'cdc_timestamp' column
             max_date = source_df.select(F.max("cdc_timestamp")).collect()[0][0]
 
@@ -629,13 +630,14 @@ class TransformBase:
                 f"{col_name}_timestamp", F.date_format(F.col(f"{col_name}_checked"), "yyyy-MM-dd HH:mm:ss")
             )
 
-            df = df.withColumn(
-                "DataQualityEvaluationResult",
-                F.when(
-                    (F.col(col_name).isNull() | (F.col(col_name) == "") | F.col(f"{col_name}_checked").isNull()),
-                    F.lit("Failed")
-                ).otherwise(F.col("DataQualityEvaluationResult"))
-            )
+            if col_name == "sys_created_on":
+                df = df.withColumn(
+                    "DataQualityEvaluationResult",
+                    F.when(
+                        (F.col(col_name).isNull() | (F.col(col_name) == "") | F.col(f"{col_name}_checked").isNull()),
+                        F.lit("Failed")
+                    ).otherwise(F.col("DataQualityEvaluationResult"))
+                )
 
             df = df.drop(f"{col_name}_checked")
 
