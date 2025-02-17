@@ -2,7 +2,7 @@
 locals {
   workflows = {
     "adj_trading_hours" = {
-      name            = "uk-snowfall-adj-trading-hours"
+      name            = "uk-snowfall-adj-trading-hours_test"
       description     = "Workflow for the Adjusted Trading hours data"
       dataset         = "adj_trading_hours"
       group           = "preparation"
