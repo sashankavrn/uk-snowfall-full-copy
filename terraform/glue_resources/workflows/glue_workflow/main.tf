@@ -5,7 +5,7 @@ locals {
       name            = "uk-snowfall-adj-trading-hours_test"
       description     = "Workflow for the Adjusted Trading hours data"
       dataset         = "adj_trading_hours"
-      group           = "preparation"
+      group           = "processed"
       trigger_name    = "uk-snowfall-adj-trading-hours-trigger"
       max_concurrent  = 1
       batch_size      = 100
