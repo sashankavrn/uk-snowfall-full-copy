@@ -53,14 +53,15 @@ resource "aws_s3_object" "landing_folder" {
       incident_daily      = "service_now/UK-SNowFall-ServiceNow-Incident-Daily/"
       incident_intraday   = "service_now/UK-SNowFall-ServiceNow-Incident-Intraday/"
       location            = "service_now/UK-SNowFall-ServiceNow-Location/"
-      problem_record     = "service_now/UK-SNowFall-ServiceNow-ProblemRecord/"
+      problem_record      = "service_now/UK-SNowFall-ServiceNow-ProblemRecord/"
       service_offering    = "service_now/UK-SNowFall-ServiceNow-ServiceOffering/"
-      service_request      = "service_now/UK-SNowFall-ServiceNow-ServiceRequest/"
+      service_request     = "service_now/UK-SNowFall-ServiceNow-ServiceRequest/"
       sys_user            = "service_now/UK-SNowFall-ServiceNow-SysUser/"
       sys_user_group      = "service_now/UK-SNowFall-ServiceNow-Sys-User-Group/"
       ods                 = "ods/"
       restaurant_config   = "restaurant_config/"
       cisco_meraki        = "meraki/"
+      ncr_service_request = "ncr_service_now/UK-SNowFall-ServiceNow-ServiceRequest/"
     }
 }
 
