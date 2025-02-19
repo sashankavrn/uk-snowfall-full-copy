@@ -60,6 +60,7 @@ resource "aws_s3_object" "landing_folder" {
       sys_user_group      = "service_now/UK-SNowFall-ServiceNow-Sys-User-Group/"
       ods                 = "ods/"
       restaurant_config   = "restaurant_config/"
+      cisco_meraki        = "meraki/"
     }
 }
 
