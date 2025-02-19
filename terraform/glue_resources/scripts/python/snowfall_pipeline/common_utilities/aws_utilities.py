@@ -347,7 +347,7 @@ class AwsUtilities:
                 raise TimeoutError("Query execution timed out")
             time.sleep(1)
 
-    def create_athena_view(self, database, view_name, view_query, output_location):
+    def create_athena_view(self, database, view_name, output_location):
         """
         Create an Athena view.
 
@@ -374,10 +374,13 @@ class AwsUtilities:
             self.logger.error(f"No matching database name found for '{database}'")
             raise Exception(f"No matching database name found for '{database}'")
 
-        # Initialize Athena client
-        client = boto3.client('athena')
+        sql_file = f"snowfall_pipeline/athena_views/{view_name}.sql"
+        with open(sql_file, 'r') as file:
+            view_query = file.read()
 
         sql_query = f"""{view_query}"""
+        # Initialize Athena client
+        client = boto3.client('athena')
 
         try:
             # Start query execution
@@ -395,7 +398,6 @@ class AwsUtilities:
             # Check status of the query execution
             if self.check_query_status(query_execution_id):
                 self.logger.info(f"Athena view '{view_name}' creation successful.")
-                return query_execution_id
             else:
                 self.logger.error(f"Athena view '{view_name}' creation failed or was cancelled.")
                 raise Exception(f"Athena view '{view_name}' creation failed or was cancelled.")
