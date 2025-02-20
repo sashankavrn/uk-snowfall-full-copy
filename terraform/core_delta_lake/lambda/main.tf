@@ -61,7 +61,11 @@ resource "aws_iam_role_policy_attachment" "lambda_s3_attach" {
   policy_arn = aws_iam_policy.lambda_s3_write_policy.arn
 }
 
-
+data "archive_file" "retrieve_data_lambda" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/retrieve_data/"
+  output_path = "${path.module}/scripts/zips/retrieve-data.zip"
+}
 
 resource "aws_lambda_function" "uk_snowfall_data_retrieval_function" {
     filename         = "${path.module}/scripts/zips/retrieve-data.zip"
