@@ -39,26 +39,27 @@ resource "aws_lambda_permission" "allow_landing_bucket" {
 # lambda  for new Datasourses - meraki 
 
 # s3 policy for lambda 
-resource "aws_iam_policy" "lambda_s3_write_policy" {
-  name        = "LambdaS3WritePolicy"
-  description = "Allows Lambda to write data to the S3 /meraki folder"
+# resource "aws_iam_policy" "lambda_s3_write_policy" {
+#   name        = "LambdaS3WritePolicy"
+#   description = "Allows Lambda to write data to the S3 /meraki folder"
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["s3:PutObject"]
-        Resource = "arn:aws:s3:::eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}/meraki/*"
-      }
-    ]
-  })
-}
+#   policy = jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [
+#       {
+#         Effect   = "Allow"
+#         Action   = ["s3:PutObject"]
+#         Resource = "arn:aws:s3:::eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}/meraki/*"
+#       }
+#     ]
+#   })
+# }
 
 # Attach IAM Policy to Lambda Role
 resource "aws_iam_role_policy_attachment" "lambda_s3_attach" {
   role       = var.role_assumed_arn
-  policy_arn = aws_iam_policy.lambda_s3_write_policy.arn
+  # policy_arn = aws_iam_policy.lambda_s3_write_policy.arn
+  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"   #using this untill role is fixed 
 }
 
 data "archive_file" "retrieve_data_lambda" {
