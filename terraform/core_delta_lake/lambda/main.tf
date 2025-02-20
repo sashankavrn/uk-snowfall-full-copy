@@ -55,12 +55,12 @@ resource "aws_lambda_permission" "allow_landing_bucket" {
 #   })
 # }
 
-# Attach IAM Policy to Lambda Role
-resource "aws_iam_role_policy_attachment" "lambda_s3_attach" {
-  role       = var.role_assumed_arn
-  # policy_arn = aws_iam_policy.lambda_s3_write_policy.arn
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"   #using this untill role is fixed 
-}
+# # Attach IAM Policy to Lambda Role
+# resource "aws_iam_role_policy_attachment" "lambda_s3_attach" {
+#   role       = var.role_assumed_arn
+#   # policy_arn = aws_iam_policy.lambda_s3_write_policy.arn
+#   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"   #using this untill role is fixed 
+# }
 
 data "archive_file" "retrieve_data_lambda" {
   type        = "zip"
