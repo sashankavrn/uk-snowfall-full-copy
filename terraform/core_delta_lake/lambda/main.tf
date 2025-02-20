@@ -76,7 +76,7 @@ resource "aws_lambda_function" "uk_snowfall_data_retrieval_function" {
     memory_size     = 500
     timeout         = 70
     description     = "Fetch Meraki data and save to S3 /meraki folder"
-    source_code_hash = source_code_hash = filebase64sha256("${path.module}/scripts/zips/retrieve-data.zip")
+    source_code_hash = filebase64sha256("${path.module}/scripts/zips/retrieve-data.zip")
     tags            = var.resource_tags
     layers          = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
 
