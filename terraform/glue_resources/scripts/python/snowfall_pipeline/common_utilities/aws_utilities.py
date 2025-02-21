@@ -1,3 +1,4 @@
+import os
 import boto3
 import sys
 import json
@@ -349,18 +350,14 @@ class AwsUtilities:
 
     def create_athena_view(self, database, view_name, output_location):
         """
-        Create an Athena view.
-
+        Create an Athena view if not exist
         Parameters:
         - database (str): Name of the database (schema) where the view will be created.
         - view_name (str): Name of the view to be created.
-        - view_query (str): SQL query defining the view.
         - output_location (str): S3 bucket location where query results will be stored.
-
         Returns:
         - str: Query execution ID.
         """
-
         # Determine the full database name
         databases = {
             'raw': 'uk_snowfall_raw',
@@ -368,40 +365,69 @@ class AwsUtilities:
             'processed': 'uk_snowfall_processed',
             'semantic': 'uk_snowfall_semantic'
         }
+        zip_file_path = "snowfall_pipeline.zip"
+        sql_file = f"snowfall_pipeline/athena_views/{view_name}.sql"
 
         full_database_name = databases.get(database)
         if full_database_name is None:
             self.logger.error(f"No matching database name found for '{database}'")
-            raise Exception(f"No matching database name found for '{database}'")
+            raise ValueError(f"No matching database name found for '{database}'")
 
-        sql_file = f"snowfall_pipeline/athena_views/{view_name}.sql"
-        with open(sql_file, 'r') as file:
-            view_query = file.read()
-
-        sql_query = f"""{view_query}"""
-        # Initialize Athena client
+        # Check if the view already exists
+        check_view_query = f"""
+        SELECT table_name
+        FROM information_schema.views
+        WHERE table_schema = '{full_database_name}' AND table_name = '{view_name}'
+        """
         client = boto3.client('athena')
-
         try:
-            # Start query execution
-            self.logger.info(f"Starting the Athena query to create view '{view_name}': {sql_query}")
+            self.logger.info(f"Starting the Athena query to check view exists'{view_name}': {check_view_query}")
             response = client.start_query_execution(
-                QueryString=sql_query,
+                QueryString=check_view_query,
                 ResultConfiguration={
                     'OutputLocation': f"s3://{output_location}"
                 }
             )
-
-            # Extract and return query execution ID
-            query_execution_id = response['QueryExecutionId']
-
-            # Check status of the query execution
-            if self.check_query_status(query_execution_id):
-                self.logger.info(f"Athena view '{view_name}' creation successful.")
+            check_query_execution_id = response['QueryExecutionId']
+            result_response = client.get_query_results(QueryExecutionId=check_query_execution_id)
+            view_exists = any(row['Data'][0]['VarCharValue'] == view_name for row in result_response['ResultSet']['Rows'])
+            if view_exists:
+                print(f"The view '{view_name}' exists in the database '{full_database_name}'.")
+                return
             else:
-                self.logger.error(f"Athena view '{view_name}' creation failed or was cancelled.")
-                raise Exception(f"Athena view '{view_name}' creation failed or was cancelled.")
+                print(f"The view '{view_name}' does not exist in the database '{full_database_name}'.")
+                with zipfile.ZipFile(zip_file_path, 'r') as zip_file:
+                    # Check if the SQL file exists in the zip archive
+                    if sql_file in zip_file.namelist():
+                        # Read the SQL file directly from the zip archive
+                        with zip_file.open(sql_file, 'r') as file:
+                            view_query = file.read().decode('utf-8').replace("\r\n", ' ').strip()
+                    else:
+                        raise FileNotFoundError("SQL file not found in the zip archive.")
 
+                sql_query = f"""{view_query}"""
+                self.logger.info(f"Sql Query  : {sql_query}")
+                try:
+                    # Start query execution
+                    self.logger.info(f"Starting the Athena query to create view '{view_name}': {sql_query}")
+                    response = client.start_query_execution(
+                        QueryString=sql_query,
+                        ResultConfiguration={
+                            'OutputLocation': f"s3://{output_location}"
+                        }
+                    )
+                    # Extract and return query execution ID
+                    query_execution_id = response['QueryExecutionId']
+                    # Check status of the query execution
+                    if self.check_query_status(query_execution_id):
+                        self.logger.info(f"Athena view '{view_name}' creation successful.")
+                    else:
+                        self.logger.error(f"Athena view '{view_name}' creation failed or was cancelled.")
+                        raise RuntimeError(f"Athena view '{view_name}' creation failed or was cancelled.")
+                except Exception as e:
+                    # Log the error and continue
+                    self.logger.error(f"An error occurred while creating Athena view '{view_name}': {str(e)}")
+                    raise
         except Exception as e:
             # Log the error and continue
             self.logger.error(f"An error occurred while creating Athena view '{view_name}': {str(e)}")

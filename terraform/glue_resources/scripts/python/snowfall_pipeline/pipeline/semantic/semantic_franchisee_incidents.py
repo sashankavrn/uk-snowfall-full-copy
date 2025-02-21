@@ -211,15 +211,9 @@ class SemanticFranchiseeIncidents(TransformBase):
                                                                              'view_daily_franchisee_restaurant_incidents',
                                                                              save_output_path,
                                                                              self.athena_output_path)
-            # Execute Athena query to create the second table
-            execution_query_id_2 = self.aws_instance.create_athena_delta_table('semantic',
-                                                                               'view_daily_restaurant_incident_hub',
-                                                                               save_output_path,
-                                                                               self.athena_output_path)
 
             # Change string data type to timestamp via glue schema for both tables
-            if self.aws_instance.check_query_status(execution_query_id) and self.aws_instance.check_query_status(
-                    execution_query_id_2):
+            if self.aws_instance.check_query_status(execution_query_id):
                 timestamp_columns = [
                     'opened_at_timestamp',
                     'resolved_at_timestamp'
@@ -227,11 +221,6 @@ class SemanticFranchiseeIncidents(TransformBase):
                 self.aws_instance.update_table_columns_to_timestamp('semantic',
                                                                     'view_daily_franchisee_restaurant_incidents',
                                                                     timestamp_columns)
-                # Update timestamp columns for the second table
-                self.aws_instance.update_table_columns_to_timestamp('semantic',
-                                                                    'view_daily_restaurant_incident_hub',
-                                                                    timestamp_columns)
-
         else:
 
             # Merge data to the Delta table
@@ -240,5 +229,8 @@ class SemanticFranchiseeIncidents(TransformBase):
 
             # Vacuum the table
             self.vacuum_table(save_output_path, 48)
+
+        self.aws_instance.create_athena_view(
+            'semantic', 'view_daily_franchisee_regional_incidents', self.athena_output_path)
 
         self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
