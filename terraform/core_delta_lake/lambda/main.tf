@@ -62,28 +62,28 @@ resource "aws_lambda_permission" "allow_landing_bucket" {
 #   policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"   #using this untill role is fixed 
 # }
 
-data "archive_file" "retrieve_data_lambda" {
-  type        = "zip"
-  source_dir  = "${path.module}/scripts/python/retrieve_data/"
-  output_path = "${path.module}/scripts/zips/retrieve-data.zip"
-}
+# data "archive_file" "retrieve_data_lambda" {
+#   type        = "zip"
+#   source_dir  = "${path.module}/scripts/python/retrieve_data/"
+#   output_path = "${path.module}/scripts/zips/retrieve-data.zip"
+# }
 
-resource "aws_lambda_function" "uk_snowfall_data_retrieval_function" {
-    filename         = "${path.module}/scripts/zips/retrieve-data.zip"
-    function_name    = "uk-snowfall-data-retrieval-${var.environment}"
-    role            = var.role_assumed_arn
-    handler         = "lambda_function.lambda_handler"
-    runtime         = "python3.12"
-    memory_size     = 500
-    timeout         = 70
-    description     = "Fetch Meraki data and save to S3 /meraki folder"
-    source_code_hash = filebase64sha256("${path.module}/scripts/zips/retrieve-data.zip")
-    tags            = var.resource_tags
-    layers          = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
+# resource "aws_lambda_function" "uk_snowfall_data_retrieval_function" {
+#     filename         = "${path.module}/scripts/zips/retrieve-data.zip"
+#     function_name    = "uk-snowfall-data-retrieval-${var.environment}"
+#     role            = var.role_assumed_arn
+#     handler         = "lambda_function.lambda_handler"
+#     runtime         = "python3.12"
+#     memory_size     = 500
+#     timeout         = 70
+#     description     = "Fetch Meraki data and save to S3 /meraki folder"
+#     source_code_hash = filebase64sha256("${path.module}/scripts/zips/retrieve-data.zip")
+#     tags            = var.resource_tags
+#     layers          = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
 
-    environment {
-      variables = {
-        TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
-      }
-    }
-}
+#     environment {
+#       variables = {
+#         TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+#       }
+#     }
+# }
