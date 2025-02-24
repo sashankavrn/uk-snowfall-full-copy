@@ -1,0 +1,58 @@
+name: initialse_job
+description: 'Greet someone'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Install Python 3
+      run: sudo apt-get update && sudo apt-get install -y python3
+
+    - name: Install boto3
+      run: python3 -m pip install boto3
+
+    - name: Validate Tag Origin
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+          git fetch --all
+          BRANCH=$(git branch -r --contains ${GITHUB_SHA} | grep 'origin/main' || true)
+          if [ -z "$BRANCH" ]; then
+            echo "This tag is not based on main. Aborting deployment."
+            exit 1
+          fi
+
+    - name: Load AWS Role and State Bucket
+      id: load_env
+      run: |
+          echo "Loading AWS_ROLE_TO_ASSUME and STATE_BUCKET from VAR_FILE_AWS..."
+          VAR_FILE_AWS="${{ github.ref == 'refs/heads/dev' && 'terraform/dev.tfvars' ||
+          github.ref == 'refs/heads/main' && 'terraform/nprod.tfvars' ||
+          startsWith(github.ref, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
+          
+          AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
+          STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
+
+          echo "AWS_ROLE_TO_ASSUME=${AWS_ROLE_TO_ASSUME}" >> $GITHUB_ENV
+          echo "STATE_BUCKET=${STATE_BUCKET}" >> $GITHUB_ENV
+
+    - name: Print Variable Values
+      run: |
+          echo "ENVIRONMENT: $ENVIRONMENT"
+          echo "AWS_ROLE_TO_ASSUME: $AWS_ROLE_TO_ASSUME"
+          echo "STATE_BUCKET: $STATE_BUCKET"
+          echo "VAR_FILE: $VAR_FILE"
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-region: ${{ env.AWS_REGION }}
+        role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+        role-session-name: GitHubActions
+        web-identity-token-file: ${{ steps.oidc-token.outputs.token }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 1.7.4
