@@ -7,27 +7,26 @@ on:
       - main
     tags:
       - v*
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ENVIRONMENT: ${{ github.ref == 'refs/heads/dev' && 'dev' ||
+      github.ref == 'refs/heads/main' && 'nprod' || startsWith(github.ref, 'refs/tags/v') && 'prod' }}
+  VAR_FILE: ${{ github.ref == 'refs/heads/dev' && '../dev.tfvars' ||
+      github.ref == 'refs/heads/main' && '../nprod.tfvars' ||
+      startsWith(github.ref, 'refs/tags/v') && '../prod.tfvars' }}
+
+concurrency:
+  group: ${{ github.ref == 'refs/heads/dev' && 'deploy-development' ||
+        github.ref == 'refs/heads/main' && 'deploy-nprod' ||
+        startsWith(github.ref, 'refs/tags/v') && 'deploy-production' || 'default' }}
+  cancel-in-progress: true
 
 jobs:
   terraform:
-    concurrency:
-      group: ${{ github.ref == 'refs/heads/dev' && 'deploy-development' ||
-        github.ref == 'refs/heads/main' && 'deploy-nprod' ||
-        startsWith(github.ref, 'refs/tags/v') && 'deploy-production' || 'default' }}
-      cancel-in-progress: true
-
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
-
-    env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      ENVIRONMENT: ${{ github.ref == 'refs/heads/dev' && 'dev' ||
-        github.ref == 'refs/heads/main' && 'nprod' || startsWith(github.ref, 'refs/tags/v') && 'prod' }}
-      VAR_FILE: ${{ github.ref == 'refs/heads/dev' && '../dev.tfvars' ||
-        github.ref == 'refs/heads/main' && '../nprod.tfvars' ||
-        startsWith(github.ref, 'refs/tags/v') && '../prod.tfvars' }}
 
     steps:
       - name: Checkout Repository
