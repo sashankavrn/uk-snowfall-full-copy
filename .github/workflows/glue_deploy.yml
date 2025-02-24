@@ -22,11 +22,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  terraform:
+  terraform_plan:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
+    if: startsWith(github.event.ref, 'refs/tags/v') # Will be skipped if not working with prod
+
+    steps:
+      - name: initialise
+        uses: ./.github/composite/initialise_job.yml
+
+      - name: Running the Glue Resources Stage
+        run: |
+          cd terraform/glue_resources
+          terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
+          terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+
+      - name: Running the Other Resources Stage
+        run: |
+          cd terraform/other_resources
+          terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
+          terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          
+  request_approval:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment: Approvers
+    needs: terraform_plan
+    steps:
+      - name: Waiting on approval
+        run: echo "Waiting on approval"
+          
+  terraform_deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    needs: [terraform_plan, request_approval]
+    if: ${{ always() && !failure() && !cancelled() }} # Will count 'Skipped' as a Success but wont run on failure.
 
     steps:
       - name: initialise
