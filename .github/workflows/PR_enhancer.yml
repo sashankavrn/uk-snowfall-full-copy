@@ -22,7 +22,7 @@ jobs:
       
     steps:
       - name: Initialise
-        uses: ./.github/composite/initialise_job.yml
+        uses: ./.github/composite/initialise_job
         
       - name: Terraform Plan
         run: |
