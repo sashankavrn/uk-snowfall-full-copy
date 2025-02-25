@@ -15,6 +15,14 @@ runs:
       run: python3 -m pip install boto3
       shell: bash
 
+    - name: Print Variable Values ## DELETE ME
+      run: |
+          echo "ENVIRONMENT: $ENVIRONMENT"
+          echo "AWS_ROLE_TO_ASSUME: $AWS_ROLE_TO_ASSUME"
+          echo "STATE_BUCKET: $STATE_BUCKET"
+          echo "VAR_FILE: $VAR_FILE"
+      shell: bash
+
     - name: Validate Tag Origin
       if: startsWith(github.ref, 'refs/tags/v')
       run: |
