@@ -30,6 +30,9 @@ jobs:
     if: startsWith(github.event.ref, 'refs/tags/v') # Will be skipped if not working with prod
 
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+    
       - name: initialise
         uses: ./.github/composite/initialise_job
 
@@ -69,6 +72,9 @@ jobs:
     if: ${{ always() && !failure() && !cancelled() }} # Will count 'Skipped' as a Success but wont run on failure.
 
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+        
       - name: initialise
         uses: ./.github/composite/initialise_job.yml
 
