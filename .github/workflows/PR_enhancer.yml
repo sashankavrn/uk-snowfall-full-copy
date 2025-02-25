@@ -21,6 +21,9 @@ jobs:
       id-token: write
       
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+    
       - name: Initialise
         uses: ./.github/composite/initialise_job
         
