@@ -31,7 +31,7 @@ jobs:
 
     steps:
       - name: initialise
-        uses: ./.github/composite/initialise_job.yml
+        uses: ./.github/composite/initialise_job
 
       - name: Running the Glue Resources Stage
         run: |
