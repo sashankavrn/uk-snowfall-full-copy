@@ -1,5 +1,5 @@
 name: initialse_job
-description: 'Greet someone'
+description: 'Runs initial setup on a runner'
 
 runs:
   using: "composite"
