@@ -7,47 +7,34 @@ on:
       - main
     tags:
       - v*
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ENVIRONMENT: ${{ github.ref == 'refs/heads/dev' && 'dev' ||
+      github.ref == 'refs/heads/main' && 'nprod' || startsWith(github.ref, 'refs/tags/v') && 'prod' }}
+  VAR_FILE: ${{ github.ref == 'refs/heads/dev' && '../dev.tfvars' ||
+      github.ref == 'refs/heads/main' && '../nprod.tfvars' ||
+      startsWith(github.ref, 'refs/tags/v') && '../prod.tfvars' }}
 
-jobs:
-  terraform:
-    concurrency:
-      group: ${{ github.ref == 'refs/heads/dev' && 'deploy-development' ||
+concurrency:
+  group: ${{ github.ref == 'refs/heads/dev' && 'deploy-development' ||
         github.ref == 'refs/heads/main' && 'deploy-nprod' ||
         startsWith(github.ref, 'refs/tags/v') && 'deploy-production' || 'default' }}
-      cancel-in-progress: true
+  cancel-in-progress: true
 
+jobs:
+  terraform_plan:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
-
-    env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      ENVIRONMENT: ${{ github.ref == 'refs/heads/dev' && 'dev' ||
-        github.ref == 'refs/heads/main' && 'nprod' || startsWith(github.ref, 'refs/tags/v') && 'prod' }}
-      VAR_FILE: ${{ github.ref == 'refs/heads/dev' && '../dev.tfvars' ||
-        github.ref == 'refs/heads/main' && '../nprod.tfvars' ||
-        startsWith(github.ref, 'refs/tags/v') && '../prod.tfvars' }}
+    if: startsWith(github.event.ref, 'refs/tags/v') # Will be skipped if not working with prod
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
-
-      - name: Install Python 3
-        run: sudo apt-get update && sudo apt-get install -y python3
-
-      - name: Install boto3
-        run: python3 -m pip install boto3
-
-      - name: Validate Tag Origin
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          git fetch --all
-          BRANCH=$(git branch -r --contains ${GITHUB_SHA} | grep 'origin/main' || true)
-          if [ -z "$BRANCH" ]; then
-            echo "This tag is not based on main. Aborting deployment."
-            exit 1
-          fi
+    
+      - name: initialise
+        uses: ./.github/composite/initialise_job
 
       - name: Load AWS Role and State Bucket
         id: load_env
@@ -69,7 +56,7 @@ jobs:
           echo "AWS_ROLE_TO_ASSUME: $AWS_ROLE_TO_ASSUME"
           echo "STATE_BUCKET: $STATE_BUCKET"
           echo "VAR_FILE: $VAR_FILE"
-
+      
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -78,10 +65,76 @@ jobs:
           role-session-name: GitHubActions
           web-identity-token-file: ${{ steps.oidc-token.outputs.token }}
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
+      - name: Running the Glue Resources Stage
+        run: |
+          cd terraform/glue_resources
+          terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
+          terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+
+      - name: Running the Other Resources Stage
+        run: |
+          cd terraform/other_resources
+          terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
+          terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+          
+  request_approval:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment: Approvers
+    needs: terraform_plan
+    steps:
+      - name: Waiting on approval
+        run: echo "Waiting on approval"
+          
+  terraform_deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    needs: [terraform_plan, request_approval]
+    if: ${{ always() && !failure() && !cancelled() }} # Will count 'Skipped' as a Success but wont run on failure.
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+        
+      - name: initialise
+        uses: ./.github/composite/initialise_job.yml
+        
+      - name: Load AWS Role and State Bucket
+        id: load_env
+        run: |
+          echo "Loading AWS_ROLE_TO_ASSUME and STATE_BUCKET from VAR_FILE_AWS..."
+          VAR_FILE_AWS="${{ github.ref == 'refs/heads/dev' && 'terraform/dev.tfvars' ||
+          github.ref == 'refs/heads/main' && 'terraform/nprod.tfvars' ||
+          startsWith(github.ref, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
+          
+          AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
+          STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
+
+          echo "AWS_ROLE_TO_ASSUME=${AWS_ROLE_TO_ASSUME}" >> $GITHUB_ENV
+          echo "STATE_BUCKET=${STATE_BUCKET}" >> $GITHUB_ENV
+
+      - name: Print Variable Values
+        run: |
+          echo "ENVIRONMENT: $ENVIRONMENT"
+          echo "AWS_ROLE_TO_ASSUME: $AWS_ROLE_TO_ASSUME"
+          echo "STATE_BUCKET: $STATE_BUCKET"
+          echo "VAR_FILE: $VAR_FILE"
+      
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
         with:
-          terraform_version: 1.7.4
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          role-session-name: GitHubActions
+          web-identity-token-file: ${{ steps.oidc-token.outputs.token }}
 
       - name: Running the Glue Resources Stage
         run: |
