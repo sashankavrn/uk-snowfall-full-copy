@@ -8,10 +8,10 @@ on:
     
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  ENVIRONMENT: ${{ github.ref == 'refs/heads/dev' && 'dev' || ## TODO THIS IS WHERE THE PROBLEM IS - FIX TOMORROW - CANT USE REF THIS WAY SINCE ITS TRIGGERED BY PR
-      github.ref == 'refs/heads/main' && 'prod' }}
-  VAR_FILE: ${{ github.ref == 'refs/heads/dev' && '../dev.tfvars' ||
-      startsWith(github.ref, 'refs/tags/v') && '../prod.tfvars' }}
+  ENVIRONMENT: ${{ github.base_ref == 'dev' && 'dev' ||
+                  github.base_ref == 'main' && 'prod' }}
+  VAR_FILE: ${{ github.base_ref == 'dev' && '../dev.tfvars' ||
+                github.base_ref == 'dev' && '../prod.tfvars' }}
 
 jobs:
   attach_tf_plan:
@@ -31,9 +31,8 @@ jobs:
         id: load_env
         run: |
           echo "Loading AWS_ROLE_TO_ASSUME and STATE_BUCKET from VAR_FILE_AWS..."
-          VAR_FILE_AWS="${{ github.ref == 'refs/heads/dev' && 'terraform/dev.tfvars' ||
-          github.ref == 'refs/heads/main' && 'terraform/nprod.tfvars' ||
-          startsWith(github.ref, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
+          VAR_FILE_AWS="${{ github.base_ref == 'dev' && 'terraform/dev.tfvars' ||
+                            github.base_ref == 'main' && 'terraform/prod.tfvars' }}"
           
           AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
