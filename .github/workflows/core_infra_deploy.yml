@@ -74,11 +74,11 @@ jobs:
       with:
         terraform_version: 1.7.4
 
-    - name: Running the POC meraki infra
+    - name: Running the Core Delta Lake Stage
       run: |
-         cd terraform/meraki_resources
-         terraform init -backend-config="eu-central1-dev-uk-snowfall-terraform-295446674139"
-         terraform plan -var-file=../${{ env.VAR_FILE }} -out=tfplan
-         # terraform apply -auto-approve tfplan
+        cd terraform/core_delta_lake
+        terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
+        terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
+        terraform apply -auto-approve tfplan
       env:
         AWS_REGION: ${{ env.AWS_REGION }}
