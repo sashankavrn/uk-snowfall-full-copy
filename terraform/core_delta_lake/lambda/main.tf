@@ -36,3 +36,30 @@ resource "aws_lambda_permission" "allow_landing_bucket" {
   source_arn    = var.landing_bucket_arn
   depends_on = [ var.landing_bucket_arn,aws_lambda_function.uk_snowfall_landing_function ]
 }
+
+data "archive_file" "athena_views_script" {
+  type        = "zip"
+  source_dir = "${path.module}/scripts/python/create_athena_views/"
+  output_path = "${path.module}/scripts/zips/create-athena-views.zip"
+}
+
+resource "aws_lambda_function" "uk_snowfall_create_athena_views" {
+  filename = "${path.module}/scripts/zips/create-athena-views.zip"
+  function_name = "uk-snowfall-create-athena-views-${var.environment}"
+  role = var.role_assumed_arn
+  handler = "lambda_function.lambda_handler"
+  runtime = "python3.12"
+  memory_size = 500
+  timeout = 70
+  description = "Create athena views in snowfall database,"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/create-athena-views.zip")
+  tags = var.resource_tags
+  layers = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
+  environment {
+    variables = {
+      ATHENA_OUTPUT_LOCATION = "eu-central1-${var.environment}-uk-snowfall-athena-${var.account_number}"
+      ATHENA_DATABASE = "uk_snowfall_semantic"
+    }
+  }
+}
+
