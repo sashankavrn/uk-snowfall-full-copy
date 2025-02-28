@@ -80,8 +80,8 @@ module "cloudwatch_lambda_trigger" {
 module "glue" {
   source        = "./glue"
   environment   = var.environment
-  database_name = "uk-snowfall-meraki_dev"
-  table_prefix  = "uk-snowfall-device_info"
+  database_name = "uk_snowfall-meraki_dev"
+  table_prefix  = "uk_snowfall-device_info"
   s3_path       = "s3://snowfall-dev-meraki-processed/meraki/"
   s3_bucket_arn = "arn:aws:s3:::eu-central1-dev-uk-snowfall-processed-295446674139"
   aws_region    = var.AWS_REGION
