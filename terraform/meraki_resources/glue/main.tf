@@ -80,26 +80,26 @@ resource "aws_glue_catalog_database" "glue_database" {
 }
 
 # Glue Crawler
-resource "aws_glue_crawler" "glue_crawler" {
-  name          = "meraki-glue-crawler-${var.environment}"
-  database_name = aws_glue_catalog_database.glue_database.name
-  role          = "arn:aws:iam::295446674139:role/UK-MKT-DEV-GLUE-ROLE-CASE12585936411"
-  description   = "Glue crawler for processing Meraki device data"
-  schedule      = "cron(0 0 * * ? *)" # Runs daily at midnight UTC
+# resource "aws_glue_crawler" "glue_crawler" {
+#   name          = "meraki-glue-crawler-${var.environment}"
+#   database_name = aws_glue_catalog_database.glue_database.name
+#   role          = "arn:aws:iam::295446674139:role/UK-MKT-DEV-GLUE-ROLE-CASE12585936411"
+#   description   = "Glue crawler for processing Meraki device data"
+#   schedule      = "cron(0 0 * * ? *)" # Runs daily at midnight UTC
 
-  s3_target {
-    path = var.s3_path
-  }
+#   s3_target {
+#     path = var.s3_path
+#   }
 
-  table_prefix = var.table_prefix
-  recrawl_policy {
-    recrawl_behavior = "CRAWL_EVERYTHING"  # Ensures it crawls all sub-folders
-  }
+#   table_prefix = var.table_prefix
+#   recrawl_policy {
+#     recrawl_behavior = "CRAWL_EVERYTHING"  # Ensures it crawls all sub-folders
+#   }
 
-  schema_change_policy {
-    update_behavior = "UPDATE_IN_DATABASE"
-    delete_behavior = "LOG"
-  }
+#   schema_change_policy {
+#     update_behavior = "UPDATE_IN_DATABASE"
+#     delete_behavior = "LOG"
+#   }
 
-  tags = var.resource_tags
-}
+#   tags = var.resource_tags
+# }
