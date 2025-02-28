@@ -86,7 +86,7 @@ jobs:
       - name: Running the Meraki Resources Deployment stage
         run: |
           cd terraform/meraki_resources
-          terraform init -backend-config="eu-central1-dev-uk-snowfall-terraform-295446674139"
+          terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}
           terraform plan -var-file=../${{ env.VAR_FILE }} -out=tfplan
           # terraform apply -auto-approve tfplan
         env:
