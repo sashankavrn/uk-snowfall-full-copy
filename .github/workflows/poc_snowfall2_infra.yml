@@ -87,7 +87,7 @@ jobs:
         run: |
           cd terraform/meraki_resources
           terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
-          terraform plan -var-file=../${{ env.VAR_FILE }} -out=tfplan
+          terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
           # terraform apply -auto-approve tfplan
         env:
           AWS_REGION: ${{ env.AWS_REGION }}
