@@ -228,10 +228,4 @@ class SemanticDailyIncidents(TransformBase):
             # Vaccum the Delta table
             delta_table.vacuum(retentionHours=200)
 
-        # create view_daily_incident_snapshot
-        self.aws_instance.create_athena_view(
-            'semantic', 'view_daily_incident_snapshot', self.athena_output_path)
-        self.aws_instance.create_athena_view(
-            'semantic', 'view_daily_restaurant_incident_hub', self.athena_output_path)
-
         self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')

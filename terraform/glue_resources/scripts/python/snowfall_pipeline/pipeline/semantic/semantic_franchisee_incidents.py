@@ -230,7 +230,4 @@ class SemanticFranchiseeIncidents(TransformBase):
             # Vacuum the table
             self.vacuum_table(save_output_path, 48)
 
-        self.aws_instance.create_athena_view(
-            'semantic', 'view_daily_franchisee_regional_incidents', self.athena_output_path)
-
         self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
