@@ -1,16 +1,12 @@
 name: Meraki Resources Deployment
 
 on:
-  workflow_dispatch:  # Allows manual trigger
-    inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        default: 'dev'
-        options:
-          - dev
-          - nprod
-          - prod
+  push:
+    branches:
+      - dev
+      - main
+    tags:
+      - v*
 
 jobs:
   terraform:
