@@ -1,5 +1,5 @@
 resource "aws_cloudwatch_event_rule" "daily_lambda_trigger" {
-  name                = "daily-lambda-trigger-${var.environment}"
+  name                = "uk-snowfall-daily-lambda-trigger-${var.environment}"
   description         = "Triggers Lambda function daily"
   schedule_expression = "rate(1 day)"  # Runs once every day
 }
