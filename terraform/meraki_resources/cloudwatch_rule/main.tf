@@ -45,7 +45,6 @@ resource "aws_cloudwatch_event_target" "processing_lambda_target" {
   rule      = aws_cloudwatch_event_rule.meraki_event_rule.name
   target_id = "processing_lambda"
   arn       = module.lambda_processing_trigger.lambda_arn
-  role_arn  = var.role_assumed_arn
 }
 
 resource "aws_lambda_permission" "allow_eventbridge_processing_lambda" {
