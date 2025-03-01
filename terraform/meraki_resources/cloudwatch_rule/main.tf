@@ -21,7 +21,7 @@ resource "aws_lambda_permission" "allow_cloudwatch" {
 
 resource "aws_cloudwatch_event_rule" "meraki_event_rule" {
   name        = "uk-snowfall-meraki-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  description = "Object create events on bucket s3://landing bucket/meraki"
 
   event_pattern = <<EOF
 {
