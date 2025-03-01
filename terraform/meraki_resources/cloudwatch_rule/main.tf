@@ -50,7 +50,7 @@ resource "aws_cloudwatch_event_target" "processing_lambda_target" {
 resource "aws_lambda_permission" "allow_eventbridge_processing_lambda" {
   statement_id  = "AllowExecutionFromEventBridge"
   action        = "lambda:InvokeFunction"
-  function_name = module.lambda_processing_trigger.lambda_arn
+  function_name = var.processing_lambda_arn
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.meraki_event_rule.arn
 }
