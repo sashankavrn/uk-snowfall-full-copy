@@ -41,9 +41,18 @@ resource "aws_cloudwatch_event_rule" "meraki_event_rule" {
 EOF
 }
 
-resource "aws_cloudwatch_event_target" "meraki_rule" {
+resource "aws_cloudwatch_event_target" "processing_lambda_target" {
   rule      = aws_cloudwatch_event_rule.meraki_event_rule.name
-  arn       = local.workflow_trigger_arns["meraki"]
+  target_id = "processing_lambda"
+  arn       = module.lambda_processing_trigger.lambda_arn
   role_arn  = var.role_assumed_arn
+}
+
+resource "aws_lambda_permission" "allow_eventbridge_processing_lambda" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = module.lambda_processing_trigger.lambda_arn
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.meraki_event_rule.arn
 }
 
