@@ -75,7 +75,7 @@ module "cloudwatch_lambda_trigger" {
   source             = "./cloudwatch_rule"
   environment        = var.environment
   lambda_function_arn = module.lambda_landing_trigger.lambda_arn
-  processing_lambda_arn = module.lambda_processing_trigger.lambda_arn
+  # processing_lambda_arn = module.lambda_processing_trigger.lambda_arn
 }
 
 module "glue" {
