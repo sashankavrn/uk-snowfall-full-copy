@@ -4,8 +4,8 @@ import re
 
 
 def lambda_handler(event, context):
-    #'s3://snowfall-dev-meraki-landing/meraki/device_list_2025-01-17_02-01-18.json'
-    # s3://snowfall-dev-meraki-processed
+    #'s3://eu-central1-dev-uk-snowfall2-landing-295446674139'
+    # s3://eu-central1-dev-uk-snowfall2-processed-295446674139
 
 
     # S3 client
@@ -17,7 +17,7 @@ def lambda_handler(event, context):
 
     source_bucket = event['detail']['bucket']['name']  # Source bucket
     source_key = event['detail']['object']['key']  # Path to the JSON file in the source bucket
-    destination_bucket = 'snowfall-dev-meraki-processed'  # Destination bucket
+    destination_bucket = 'eu-central1-dev-uk-snowfall2-processed-295446674139'  # Destination bucket
     destination_key = source_key.replace(".json", "_formatted.json")  # Path to save the NDJSON file in the destination bucket
 
     # Fetch JSON file from the source bucket

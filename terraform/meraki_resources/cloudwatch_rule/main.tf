@@ -29,7 +29,7 @@ resource "aws_cloudwatch_event_rule" "meraki_event_rule" {
   "detail-type": ["Object Created"],
   "detail": {
     "bucket": {
-      "name": ["snowfall-dev-meraki-landing"]
+      "name": ["eu-central1-dev-uk-snowfall2-landing-295446674139"]
     }
   }
 }
