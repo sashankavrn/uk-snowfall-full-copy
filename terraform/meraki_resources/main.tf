@@ -20,15 +20,6 @@ provider "aws" {
   region      = var.AWS_REGION
 }
 
-
-
-  # #Picks up from secrets in github
-  # provider "aws" {
-  #   region      = var.AWS_REGION
-  #   access_key = ""
-  #   secret_key = "1"
-  #   token = ""
-  # }
   
 
 # Triggering the Lambda Module
@@ -96,8 +87,9 @@ module "s3_module_main" {
   source                  = "./s3"
   environment             = var.environment
   account_number          = var.account_number
-  resource_tags           = merge(var.resource_tags, { Environment = var.environment,DataClassification = "highly restricted" })
+  resource_tags           = merge(var.resource_tags, { Environment = var.environment, DataClassification = "highly restricted" })
   role_assumed_arn        = var.role_assumed_arn
-  lambda_landing_func_arn = module.lambda_module.landing_trigger_arn
-  lambda_permission       = module.lambda_module.lambda_s3_permission
+  lambda_landing_func_arn = module.lambda_landing_trigger.lambda_arn  #
+  lambda_permission       = aws_lambda_permission.allow_landing_bucket.id  # Pass Lambda permission
 }
+
