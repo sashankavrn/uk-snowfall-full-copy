@@ -95,7 +95,7 @@ def lambda_handler(event, context):
     # Define S3 file details
     current_time = datetime.now()
     filename = f"device_list_{current_time.strftime('%Y-%m-%d_%H-%M-%S')}.json"
-    bucket_name = "eu-central1-dev-uk-snowfall-landing-295446674139"  # Bucket Name
+    bucket_name = "snowfall-dev-meraki-landing"  # Bucket Name
     s3_key = f"meraki/{filename}"
 
     # Upload JSON data to S3

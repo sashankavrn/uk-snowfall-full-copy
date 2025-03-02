@@ -28,7 +28,7 @@ resource "aws_cloudwatch_event_rule" "meraki_event_rule" {
   "source": ["aws.s3"],
   "detail": {
     "bucket": {
-      "name": ["eu-central1-dev-uk-snowfall-landing-295446674139"]
+      "name": ["snowfall-dev-meraki-landing"]
     },
     "object": {
       "key": [{
