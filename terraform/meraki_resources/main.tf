@@ -30,7 +30,7 @@ module "lambda_landing_trigger" {
   environment        = var.environment
   resource_tags      = merge(var.resource_tags, { Environment = var.environment })
   role_assumed_arn   = var.role_assumed_arn
-  landing_bucket_arn = "arn:aws:s3:::eu-central1-dev-uk-snowfall-landing-295446674139"
+  landing_bucket_arn = "arn:aws:s3:::eu-central1-dev-uk-snowfall2-landing-295446674139"
   account_number = var.account_number
 }
 
@@ -42,7 +42,7 @@ module "lambda_processing_trigger" {
   lambda_name        = "uk-snowfall-meraki-process-Info"
   resource_tags      = merge(var.resource_tags, { Environment = var.environment })
   role_assumed_arn   = var.role_assumed_arn
-  landing_bucket_arn = "arn:aws:s3:::eu-central1-dev-uk-snowfall-processed-295446674139"
+  landing_bucket_arn = "arn:aws:s3:::eu-central1-dev-uk-snowfall2-processed-295446674139"
   account_number     = var.account_number
 }
 
@@ -51,7 +51,7 @@ resource "aws_lambda_permission" "allow_landing_bucket" {
   action        = "lambda:InvokeFunction"
   function_name = module.lambda_landing_trigger.lambda_arn
   principal     = "s3.amazonaws.com"
-  source_arn    = "arn:aws:s3:::eu-central1-dev-uk-snowfall-landing-295446674139"
+  source_arn    = "arn:aws:s3:::eu-central1-dev-uk-snowfall2-landing-295446674139"
 }
 
 resource "aws_lambda_permission" "allow_processing_bucket" {
@@ -59,7 +59,7 @@ resource "aws_lambda_permission" "allow_processing_bucket" {
   action        = "lambda:InvokeFunction"
   function_name = module.lambda_processing_trigger.lambda_arn
   principal     = "s3.amazonaws.com"
-  source_arn    = "arn:aws:s3:::eu-central1-dev-uk-snowfall-processed-295446674139"
+  source_arn    = "arn:aws:s3:::eu-central1-dev-uk-snowfall2-processed-295446674139"
 }
 
 module "cloudwatch_lambda_trigger" {
@@ -76,7 +76,7 @@ module "glue" {
   database_name = "uk_snowfall-meraki_dev"
   table_prefix  = "uk_snowfall-device_info"
   s3_path       = "s3://snowfall-dev-meraki-processed/meraki/"
-  s3_bucket_arn = "arn:aws:s3:::eu-central1-dev-uk-snowfall-processed-295446674139"
+  s3_bucket_arn = "arn:aws:s3:::eu-central1-dev-uk-snowfall2-processed-295446674139"
   aws_region    = var.AWS_REGION
   account_id    = var.account_number
   resource_tags = merge(var.resource_tags, { Name = "meraki-glue-crawler" })
