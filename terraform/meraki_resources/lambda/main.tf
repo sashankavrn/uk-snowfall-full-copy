@@ -9,13 +9,13 @@
 
 resource "aws_lambda_function" "uk_snowfall_landing_function" {
     filename = "${path.module}/scripts/zips/${var.lambda_filename}.zip"
-    function_name = "uk-snowfall-landing-trigger-${var.lambda_name}-${var.environment}"
+    function_name = "uk-snowfall2-${var.lambda_name}-${var.environment}"
     role = var.role_assumed_arn
     handler = "lambda_function.lambda_handler"
     runtime = "python3.12"
     memory_size = 500
     timeout = 70
-    description = "Move files from snowfall landing bucket into the raw bucket"
+    description = "Move files from snowfall landing bucket"
     source_code_hash = filebase64sha256("${path.module}/scripts/zips/${var.lambda_filename}.zip")
     tags = var.resource_tags
     layers = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
