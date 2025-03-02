@@ -9,7 +9,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 def get_secret():
     """Retrieve API key from AWS Secrets Manager."""
     secret_name = "uk-snowfall"  # Correct Secret Name
-    region_name = "eu-central-1"  # AWS region
+    region_name = "eu-central-1"  # AWS regionnnnn
 
     # Create a Secrets Manager client
     session = boto3.session.Session()

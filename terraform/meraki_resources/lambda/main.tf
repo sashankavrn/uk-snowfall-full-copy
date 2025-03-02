@@ -16,7 +16,7 @@ resource "aws_lambda_function" "uk_snowfall_landing_function" {
     memory_size = 500
     timeout = 70
     description = "Move files from snowfall landing bucket into the raw bucket"
-    source_code_hash = filebase64sha256("${path.module}/scripts/zips/${var.lambda_filename}")
+    source_code_hash = filebase64sha256("${path.module}/scripts/zips/${var.lambda_filename}.zip")
     tags = var.resource_tags
     layers = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
     environment {
