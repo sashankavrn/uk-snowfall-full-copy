@@ -78,19 +78,19 @@ jobs:
           role-session-name: GitHubActions
           web-identity-token-file: ${{ steps.oidc-token.outputs.token }}
 
-      - name: Prepare Lambda ZIPs
-        run: |
-            sudo apt update && sudo apt install zip -y
-            cd meraki_resources/lambda/scripts/python/Snowfall_Get_Device_Info_From_Meraki/
-            pip install boto3 requests -t .
-            zip -r Snowfall_Get_Device_Info_From_Meraki.zip .
-            mv Snowfall_Get_Device_Info_From_Meraki.zip ../../zips/Snowfall_Get_Device_Info_From_Meraki.zip
-            cd ../Snowfall_Process_Meraki_Data/
-            pip install boto3 requests -t .
-            zip -r Snowfall_Process_Meraki_Data.zip .
-            mv Snowfall_Process_Meraki_Data.zip ../../zips/Snowfall_Process_Meraki_Data.zip
-            cd ../../zips
-            ls
+      # - name: Prepare Lambda ZIPs
+      #   run: |
+      #       sudo apt update && sudo apt install zip -y
+      #       cd meraki_resources/lambda/scripts/python/Snowfall_Get_Device_Info_From_Meraki/
+      #       pip install boto3 requests -t .
+      #       zip -r Snowfall_Get_Device_Info_From_Meraki.zip .
+      #       mv Snowfall_Get_Device_Info_From_Meraki.zip ../../zips/Snowfall_Get_Device_Info_From_Meraki.zip
+      #       cd ../Snowfall_Process_Meraki_Data/
+      #       pip install boto3 requests -t .
+      #       zip -r Snowfall_Process_Meraki_Data.zip .
+      #       mv Snowfall_Process_Meraki_Data.zip ../../zips/Snowfall_Process_Meraki_Data.zip
+      #       cd ../../zips
+      #       ls
       
 
       - name: Setup Terraform
