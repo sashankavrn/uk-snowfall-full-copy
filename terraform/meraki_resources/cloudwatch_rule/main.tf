@@ -26,17 +26,12 @@ resource "aws_cloudwatch_event_rule" "meraki_event_rule" {
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
+  "detail-type": ["Object Created"],
   "detail": {
     "bucket": {
       "name": ["snowfall-dev-meraki-landing"]
-    },
-    "object": {
-      "key": [{
-        "prefix": "meraki/"
-      }]
     }
-  },
-  "detail-type": ["Object Created"]
+  }
 }
 EOF
 }
