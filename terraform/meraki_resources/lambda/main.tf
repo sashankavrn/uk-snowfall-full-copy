@@ -15,13 +15,14 @@ resource "aws_lambda_function" "uk_snowfall_landing_function" {
     runtime = "python3.12"
     memory_size = 500
     timeout = 70
-    description = "Move files from snowfall landing bucket"
+    description = "snowfall2 lambda"
     source_code_hash = filebase64sha256("${path.module}/scripts/zips/${var.lambda_filename}.zip")
     tags = var.resource_tags
     layers = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
     environment {
       variables = {
-        TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
+        TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall2-landing-${var.account_number}"
+        SOURCE_BUCKET =  "eu-central1-${var.environment}-uk-snowfall2-processed-${var.account_number}"
       }
     }
 }
