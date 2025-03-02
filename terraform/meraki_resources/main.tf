@@ -34,7 +34,7 @@ provider "aws" {
 # Triggering the Lambda Module
 module "lambda_landing_trigger" {
   source             = "./lambda"
-  lambda_filename    = "Snowfall_Get_Device_Info_From_Meraki.zip"
+  lambda_filename    = "Snowfall_Get_Device_Info_From_Meraki"
   lambda_name        = "uk-snowfall-meraki-Device-Info"
   environment        = var.environment
   resource_tags      = merge(var.resource_tags, { Environment = var.environment })
@@ -47,7 +47,7 @@ module "lambda_landing_trigger" {
 module "lambda_processing_trigger" {
   source             = "./lambda"
   environment        = var.environment
-  lambda_filename    = "Snowfall_Process_Meraki_Data.zip"
+  lambda_filename    = "Snowfall_Process_Meraki_Data"
   lambda_name        = "uk-snowfall-meraki-process-Info"
   resource_tags      = merge(var.resource_tags, { Environment = var.environment })
   role_assumed_arn   = var.role_assumed_arn

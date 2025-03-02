@@ -1,14 +1,14 @@
 # Zipping the lambda files
 
-# data "archive_file" "landing_trigger_script" {
-#  type        = "zip"
-#  source_dir = "${path.module}/scripts/python/landing_trigger/"
-#  output_path = "${path.module}/scripts/zips/landing-trigger.zip"
-# }
+data "archive_file" "landing_trigger_script" {
+ type        = "zip"
+ source_dir = "${path.module}/scripts/python/${var.lambda_filename}/"
+ output_path = "${path.module}/scripts/zips/${var.lambda_filename}.zip"
+}
 
 
 resource "aws_lambda_function" "uk_snowfall_landing_function" {
-    filename = "${path.module}/scripts/zips/${var.lambda_filename}"
+    filename = data.archive_file.landing_trigger_script.output_path
     function_name = "uk-snowfall-landing-trigger-${var.lambda_name}-${var.environment}"
     role = var.role_assumed_arn
     handler = "lambda_function.lambda_handler"
