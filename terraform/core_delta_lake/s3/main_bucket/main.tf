@@ -114,6 +114,7 @@ resource "aws_s3_object" "raw_folder" {
       location_hierarchy        = "ods/location_hierarchy/"
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
       restaurant_config         = "restaurant_config/"
+      cisco_meraki        = "meraki/"
     }
 }
 
@@ -170,6 +171,7 @@ resource "aws_s3_object" "preparation_folder" {
       location_trading_hrs      = "ods/trading_hours/"
       location_hierarchy        = "ods/location_hierarchy/"
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
+      cisco_meraki        = "meraki/"
     }
 }
 
@@ -239,6 +241,7 @@ resource "aws_s3_object" "processed_folder" {
       location_trading_hrs      = "ods/trading_hours/"
       location_hierarchy        = "ods/location_hierarchy/"
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
+      cisco_meraki        = "meraki/"
     }
 }
 
