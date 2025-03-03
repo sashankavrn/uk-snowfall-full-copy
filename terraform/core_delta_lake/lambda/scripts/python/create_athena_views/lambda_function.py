@@ -5,7 +5,8 @@ import logging
 # Athena settings
 athena_client = boto3.client('athena')
 database = os.environ['ATHENA_DATABASE']
-output_location = os.environ['ATHENA_OUTPUT_LOCATION']
+athena_output_location = os.environ['ATHENA_OUTPUT_LOCATION']
+output_location = f"s3://{athena_output_location}"
 folder_name = 'athena_views/'  # Local folder path within Lambda
 
 # Configure logging
