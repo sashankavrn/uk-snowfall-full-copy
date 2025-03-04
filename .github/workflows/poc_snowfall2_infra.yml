@@ -3,8 +3,7 @@ name: Meraki Resources Deployment
 on:
   push:
     branches:
-      - dev
-      - main
+      - poc
     tags:
       - v*
 
