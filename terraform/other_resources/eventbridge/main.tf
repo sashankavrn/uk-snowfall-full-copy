@@ -419,7 +419,7 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "meraki_rule" {
-  rule      = aws_cloudwatch_event_rule.change_request_event_rule.name
+  rule      = aws_cloudwatch_event_rule.meraki_event_rule.name
   arn       = local.workflow_trigger_arns["meraki"]
   role_arn = var.role_assumed_arn
 
