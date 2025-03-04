@@ -96,7 +96,7 @@ resource "aws_lambda_function" "uk_snowfall_meraki_function" {
     }
 }
 
-## Adding permissions for lambda
+## Adding permissions for lambda fetch data 
 resource "aws_lambda_permission" "allow_landing_meraki_bucket" {
   statement_id  = "AllowExecutionFromS3Bucket"
   action        = "lambda:InvokeFunction"
@@ -104,4 +104,28 @@ resource "aws_lambda_permission" "allow_landing_meraki_bucket" {
   principal     = "s3.amazonaws.com"
   source_arn    = var.landing_bucket_arn
   depends_on = [ var.landing_bucket_arn,aws_lambda_function.uk_snowfall_meraki_function ]
+}
+
+
+## C EventBridge Rule to trigger Lambda 
+resource "aws_cloudwatch_event_rule" "meraki_lambda_schedule" {
+  name                = "uk-snowfall-meraki-fetch-data-schedule"
+  description         = "Triggers the Lambda function every minute"
+  schedule_expression = "rate(1 minute)" #testing 
+}
+
+## Add Lambda as the Target of the Event Rule
+resource "aws_cloudwatch_event_target" "invoke_meraki_lambda" {
+  rule      = aws_cloudwatch_event_rule.meraki_lambda_schedule.name
+  target_id = "meraki-fetch-data-target"
+  arn       = aws_lambda_function.uk_snowfall_meraki_function.arn
+}
+
+## Grant EventBridge Permission to Invoke the Lambda
+resource "aws_lambda_permission" "allow_eventbridge_invoke" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_meraki_function.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.meraki_lambda_schedule.arn
 }
