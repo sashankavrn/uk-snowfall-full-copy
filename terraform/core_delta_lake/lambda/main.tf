@@ -67,8 +67,8 @@ resource "aws_lambda_function" "uk_snowfall_create_athena_views" {
 # ###########################################MERIKA FETCH LAMBDA#############################################
 
 resource "aws_lambda_function" "uk_snowfall_meraki_function" {
-    filename = "${path.module}/scripts/zips/meraki-data-fetch.zip"
-    function_name = "uk-snowfall-meraki-data-fetch-${var.environment}"
+    filename = "${path.module}/scripts/zips/meraki-fetch-data.zip"
+    function_name = "uk-snowfall-meraki-fetch-data-${var.environment}"
     role = var.role_assumed_arn
     handler = "lambda_function.lambda_handler"
     runtime = "python3.12"
