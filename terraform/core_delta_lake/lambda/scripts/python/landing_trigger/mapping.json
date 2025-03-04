@@ -55,6 +55,11 @@
         {
             "fileName": "restaurant_config",
             "destinationPath": "restaurant_config"
+        },
+        {
+            "fileName": "meraki",
+            "destinationPath": "meraki"
         }
+        
     ]
 }

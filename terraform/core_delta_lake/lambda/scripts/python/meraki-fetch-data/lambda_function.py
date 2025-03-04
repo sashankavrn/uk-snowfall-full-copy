@@ -4,15 +4,13 @@ import json
 import boto3
 import time
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from botocore.exceptions import BotoCoreError, ClientError
 
 def get_secret():
     """Retrieve API key from AWS Secrets Manager."""
-    secret_name = "uk-snowfall"  #secert name
-    region_name = "eu-central-1"  # AWS region
-
-    # Create a Secrets Manager client
+    secret_name = "uk-snowfall"
+    region_name = "eu-central-1"
     session = boto3.session.Session()
     client = session.client(service_name='secretsmanager', region_name=region_name)
 
@@ -20,12 +18,17 @@ def get_secret():
         response = client.get_secret_value(SecretId=secret_name)
         if 'SecretString' in response:
             secret = json.loads(response['SecretString'])
-            return f"Bearer {secret['uk-snowfall-meraki-api-key']}"  # Extract correct key
+            return f"Bearer {secret['uk-snowfall-meraki-api-key']}"
         else:
             raise ValueError("SecretString not found in response")
     except (BotoCoreError, ClientError) as e:
         print(f"[ERROR] Failed to retrieve API key: {e}")
         return None
+
+def extract_restaurant_number(name):
+    """Extract restaurant number from device name."""
+    match = re.search(r'#(\d+)', name)
+    return int(match.group(1)) if match else None
 
 def merakiAPI(authToken, nextToken=None, retries=3):
     """Fetch Meraki devices using API with pagination."""
@@ -40,9 +43,8 @@ def merakiAPI(authToken, nextToken=None, retries=3):
         try:
             print(f"[INFO] Attempt {attempt+1}: Fetching Meraki devices...")
             response = requests.get(url, headers=headers, params=params, timeout=10)
-            response.raise_for_status()  # Raise HTTP error if response is not 2xx
+            response.raise_for_status()
 
-            # Extract nextToken from response headers
             nextToken = None
             links = response.headers.get('Link', '').split(', ')
             for link in links:
@@ -57,7 +59,7 @@ def merakiAPI(authToken, nextToken=None, retries=3):
         except requests.exceptions.RequestException as e:
             print(f"[ERROR] API request failed (Attempt {attempt+1}): {e}")
             if attempt < retries - 1:
-                time.sleep(2 ** attempt)  # Exponential backoff
+                time.sleep(2 ** attempt)
             else:
                 return None, None
 
@@ -70,6 +72,7 @@ def lambda_handler(event, context):
 
     deviceList = []
     nextToken = None
+    sys_updated_timestamp = datetime.now(timezone.utc).isoformat()
 
     while True:
         devices, nextToken = merakiAPI(authToken, nextToken)
@@ -78,37 +81,44 @@ def lambda_handler(event, context):
             break
 
         for device in devices:
-            deviceList.append({
-                "device_name": device.get("name"),
-                "model": device.get("model"),
+            device_data = {
+                "name": device.get("name"),
                 "serial": device.get("serial"),
+                "mac": device.get("mac"),
+                "networkId": device.get("networkId"),
+                "productType": device.get("productType"),
+                "model": device.get("model"),
+                "address": device.get("address"),
+                "lat": device.get("lat"),
+                "lng": device.get("lng"),
+                "notes": device.get("notes"),
+                "tags": device.get("tags"),
+                "wan1Ip": device.get("wan1Ip"),
+                "wan2Ip": device.get("wan2Ip"),
+                "configurationUpdatedAt": device.get("configurationUpdatedAt"),
                 "firmware": device.get("firmware"),
-            })
+                "url": device.get("url"),
+                "details": device.get("details"),
+                "restaurant_number": extract_restaurant_number(device.get("name", "")),
+                "sys_updated_timestamp": sys_updated_timestamp
+            }
+            deviceList.append(device_data)
 
-        # Exit loop if there's no nextToken (last page reached)
         if not nextToken:
             print("[INFO] No more devices to fetch. Exiting loop.")
             break
 
-    # Convert the device list to JSON
     json_data = json.dumps(deviceList, indent=4)
-
-    # Define S3 file details
     current_time = datetime.now()
     filename = f"device_list_{current_time.strftime('%Y-%m-%d_%H-%M-%S')}.json"
-    bucket_name = os.environ.get('TARGET_BUCKET')  # Bucket Name
+    bucket_name = os.environ.get('TARGET_BUCKET')
     s3_key = f"meraki/{filename}"
 
-    # Upload JSON data to S3
     try:
         s3_client = boto3.client('s3')
         s3_client.put_object(Body=json_data, Bucket=bucket_name, Key=s3_key)
         print(f"[SUCCESS] Data uploaded to s3://{bucket_name}/{s3_key}")
-        return {"statusCode": 200, "body": f"Data uploaded to {s3_key}"}  
-
+        return {"statusCode": 200, "body": f"Data uploaded to {s3_key}"}
     except ClientError as e:
-        error_code = e.response['Error']['Code']
         print(f"[ERROR] Failed to upload data to S3: {e}")
-        if error_code == "AccessDenied":
-            print("[ERROR] Ensure the Lambda role has PutObject permissions for the S3 bucket.")
-        return {"statusCode": 500, "body": "S3 upload failed"}  
+        return {"statusCode": 500, "body": "S3 upload failed"}
