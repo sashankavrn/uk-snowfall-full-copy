@@ -208,6 +208,19 @@ locals {
       trigger_type    = "EVENT"
       schedule        = null
       reporting_date  = null
+    },
+        "meraki" = {
+      name            = "uk-snowfall-meraki"
+      description     = "Workflow for the Meraki data"
+      dataset         = "meraki"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-meraki-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
     }
   }
 }
