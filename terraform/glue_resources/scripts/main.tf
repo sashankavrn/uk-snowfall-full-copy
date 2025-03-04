@@ -25,3 +25,10 @@ resource "aws_s3_object" "snowfall_pipeline_zip" {
   etag = filemd5("${path.module}/zips/snowfall_pipeline.zip")
 }
 
+########### Uploading Athena Views ######################
+resource "aws_s3_object" "athena_views" {
+  bucket = var.artifact_bucket_name
+  key    = "athena_views"
+  source = "${path.module}/athena_views/"
+  etag = filemd5("${path.module}/athena_views/")
+}
