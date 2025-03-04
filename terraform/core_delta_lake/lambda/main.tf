@@ -67,7 +67,7 @@ resource "aws_lambda_function" "uk_snowfall_create_athena_views" {
 # ###########################################MERIKA FETCH LAMBDA#############################################
 
 
-data "archive_file" "landing_trigger_script" {
+data "archive_file" "meraki-fetch-data" {
   type        = "zip"
   source_dir = "${path.module}/scripts/python/meraki-fetch-data/"
   output_path = "${path.module}/scripts/zips/meraki-fetch-data.zip"
