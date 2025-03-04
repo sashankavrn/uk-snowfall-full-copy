@@ -75,7 +75,7 @@ resource "aws_lambda_function" "uk_snowfall_meraki_function" {
     memory_size = 500
     timeout = 120
     description = "fetch data from meraki api and update to landing bucket"
-    source_code_hash = filebase64sha256("${path.module}/scripts/zips/meraki_fetch_data.zip")
+    source_code_hash = filebase64sha256("${path.module}/scripts/zips/meraki-fetch-data.zip")
     tags = var.resource_tags
     layers = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
     environment {
