@@ -18,7 +18,11 @@ resource "aws_lambda_function" "uk_snowfall_landing_function" {
     description = "Move files from snowfall landing bucket into the raw bucket"
     source_code_hash = filebase64sha256("${path.module}/scripts/zips/landing-trigger.zip")
     tags = var.resource_tags
-    layers = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
+     layers = [
+    "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1", # AWS SDK for Pandas
+    "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:4"   # 
+  ]
+
     environment {
       variables = {
         TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
