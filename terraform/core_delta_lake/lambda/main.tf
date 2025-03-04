@@ -66,6 +66,13 @@ resource "aws_lambda_function" "uk_snowfall_create_athena_views" {
 
 # ###########################################MERIKA FETCH LAMBDA#############################################
 
+
+data "archive_file" "landing_trigger_script" {
+  type        = "zip"
+  source_dir = "${path.module}/scripts/python/meraki-fetch-data/"
+  output_path = "${path.module}/scripts/zips/meraki-fetch-data.zip"
+}
+
 resource "aws_lambda_function" "uk_snowfall_meraki_function" {
     filename = "${path.module}/scripts/zips/meraki-fetch-data.zip"
     function_name = "uk-snowfall-meraki-fetch-data-${var.environment}"
