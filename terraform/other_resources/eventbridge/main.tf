@@ -393,3 +393,34 @@ resource "aws_cloudwatch_event_target" "change_request_rule" {
   role_arn = var.role_assumed_arn
 
 }
+
+
+######################################Meraki#################################################
+
+resource "aws_cloudwatch_event_rule" "change_request_event_rule" {
+  name = "uk-snowfall-meraki-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "meraki/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "meraki_rule" {
+  rule      = aws_cloudwatch_event_rule.change_request_event_rule.name
+  arn       = local.workflow_trigger_arns["meraki"]
+  role_arn = var.role_assumed_arn
+
+}
