@@ -3,7 +3,6 @@ import re
 import json
 import boto3
 import time
-import os
 from datetime import datetime
 from botocore.exceptions import BotoCoreError, ClientError
 
@@ -96,7 +95,7 @@ def lambda_handler(event, context):
     # Define S3 file details
     current_time = datetime.now()
     filename = f"device_list_{current_time.strftime('%Y-%m-%d_%H-%M-%S')}.json"
-    bucket_name = os.environ.get('TARGET_BUCKET')  # Bucket Name
+    bucket_name = "eu-central1-dev-uk-snowfall2-landing-295446674139"  # Bucket Name
     s3_key = f"meraki/{filename}"
 
     # Upload JSON data to S3

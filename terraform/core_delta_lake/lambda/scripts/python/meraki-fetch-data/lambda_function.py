@@ -9,8 +9,8 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 def get_secret():
     """Retrieve API key from AWS Secrets Manager."""
-    secret_name = "uk-snowfall"  # Correct Secret Name
-    region_name = "eu-central-1"  # AWS regionnnnn
+    secret_name = "uk-snowfall"  #secert name
+    region_name = "eu-central-1"  # AWS region
 
     # Create a Secrets Manager client
     session = boto3.session.Session()
@@ -104,11 +104,11 @@ def lambda_handler(event, context):
         s3_client = boto3.client('s3')
         s3_client.put_object(Body=json_data, Bucket=bucket_name, Key=s3_key)
         print(f"[SUCCESS] Data uploaded to s3://{bucket_name}/{s3_key}")
-        return {"statusCode": 200, "body": f"Data uploaded to {s3_key}"}  # ✅ Fixed return statement
+        return {"statusCode": 200, "body": f"Data uploaded to {s3_key}"}  
 
     except ClientError as e:
         error_code = e.response['Error']['Code']
         print(f"[ERROR] Failed to upload data to S3: {e}")
         if error_code == "AccessDenied":
             print("[ERROR] Ensure the Lambda role has PutObject permissions for the S3 bucket.")
-        return {"statusCode": 500, "body": "S3 upload failed"}  # ✅ Fixed return statement
+        return {"statusCode": 500, "body": "S3 upload failed"}  
