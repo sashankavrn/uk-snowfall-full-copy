@@ -136,6 +136,16 @@ jobs:
           role-session-name: GitHubActions
           web-identity-token-file: ${{ steps.oidc-token.outputs.token }}
 
+      - name: Prepare Lambda ZIPs
+        run: |
+            sudo apt update && sudo apt install zip -y
+            cd terraform/core_delta_lake/lambda/scripts/python/meraki-fetch-data/
+            pip install boto3 requests -t .
+            zip -r meraki_fetch_data.zip .
+            mv meraki_fetch_data.zip ../../zips/meraki-fetch-data.zip
+            cd ../../zips
+            ls
+
       - name: Running the Glue Resources Stage
         run: |
           cd terraform/glue_resources
