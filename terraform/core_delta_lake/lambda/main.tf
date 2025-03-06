@@ -111,8 +111,8 @@ resource "aws_lambda_permission" "allow_landing_meraki_bucket" {
 resource "aws_cloudwatch_event_rule" "meraki_lambda_schedule" {
   name                = "uk-snowfall-meraki-fetch-data-schedule"
   description         = "Triggers the Lambda function every minute"
-  schedule_expression = "rate(1 hour)"  # Updated to 1 hour to testing  
-  #  schedule_expression = "cron(0 1 * * ? *)"  # Runs at 1 AM UTC every day
+  # schedule_expression = "rate(1 hour)"  # Updated to 1 hour to testing  
+  schedule_expression = "cron(0 1 * * ? *)"  # Runs at 1 AM UTC every day
 }
 
 ## Add Lambda as the Target of the Event Rule
