@@ -27,7 +27,7 @@ def get_secret():
 
 def extract_restaurant_number(name):
     """Extract restaurant number from device name."""
-    match = re.search(r'#(\d+)', name)
+    match = re.search(r'-(\d+)', name)
     return int(match.group(1)) if match else None
 
 def merakiAPI(authToken, nextToken=None, retries=3):
