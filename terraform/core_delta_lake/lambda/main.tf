@@ -37,6 +37,7 @@ resource "aws_lambda_permission" "allow_landing_bucket" {
   depends_on = [ var.landing_bucket_arn,aws_lambda_function.uk_snowfall_landing_function ]
 }
 
+#Lambda for creating athena views
 data "archive_file" "athena_views_script" {
   type        = "zip"
   source_dir = "${path.module}/scripts/python/create_athena_views/"
@@ -74,6 +75,26 @@ resource "aws_lambda_permission" "allow_artifact_bucket" {
   depends_on = [ var.artifact_bucket_arn,aws_lambda_function.uk_snowfall_create_athena_views ]
 }
 
+data "aws_s3_bucket" "artifact_bucket" {
+  bucket = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+  }
+
+resource "aws_s3_bucket_notification" "athena_views_trigger_notification" {
+  bucket = data.aws_s3_bucket.artifact_bucket.id
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.uk_snowfall_create_athena_views.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "athena_views/"
+    id                  = "Athena view creation"
+  }
+
+  depends_on = [
+    data.aws_s3_bucket.artifact_bucket,
+    aws_lambda_permission.allow_artifact_bucket,
+    aws_lambda_function.uk_snowfall_create_athena_views
+  ]
+}
 
 # ###########################################MERIKA FETCH LAMBDA#############################################
 
@@ -116,7 +137,6 @@ resource "aws_lambda_permission" "allow_landing_meraki_bucket" {
   source_arn    = var.landing_bucket_arn
   depends_on = [ var.landing_bucket_arn,aws_lambda_function.uk_snowfall_meraki_function ]
 }
-
 
 ## C EventBridge Rule to trigger Lambda 
 resource "aws_cloudwatch_event_rule" "meraki_lambda_schedule" {
