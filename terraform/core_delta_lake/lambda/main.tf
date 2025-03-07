@@ -59,8 +59,19 @@ resource "aws_lambda_function" "uk_snowfall_create_athena_views" {
     variables = {
       ATHENA_OUTPUT_LOCATION = "eu-central1-${var.environment}-uk-snowfall-athena-${var.account_number}"
       ATHENA_DATABASE = "uk_snowfall_semantic"
+      S3_BUCKET_NAME = "eu-central1-${var.environment}-uk-snowfall-artifact-${var.account_number}"
     }
   }
+}
+
+## Adding permissions for lambda
+resource "aws_lambda_permission" "allow_artifact_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_create_athena_views.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.artifact_bucket_arn
+  depends_on = [ var.artifact_bucket_arn,aws_lambda_function.uk_snowfall_create_athena_views ]
 }
 
 
