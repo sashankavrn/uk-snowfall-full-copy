@@ -50,7 +50,8 @@ module "lambda_module" {
   role_assumed_arn   = var.role_assumed_arn
   landing_bucket_arn = module.s3_module_main.landing_bucket_arn
   sns_topic_arn      = module.sns_module.snowfall_topic_arn
-  account_number = var.account_number
+  account_number     = var.account_number
+  artifact_bucket_arn = module.s3_module_main.artifact_bucket_bucket_arn
 }
 
 # Triggering the SNS Module. Will have to change to fix endpoint as email
