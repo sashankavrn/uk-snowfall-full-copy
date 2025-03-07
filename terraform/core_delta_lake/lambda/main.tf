@@ -71,7 +71,7 @@ resource "aws_lambda_permission" "allow_artifact_bucket" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.uk_snowfall_create_athena_views.arn
   principal     = "s3.amazonaws.com"
-  source_arn    = var.artifact_bucket_arn
+  source_arn    = data.aws_s3_bucket.artifact_bucket.arn
   depends_on = [ var.artifact_bucket_arn,aws_lambda_function.uk_snowfall_create_athena_views ]
 }
 
