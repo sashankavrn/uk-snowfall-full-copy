@@ -76,7 +76,7 @@ resource "aws_lambda_permission" "allow_artifact_bucket" {
 }
 
 data "aws_s3_bucket" "artifact_bucket" {
-  bucket = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+  bucket = "eu-central1-${var.environment}-uk-snowfall-artifact-${var.account_number}"
   }
 
 resource "aws_s3_bucket_notification" "athena_views_trigger_notification" {
