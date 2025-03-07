@@ -211,7 +211,7 @@ resource "aws_lambda_permission" "allow_landing_newrelic_bucket" {
 resource "aws_cloudwatch_event_rule" "newrelic_lambda_schedule" {
   name                = "uk-snowfall-newrelic-fetch-device-schedule"
   description         = "Triggers the Lambda function every hour"
-  schedule_expression = "rate(1 minute)"  # Runs every minute
+  schedule_expression = "rate(1 minute)"  # Runs every minute for testing 
   # schedule_expression = "rate(1 hour)"  # Runs every hour
 }
 
