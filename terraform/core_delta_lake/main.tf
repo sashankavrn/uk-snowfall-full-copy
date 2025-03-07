@@ -40,8 +40,6 @@ module "s3_module_main" {
   role_assumed_arn        = var.role_assumed_arn
   lambda_landing_func_arn = module.lambda_module.landing_trigger_arn
   lambda_permission       = module.lambda_module.lambda_s3_permission
-  lambda_athena_func_arn = module.lambda_module.athena_trigger_arn
-  lambda_permission_athena = module.lambda_module.lambda_s3_permission_athena
 }
 
 # Triggering the Lambda Module
