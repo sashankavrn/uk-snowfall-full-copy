@@ -37,6 +37,7 @@ resource "aws_lambda_permission" "allow_landing_bucket" {
   depends_on = [ var.landing_bucket_arn,aws_lambda_function.uk_snowfall_landing_function ]
 }
 
+#Lambda for creating athena views
 data "archive_file" "athena_views_script" {
   type        = "zip"
   source_dir = "${path.module}/scripts/python/create_athena_views/"
@@ -135,23 +136,6 @@ resource "aws_lambda_permission" "allow_landing_meraki_bucket" {
   principal     = "s3.amazonaws.com"
   source_arn    = var.landing_bucket_arn
   depends_on = [ var.landing_bucket_arn,aws_lambda_function.uk_snowfall_meraki_function ]
-}
-
-resource "aws_s3_bucket_notification" "athena_views_trigger_notification" {
-  bucket = aws_s3_bucket.artifact_bucket.id
-
-  lambda_function {
-    lambda_function_arn = aws_lambda_function.uk_snowfall_create_athena_views.arn
-    events              = ["s3:ObjectCreated:*"]
-    filter_prefix       = "athena_views/"
-    id                  = "Athena view creation"
-  }
-
-  depends_on = [
-    aws_s3_bucket.artifact_bucket,
-    aws_lambda_permission.allow_artifact_bucket,
-    aws_lambda_function.uk_snowfall_create_athena_views
-  ]
 }
 
 ## C EventBridge Rule to trigger Lambda 
