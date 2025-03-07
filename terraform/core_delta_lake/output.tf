@@ -66,3 +66,6 @@ output "landing_trigger_arn" {
   value = module.lambda_module.landing_trigger_arn
 }
 
+output "athena_trigger_arn" {
+  value = module.lambda_module.athena_trigger_arn
+}

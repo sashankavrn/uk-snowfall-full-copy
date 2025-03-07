@@ -8,7 +8,7 @@ output "lambda_s3_permission" {
   description = "The permission for lambda to accept s3 events"
 }
 
-output "create_athena_views_arn" {
+output "athena_trigger_arn" {
   value = aws_lambda_function.uk_snowfall_create_athena_views.arn
   description = "Create Athena Views ARN"
 }
