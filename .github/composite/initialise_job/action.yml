@@ -1,0 +1,32 @@
+name: initialse_job
+description: 'Runs initial setup on a runner'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Install Python 3
+      run: sudo apt-get update && sudo apt-get install -y python3
+      shell: bash
+
+    - name: Install boto3
+      run: python3 -m pip install boto3
+      shell: bash
+
+    - name: Validate Tag Origin
+      if: startsWith(github.ref, 'refs/tags/v')
+      run: |
+          git fetch --all
+          BRANCH=$(git branch -r --contains ${GITHUB_SHA} | grep 'origin/main' || true)
+          if [ -z "$BRANCH" ]; then
+            echo "This tag is not based on main. Aborting deployment."
+            exit 1
+          fi
+      shell: bash
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 1.7.4
