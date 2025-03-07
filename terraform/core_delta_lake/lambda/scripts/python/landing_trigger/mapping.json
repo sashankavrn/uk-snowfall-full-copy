@@ -60,6 +60,10 @@
             "fileName": "meraki",
             "destinationPath": "meraki"
         }
+        {
+            "fileName": "newrelic_device_rmp",
+            "destinationPath": "newrelic_device_rmp"
+        }
         
     ]
 }
