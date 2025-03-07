@@ -161,3 +161,72 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.meraki_lambda_schedule.arn
 }
+
+##########################################################################NEWRELIC-DEVICE-INFO-FETCH###################################################
+
+# Archive the newrelic-device-info Python script
+data "archive_file" "newrelic_fetch_data" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/newrelic-fetch-device/"
+  output_path = "${path.module}/scripts/zips/newrelic-fetch-device.zip"
+}
+
+# Lambda Function for fetching New Relic device info
+resource "aws_lambda_function" "uk_snowfall_newrelic_function" {
+    filename         = "${path.module}/scripts/zips/newrelic-fetch-device.zip"
+    function_name    = "uk-snowfall-newrelic-fetch-device-${var.environment}"
+    role            = var.role_assumed_arn
+    handler         = "lambda_function.lambda_handler"
+    runtime         = "python3.12"
+    memory_size     = 500
+    timeout         = 120
+    description     = "Fetch data from New Relic API and update to landing bucket"
+    source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-fetch-device.zip")
+    tags            = var.resource_tags
+    layers = [
+      "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1", # AWS SDK for Pandas
+      "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:4"   # Requests library
+    ]
+    environment {
+      variables = {
+        TARGET_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+        SNS_TOPIC_ARN   = var.sns_topic_arn
+        # NEWRELIC_API_KEY = var.newrelic_api_key  # New Relic API Key
+        # NEWRELIC_ACCOUNT_ID = var.newrelic_account_id  # New Relic Account ID
+      }
+    }
+}
+
+# Adding permissions for lambda fetch data 
+resource "aws_lambda_permission" "allow_landing_newrelic_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_newrelic_function.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.landing_bucket_arn
+  depends_on    = [var.landing_bucket_arn, aws_lambda_function.uk_snowfall_newrelic_function]
+}
+
+# CloudWatch Event Rule to trigger Lambda
+resource "aws_cloudwatch_event_rule" "newrelic_lambda_schedule" {
+  name                = "uk-snowfall-newrelic-fetch-device-schedule"
+  description         = "Triggers the Lambda function every hour"
+  schedule_expression = "rate(1 minute)"  # Runs every minute
+  # schedule_expression = "rate(1 hour)"  # Runs every hour
+}
+
+# Add Lambda as the Target of the Event Rule
+resource "aws_cloudwatch_event_target" "invoke_newrelic_lambda" {
+  rule      = aws_cloudwatch_event_rule.newrelic_lambda_schedule.name
+  target_id = "newrelic-fetch-device-target"
+  arn       = aws_lambda_function.uk_snowfall_newrelic_function.arn
+}
+
+# Grant EventBridge Permission to Invoke the Lambda
+resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_newrelic_function.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.newrelic_lambda_schedule.arn
+}
