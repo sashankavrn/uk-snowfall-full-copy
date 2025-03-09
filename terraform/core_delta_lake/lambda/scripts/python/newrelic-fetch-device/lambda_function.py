@@ -8,8 +8,8 @@ from datetime import datetime
 SECRET_NAME = "uk-snowfall"
 REGION_NAME = "eu-central-1"
 
-# Amazon S3 Environment Variable
-S3_BUCKET = os.environ.get("TARGET_BUCKET")  # Fetch from environment variables
+# Amazon S3 Details (from environment variable)
+S3_BUCKET = os.environ.get("TARGET_BUCKET")
 S3_PREFIX = "newrelic_rmp_device/"
 
 # Function to Fetch Secrets from AWS Secrets Manager
@@ -26,10 +26,13 @@ def get_secret():
         print(f"[ERROR] Failed to retrieve secrets: {e}")
         return None, None
 
-# Generate NRQL Queries in 100-interval hostname batches
+# Generate NRQL Queries for Both UK and IE Hostnames
 def generate_nrql_queries(account_id):
-    """Generate NRQL queries with hostname intervals of 100."""
+    """Generate NRQL queries with hostname intervals of 100 for UK and IE."""
     queries = []
+    hostname_ranges = []
+
+    # UK Hostname Ranges (Starts from UK00000)
     for start in range(0, 28000, 100):
         end = start + 99
         query = f"""
@@ -47,7 +50,29 @@ def generate_nrql_queries(account_id):
         }}
         """
         queries.append(query)
-    return queries
+        hostname_ranges.append(f"UK{start:05d} - UK{end:05d}")
+
+    # IE Hostname Ranges (Now limited to IE07000 - IE08999)
+    for start in range(7000, 9000, 100):  # Only stores between IE07000 and IE08999
+        end = start + 99
+        query = f"""
+        {{
+          actor {{
+            account(id: {account_id}) {{
+              nrql(
+                query: "SELECT latest(instanceType), latest(kernelVersion), latest(linuxDistribution), latest(operatingSystem), latest(windowsFamily), latest(windowsPlatform), latest(windowsVersion) FROM SystemSample WHERE hostname >= 'IE{start:05d}' AND hostname <= 'IE{end:05d}' FACET hostname LIMIT MAX"
+                timeout: 60
+              ) {{
+                results
+              }}
+            }}
+          }}
+        }}
+        """
+        queries.append(query)
+        hostname_ranges.append(f"IE{start:05d} - IE{end:05d}")
+
+    return queries, hostname_ranges
 
 # Fetch Data from New Relic API
 def fetch_newrelic_data(api_key, account_id):
@@ -58,8 +83,12 @@ def fetch_newrelic_data(api_key, account_id):
     }
 
     all_results = []
+    missing_uk_ranges = []
+    missing_ie_ranges = []
 
-    for query in generate_nrql_queries(account_id):
+    queries, hostname_ranges = generate_nrql_queries(account_id)
+
+    for query, hostname_range in zip(queries, hostname_ranges):
         response = requests.post("https://api.newrelic.com/graphql", headers=headers, json={"query": query})
 
         if response.status_code == 200:
@@ -68,9 +97,20 @@ def fetch_newrelic_data(api_key, account_id):
             if results:
                 all_results.extend(results)
             else:
-                print(f"[INFO] No data returned for query range.")
+                # Sort missing hostname ranges by UK and IE
+                if hostname_range.startswith("UK"):
+                    missing_uk_ranges.append(hostname_range)
+                else:
+                    missing_ie_ranges.append(hostname_range)
         else:
             print(f"[ERROR] Failed to fetch data: {response.status_code}, {response.text}")
+
+    # Log missing data ranges separately (compact format)
+    if missing_uk_ranges:
+        print(f"[WARNING] No data returned for UK hostname ranges between {missing_uk_ranges[0]} and {missing_uk_ranges[-1]}.")
+
+    if missing_ie_ranges:
+        print(f"[WARNING] No data returned for IE hostname ranges between {missing_ie_ranges[0]} and {missing_ie_ranges[-1]}.")
 
     print(f"[INFO] Total records fetched: {len(all_results)}")
     return all_results
@@ -103,7 +143,7 @@ def save_to_s3(data):
 
     s3_client = boto3.client("s3")
     timestamp = datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')
-    s3_key = f"{S3_PREFIX}newrelic_device_info_{timestamp}.json"  # Timestamped file name
+    s3_key = f"{S3_PREFIX}newrelic_rmp_device_info_{timestamp}.json"  # Timestamped file name
 
     data_to_write = data if data else [{"message": "No data found from New Relic"}]
 
