@@ -178,8 +178,8 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_function" {
     role            = var.role_assumed_arn
     handler         = "lambda_function.lambda_handler"
     runtime         = "python3.12"
-    memory_size     = 500
-    timeout         = 120
+    memory_size     = 2048
+    timeout         = 720
     description     = "Fetch data from New Relic API and update to landing bucket"
     source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-fetch-device.zip")
     tags            = var.resource_tags
@@ -211,8 +211,8 @@ resource "aws_lambda_permission" "allow_landing_newrelic_bucket" {
 resource "aws_cloudwatch_event_rule" "newrelic_lambda_schedule" {
   name                = "uk-snowfall-newrelic-fetch-device-schedule"
   description         = "Triggers the Lambda function every hour"
-  schedule_expression = "rate(1 minute)"  # Runs every minute
-  # schedule_expression = "rate(1 hour)"  # Runs every hour
+  # schedule_expression = "rate(1 minute)"  # Runs every minute for testing 
+  schedule_expression = "rate(1 hour)"  # Runs every hour
 }
 
 # Add Lambda as the Target of the Event Rule
