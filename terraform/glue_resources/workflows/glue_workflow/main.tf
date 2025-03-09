@@ -221,6 +221,19 @@ locals {
       trigger_type    = "EVENT"
       schedule        = null
       reporting_date  = null
+    },
+        "meraki" = {
+      name            = "uk-snowfall-newrelic_rmp_device"
+      description     = "Workflow for the newrelic_rmp_device data"
+      dataset         = "newrelic_rmp_device"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-newrelic-rmp-device-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
     }
   }
 }
