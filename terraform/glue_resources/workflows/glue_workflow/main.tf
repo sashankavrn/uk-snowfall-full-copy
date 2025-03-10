@@ -209,7 +209,7 @@ locals {
       schedule        = null
       reporting_date  = null
     },
-        "meraki" = {
+    "meraki" = {
       name            = "uk-snowfall-meraki"
       description     = "Workflow for the Meraki data"
       dataset         = "meraki"
@@ -222,9 +222,9 @@ locals {
       schedule        = null
       reporting_date  = null
     },
-        "meraki" = {
-      name            = "uk-snowfall-newrelic_rmp_device"
-      description     = "Workflow for the newrelic_rmp_device data"
+    "newrelic_rmp_device" = {
+      name            = "uk-snowfall-newrelic-rmp-device"
+      description     = "Workflow for the newrelic rmp device data"
       dataset         = "newrelic_rmp_device"
       group           = "preparation"
       trigger_name    = "uk-snowfall-newrelic-rmp-device-trigger"
