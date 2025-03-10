@@ -2,7 +2,7 @@
     --"uk_snowfall_processed"."service_now_incident_daily"
     --"uk_snowfall_processed"."service_now_location"
     --"uk_snowfall_processed"."ods_location_hierarchy"
-
+-- modifying to see if the lambda triggers
 CREATE OR REPLACE VIEW "view_daily_restaurant_incident_hub" AS
 SELECT
   restaurant_id
