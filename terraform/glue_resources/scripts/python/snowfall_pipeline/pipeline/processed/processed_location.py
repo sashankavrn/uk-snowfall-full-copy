@@ -281,7 +281,9 @@ class ProcessedLocation(TransformBase):
         else:
 
             # Merge data to the Delta table
-            merge_columns = ['restaurant_id','restaurant_name','sys_created_timestamp']
+            merge_columns = ['restaurant_id','restaurant_name']
+            self.logger.info("Deleting duplicates before merging")
+            df = df.dropDuplicates(merge_columns)
             self.merge_to_delta_table(df,save_output_path,merge_columns)
 
             # Vacuum the table
@@ -339,12 +341,10 @@ class ProcessedLocation(TransformBase):
         return df
 
 unique_sql_query =  """
-                SELECT a.*
-                FROM my_dataframe a
-                INNER JOIN (
-                    SELECT full_name, MAX(to_timestamp(sys_updated_on, 'dd-MM-yyyy HH:mm:ss')) AS latest_timestamp
-                    FROM my_dataframe
-                    GROUP BY full_name
-                ) b ON a.full_name = b.full_name AND 
-                to_timestamp(a.sys_updated_on, 'dd-MM-yyyy HH:mm:ss') = b.latest_timestamp
+                SELECT *
+                FROM (
+                    SELECT a.*,
+                    row_number() OVER (PARTITION BY full_name ORDER BY to_timestamp(sys_updated_on, 'dd-MM-yyyy HH:mm:ss') DESC) AS row_num
+                    FROM my_dataframe a
+                ) WHERE row_num = 1
                 """
