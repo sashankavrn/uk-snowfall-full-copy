@@ -1,6 +1,6 @@
 --This view depends on below table
     --"uk_snowfall_semantic"."view_daily_incident_pre_snapshot"
--- testing
+
 CREATE OR REPLACE VIEW "view_daily_incident_snapshot" AS
 SELECT
   restaurant_id
