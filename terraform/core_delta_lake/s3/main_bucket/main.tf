@@ -63,6 +63,7 @@ resource "aws_s3_object" "landing_folder" {
       cisco_meraki        = "meraki/"
       newrelic_rmp_device = "newrelic_rmp_device/"
       ncr_service_request = "ncr_service_now/UK-SNowFall-ServiceNow-ServiceRequest/"
+      newrelic_digital_responce = "newrelic_digital_responce/"
     }
 }
 
