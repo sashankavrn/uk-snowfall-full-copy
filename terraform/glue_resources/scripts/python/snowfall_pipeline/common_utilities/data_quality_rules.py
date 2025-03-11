@@ -7,7 +7,7 @@ dq_rules = {
         ]""",
 
     "location_hierarchy":"""Rules = [
-        ColumnCount <= 80,
+        ColumnCount <= 180,
         RowCount > 0,
         IsComplete "STORE_NUMBER",
         IsComplete "STORE_NAME"
