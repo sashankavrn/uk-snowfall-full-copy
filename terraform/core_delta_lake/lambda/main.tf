@@ -167,21 +167,21 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke" {
 # Archive the newrelic-device-info Python script
 data "archive_file" "newrelic_fetch_data" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/newrelic-fetch-device/"
-  output_path = "${path.module}/scripts/zips/newrelic-fetch-device.zip"
+  source_dir  = "${path.module}/scripts/python/newrelic-rmp-fetch-device/"
+  output_path = "${path.module}/scripts/zips/newrelic-rmp-fetch-device.zip"
 }
 
 # Lambda Function for fetching New Relic device info
 resource "aws_lambda_function" "uk_snowfall_newrelic_function" {
-    filename         = "${path.module}/scripts/zips/newrelic-fetch-device.zip"
-    function_name    = "uk-snowfall-newrelic-fetch-device-${var.environment}"
+    filename         = "${path.module}/scripts/zips/newrelic-rmp-fetch-device.zip"
+    function_name    = "uk-snowfall-newrelic-rmp-fetch-device-${var.environment}"
     role            = var.role_assumed_arn
     handler         = "lambda_function.lambda_handler"
     runtime         = "python3.12"
     memory_size     = 2048
     timeout         = 720
     description     = "Fetch data from New Relic API and update to landing bucket"
-    source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-fetch-device.zip")
+    source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-rmp-fetch-device.zip")
     tags            = var.resource_tags
     layers = [
       "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1", # AWS SDK for Pandas
@@ -209,7 +209,7 @@ resource "aws_lambda_permission" "allow_landing_newrelic_bucket" {
 
 # CloudWatch Event Rule to trigger Lambda
 resource "aws_cloudwatch_event_rule" "newrelic_lambda_schedule" {
-  name                = "uk-snowfall-newrelic-fetch-device-schedule"
+  name                = "uk-snowfall-newrelic-rmp-fetch-device-schedule"
   description         = "Triggers the Lambda function every hour"
   # schedule_expression = "rate(1 minute)"  # Runs every minute for testing 
   schedule_expression = "rate(1 hour)"  # Runs every hour
@@ -218,7 +218,7 @@ resource "aws_cloudwatch_event_rule" "newrelic_lambda_schedule" {
 # Add Lambda as the Target of the Event Rule
 resource "aws_cloudwatch_event_target" "invoke_newrelic_lambda" {
   rule      = aws_cloudwatch_event_rule.newrelic_lambda_schedule.name
-  target_id = "newrelic-fetch-device-target"
+  target_id = "newrelic-rmp-fetch-device-target"
   arn       = aws_lambda_function.uk_snowfall_newrelic_function.arn
 }
 
