@@ -212,7 +212,7 @@ resource "aws_cloudwatch_event_rule" "newrelic_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-fetch-device-schedule"
   description         = "Triggers the Lambda function every hour"
   # schedule_expression = "rate(1 minute)"  # Runs every minute for testing 
-  schedule_expression = "rate(1 hour)"  # Runs every hour
+ schedule_expression = "cron(0 1 * * ? *)"  # Runs at 1 AM UTC every day
 }
 
 # Add Lambda as the Target of the Event Rule
@@ -280,7 +280,7 @@ resource "aws_lambda_permission" "allow_landing_newrelic_digital_response_bucket
 resource "aws_cloudwatch_event_rule" "newrelic_digital_response_lambda_schedule" {
   name                = "uk-snowfall-newrelic-digital-response-schedule"
   description         = "Triggers the Lambda function every hour"
-  schedule_expression = "rate(1 hour)"  # Runs every hour
+  schedule_expression = "cron(0 1 * * ? *)"  # Runs at 1 AM UTC every day
 }
 
 # Add Lambda as the Target of the Event Rule
