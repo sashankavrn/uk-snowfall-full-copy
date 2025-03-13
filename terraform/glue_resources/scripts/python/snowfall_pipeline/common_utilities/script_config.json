@@ -264,5 +264,15 @@
         "primary_key":"sys_id",
         "appflow_name":"UK-SNowFall-ServiceNow-SysUser"
 
+    },
+    "meraki":{
+        "transform_json":[
+            "details"
+        ],
+        "process_timestamp": [
+            "sys_updated_timestamp"
+        ],
+        "primary_key":"restaurant_number"
+
     }
 }

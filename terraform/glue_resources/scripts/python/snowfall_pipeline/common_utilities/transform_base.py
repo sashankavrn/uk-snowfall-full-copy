@@ -414,7 +414,7 @@ class TransformBase:
 
         return df
 
-    def read_data_from_s3(self,bucket_name,file_path, file_format='json',appflow_config = None):
+    def read_data_from_s3(self,bucket_name,file_path, file_format='json',appflow_config = None, multiline_json = False):
         """
         Read data from S3 based on the specified file format.
 
@@ -434,7 +434,10 @@ class TransformBase:
             self.logger.info(f"Files processed: {self.list_of_files}")
 
         if file_format == 'json':
-            source_df = self.spark.read.json(f"s3://{bucket_name}/{file_path}/")
+            if multiline_json:
+                source_df = self.spark.read.option("multiline", "true").json(f"s3://{bucket_name}/{file_path}/")
+            else:
+                source_df = self.spark.read.json(f"s3://{bucket_name}/{file_path}/")
 
         elif file_format == 'csv':
             source_df = self.spark.read.csv(f"s3://{bucket_name}/{file_path}/", header=True)
@@ -614,7 +617,7 @@ class TransformBase:
             DataFrame: The processed Spark DataFrame.
         """
         self.logger.info('Running the split_datetime_column function')
-        timestamp_formats = ["yyyy-MM-dd HH:mm:ss", "dd-MM-yyyy HH:mm:ss"]
+        timestamp_formats = ["yyyy-MM-dd HH:mm:ss", "dd-MM-yyyy HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX"]
         
         for col_name in input_columns:
             check = F.lit(None).cast("timestamp")
@@ -847,3 +850,54 @@ class TransformBase:
         # Vacuum the Delta table
         delta_table.vacuum(retentionHours=retention_hours)
         return
+
+
+    @transformation_timer
+    def explode_pivot_json_column(self,df, columns):
+        """
+        Parse JSON strings in specified columns of a DataFrame and create new columns.
+        
+        Args:
+        - df: DataFrame to operate on.
+        - column: Single column name containing an array of structs
+        
+        Returns:
+        - DataFrame with new columns containing parsed JSON data.
+        """
+        self.logger.info('Running the explode_pivot_json_column function')
+
+        if not columns:
+            self.logger.info("The columns list is empty. Skipping processing.")
+        else:
+            column = columns[0]
+            all_columns = df.columns
+            excluded_columns = [f"{column}_name", f"{column}_value"]
+
+
+            # Explode column, extract fields, pivot, and aggregate
+            df = df.withColumn(column, F.explode(F.col(column))) 
+            df = df.select(*df.columns, F.col(f"{column}.name").alias(f"{column}_name"), F.col(f"{column}.value").alias(f"{column}_value"))
+
+            selected_columns = [col for col in all_columns if col != column and col not in excluded_columns]
+
+            df = df.groupBy(*selected_columns).pivot(f"{column}_name").agg(F.first(f"{column}_value"))
+            return df
+
+    @transformation_timer
+    def fill_nulls(self, df, column, value):
+        """
+        Fill null values in specified column of a DataFrame with a given value.
+
+        Args:
+        - df: DataFrame to operate on.
+        - columns: List of column names where null values should be replaced.
+        - value: The value to fill in place of nulls.
+
+        Returns:
+        - DataFrame with null values replaced in specified columns.
+        """
+
+        df = df.fillna(value, subset=column)
+    
+        return df
+    
