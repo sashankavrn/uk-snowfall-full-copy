@@ -77,7 +77,7 @@ class ProcessedMeraki(TransformBase):
         )
 
         column_mapping = {
-            'restaurant_number': ('restaurant_number', 'Integer'),
+            'restaurant_number': ('restaurant_id', 'Integer'),
             'name': ('device_name', 'string'),
             'serial': ('serial_number', 'string'),
             'mac': ('mac_address', 'string'),
@@ -136,7 +136,8 @@ class ProcessedMeraki(TransformBase):
                 # Change string data type to timestamp via glue schema
                 if self.aws_instance.check_query_status(execution_query_id) is True:
                     timestamp_columns = [
-                    'sys_updated_timestamp'
+                    'sys_updated_timestamp',
+                    'config_updated_at'
                     ]
            
                     self.aws_instance.update_table_columns_to_timestamp('processed','meraki_devices_info',timestamp_columns)
