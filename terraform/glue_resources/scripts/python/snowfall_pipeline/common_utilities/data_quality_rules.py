@@ -81,5 +81,10 @@ dq_rules = {
         RowCount > 0,
         IsComplete "STORE_NUMBER",
         IsComplete "CHANNEL"
+    ]""",
+    "meraki": """Rules = [
+        ColumnCount <= 23,
+        RowCount > 0,
+        IsComplete "restaurant_number"
     ]"""
 }
