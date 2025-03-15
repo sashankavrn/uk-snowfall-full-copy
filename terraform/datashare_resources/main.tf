@@ -20,6 +20,11 @@ provider "aws" {
   region      = var.AWS_REGION
 }
 
+# Fetch the existing SNS topic ARN
+data "aws_sns_topic" "datashare_sns_topic" {
+  name = "uk-snowfall-notification-dev"  # Name of the existing SNS topic
+}
+
 
 # Triggering the Datashare S3 Module
 module "datashare_buckets" {
@@ -42,7 +47,7 @@ module "datashare_lambda_module" {
   role_assumed_arn   = var.role_assumed_arn
   datashare_landing_bucket_arn = module.datashare_buckets.datashare_landing_bucket_arn
   datashare_processed_bucket_arn = module.datashare_buckets.datashare_processed_bucket_arn
-  sns_topic_arn      = module.sns_module.snowfall_topic_arn
+  sns_topic_arn      = data.aws_sns_topic.datashare_sns_topic.arn
   account_number     = var.account_number
 }
 

@@ -47,8 +47,3 @@ variable "terraform_bucket_name" {
   description = "Bucket Name for where terraform state file is stored"  
 }
 
-
-# variable "datashare_landing_bucket_arn" {
-
-#   default = "eu-central1-${var.environment}-uk-snowfall-datashare-landing-${var.account_number}"
-# }
