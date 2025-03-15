@@ -14,7 +14,7 @@ resource "aws_lambda_function" "datashare_landing_trigger" {
   runtime         = "python3.12"
   memory_size      = 512
   timeout          = 120
-  description      = "Trigger to process data for datashare landing"
+  description      = "Trigger to process data move NCR data to  landing bucket"
   source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare_landing_trigger.zip")
   tags             = var.resource_tags
   layers = [
