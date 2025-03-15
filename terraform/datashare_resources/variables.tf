@@ -48,7 +48,7 @@ variable "terraform_bucket_name" {
 }
 
 
-variable "datashare_landing_bucket_arn" {
+# variable "datashare_landing_bucket_arn" {
 
-  default = "eu-central1-${var.environment}-uk-snowfall-datashare-landing-${var.account_number}"
-}
+#   default = "eu-central1-${var.environment}-uk-snowfall-datashare-landing-${var.account_number}"
+# }
