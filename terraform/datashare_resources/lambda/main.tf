@@ -51,12 +51,12 @@ resource "aws_lambda_permission" "allow_landing_trigger" {
 data "archive_file" "datashare_processed_trigger" {
   type        = "zip"
   source_dir  = "${path.module}/scripts/python/datashare_processed_trigger/"
-  output_path = "${path.module}/scripts/zips/datashare-processed-trigger.zip"
+  output_path = "${path.module}/scripts/zips/datashare_processed_trigger.zip"
 }
 
 # Lambda function - datashare_processed_trigger
 resource "aws_lambda_function" "datashare_processed_trigger" {
-  filename         = "${path.module}/scripts/zips/datashare-processed-trigger.zip"
+  filename         = "${path.module}/scripts/zips/datashare_processed_trigger.zip"
   function_name    = "uk-snowfall-datashare-processed-trigger-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
@@ -64,7 +64,7 @@ resource "aws_lambda_function" "datashare_processed_trigger" {
   memory_size      = 512
   timeout          = 180
   description      = "Trigger to copy data from orginal processed bucket to datashare processed bucket"
-  source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare-processed-trigger.zip")
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare_processed_trigger.zip")
   tags             = var.resource_tags
   layers = [
     "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"
@@ -97,12 +97,12 @@ resource "aws_lambda_permission" "allow_processed_trigger" {
 data "archive_file" "datashare_ncr_webhook" {
   type        = "zip"
   source_dir  = "${path.module}/scripts/python/datashare_ncr_webhook/"
-  output_path = "${path.module}/scripts/zips/datashare-ncr-webhook.zip"
+  output_path = "${path.module}/scripts/zips/datashare_ncr_webhook.zip"
 }
 
 # Lambda function - datashare_ncr_webhook
 resource "aws_lambda_function" "datashare_ncr_webhook" {
-  filename         = "${path.module}/scripts/zips/datashare-ncr-webhook.zip"
+  filename         = "${path.module}/scripts/zips/datashare_ncr_webhook.zip"
   function_name    = "uk-snowfall-datashare-ncr-webhook-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
@@ -110,7 +110,7 @@ resource "aws_lambda_function" "datashare_ncr_webhook" {
   memory_size      = 1024
   timeout          = 300
   description      = "Push data to  webhook for NCR data processing"
-  source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare-ncr-webhook.zip")
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare_ncr_webhook.zip")
   tags             = var.resource_tags
   layers = [
     "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"
