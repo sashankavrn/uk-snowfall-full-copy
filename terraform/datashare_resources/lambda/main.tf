@@ -43,80 +43,86 @@ resource "aws_lambda_permission" "allow_landing_trigger" {
 
 
 
-# ########################################################################################################################
-# ################################datashare-processed-trigger#############################################################
-# ########################################################################################################################
+########################################################################################################################
+################################datashare-processed-trigger#############################################################
+########################################################################################################################
 
-# # Archive the datashare_processed_trigger Python script
-# data "archive_file" "datashare_processed_trigger" {
-#   type        = "zip"
-#   source_dir  = "${path.module}/scripts/python/datashare_processed_trigger/"
-#   output_path = "${path.module}/scripts/zips/datashare-processed-trigger.zip"
-# }
+# Archive the datashare_processed_trigger Python script
+data "archive_file" "datashare_processed_trigger" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/datashare_processed_trigger/"
+  output_path = "${path.module}/scripts/zips/datashare-processed-trigger.zip"
+}
 
-# # Lambda function - datashare_processed_trigger
-# resource "aws_lambda_function" "datashare_processed_trigger" {
-#   filename         = "${path.module}/scripts/zips/datashare-processed-trigger.zip"
-#   function_name    = "datashare-processed-trigger-${var.environment}"
-#   role             = var.role_assumed_arn
-#   handler          = "lambda_function.lambda_handler"
-#   runtime          = "python3.12"
-#   memory_size      = 512
-#   timeout          = 180
-#   description      = "Trigger to process data after processing completion"
-#   source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare-processed-trigger.zip")
-#   tags             = var.resource_tags
-#   layers = [
-#     "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"
-#   ]
-#   environment {
-#     variables = {
-#       DATASHARE_PROCESSED_BUCKET = var.datashare_processed_bucket
-#       DATASHARE_LANDING_BUCKET   = var.datashare_landing_bucket
-#       SNS_TOPIC_ARN              = var.sns_topic_arn
-#     }
-#   }
-# }
+# Lambda function - datashare_processed_trigger
+resource "aws_lambda_function" "datashare_processed_trigger" {
+  filename         = "${path.module}/scripts/zips/datashare-processed-trigger.zip"
+  function_name    = "uk-snowfall-datashare-processed-trigger-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 512
+  timeout          = 180
+  description      = "Trigger to copy data from orginal processed bucket to datashare processed bucket"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare-processed-trigger.zip")
+  tags             = var.resource_tags
+  layers = [
+    "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"
+  ]
+  environment {
+    variables = {
+      TARGET_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-datashare-processed-${var.account_number}"
+      SOURCE_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-processed-${var.account_number}"
+      # SNS_TOPIC_ARN              = var.sns_topic_arn
+    }
+  }
+}
 
-# # Adding permissions for datashare_processed_trigger Lambda
-# resource "aws_lambda_permission" "allow_processed_trigger" {
-#   statement_id  = "AllowExecutionFromS3Bucket"
-#   action        = "lambda:InvokeFunction"
-#   function_name = aws_lambda_function.datashare_processed_trigger.arn
-#   principal     = "s3.amazonaws.com"
-#   source_arn    = var.datashare_processed_bucket_arn
-# }
+# Adding permissions for datashare_processed_trigger Lambda
+resource "aws_lambda_permission" "allow_processed_trigger" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.datashare_processed_trigger.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.datashare_processed_bucket_arn
+}
 
-# # Archive the datashare_ncr_webhook Python script
-# data "archive_file" "datashare_ncr_webhook" {
-#   type        = "zip"
-#   source_dir  = "${path.module}/scripts/python/datashare_ncr_webhook/"
-#   output_path = "${path.module}/scripts/zips/datashare-ncr-webhook.zip"
-# }
 
-# # Lambda function - datashare_ncr_webhook
-# resource "aws_lambda_function" "datashare_ncr_webhook" {
-#   filename         = "${path.module}/scripts/zips/datashare-ncr-webhook.zip"
-#   function_name    = "datashare-ncr-webhook-${var.environment}"
-#   role             = var.role_assumed_arn
-#   handler          = "lambda_function.lambda_handler"
-#   runtime          = "python3.12"
-#   memory_size      = 1024
-#   timeout          = 300
-#   description      = "Handles webhook for NCR data processing"
-#   source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare-ncr-webhook.zip")
-#   tags             = var.resource_tags
-#   layers = [
-#     "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"
-#   ]
-#   environment {
-#     variables = {
-#       DATASHARE_PROCESSED_BUCKET = var.datashare_processed_bucket
-#       DATASHARE_LANDING_BUCKET   = var.datashare_landing_bucket
-#       SNS_TOPIC_ARN              = var.sns_topic_arn
-#     }
-#   }
-# }
+
+########################################################################################################################
+################################data push lambda to ncr webhook #######################################################
+########################################################################################################################
+
+# Archive the datashare_ncr_webhook Python script
+data "archive_file" "datashare_ncr_webhook" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/datashare_ncr_webhook/"
+  output_path = "${path.module}/scripts/zips/datashare-ncr-webhook.zip"
+}
+
+# Lambda function - datashare_ncr_webhook
+resource "aws_lambda_function" "datashare_ncr_webhook" {
+  filename         = "${path.module}/scripts/zips/datashare-ncr-webhook.zip"
+  function_name    = "uk-snowfall-datashare-ncr-webhook-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 300
+  description      = "Push data to  webhook for NCR data processing"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare-ncr-webhook.zip")
+  tags             = var.resource_tags
+  layers = [
+    "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"
+  ]
+  environment {
+    variables = {
+      SOURCE_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-datashare-processed-${var.account_number}"
+      NCR_API_ENDPOINT  = "ncr-api.com"
+      # SNS_TOPIC_ARN              = var.sns_topic_arn
+    }
+  }
+}
 
 # # Adding permissions for datashare_ncr_webhook Lambda
 # resource "aws_lambda_permission" "allow_ncr_webhook" {
