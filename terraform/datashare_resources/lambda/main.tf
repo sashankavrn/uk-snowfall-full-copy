@@ -2,12 +2,12 @@
 data "archive_file" "datashare_landing_trigger" {
   type        = "zip"
   source_dir  = "${path.module}/scripts/python/datashare_landing_trigger/"
-  output_path = "${path.module}/scripts/zips/datashare-landing-trigger.zip"
+  output_path = "${path.module}/scripts/zips/datashare_landing_trigger.zip"
 }
 
 # Lambda function - datashare_landing_trigger
 resource "aws_lambda_function" "datashare_landing_trigger" {
-  filename         = "${path.module}/scripts/zips/datashare-landing-trigger.zip"
+  filename         = "${path.module}/scripts/zips/datashare_landing_trigger.zip"
   function_name    = "datashare-landing-trigger-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
@@ -15,7 +15,7 @@ resource "aws_lambda_function" "datashare_landing_trigger" {
   memory_size      = 512
   timeout          = 120
   description      = "Trigger to process data for datashare landing"
-  source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare-landing-trigger.zip")
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare_landing_trigger.zip")
   tags             = var.resource_tags
   layers = [
     "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1",
