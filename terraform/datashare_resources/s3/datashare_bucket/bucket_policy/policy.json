@@ -2,10 +2,17 @@
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "AllowAccessToS3",
+            "Sid": "AllowIAMUserAccess",
             "Effect": "Allow",
-            "Principal": "*",
-            "Action": "s3:*",
+            "Principal": {
+                "AWS": "arn:aws:iam::295446674139:user/uk-snowfall-ncr-dev-s3-landing"
+            },
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:ListBucket"
+            ],
             "Resource": [
                 "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-landing-${account_number}",
                 "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-landing-${account_number}/*",
