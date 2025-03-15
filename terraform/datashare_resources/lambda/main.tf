@@ -8,7 +8,7 @@ data "archive_file" "datashare_landing_trigger" {
 # Lambda function - datashare_landing_trigger
 resource "aws_lambda_function" "datashare_landing_trigger" {
   filename         = "${path.module}/scripts/zips/datashare_landing_trigger.zip"
-  function_name    = "datashare-landing-trigger-${var.environment}"
+  function_name    = "uk-snowfall-datashare-landing-trigger-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime         = "python3.12"
