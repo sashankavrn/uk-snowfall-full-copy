@@ -28,7 +28,7 @@ output "datashare_s3_permission" {
   description = "The S3 permission for the Datashare Lambda"
 }
 
-output "sns_topic_arn" {
-  value       = data.aws_sns_topic.datashare_sns_topic.arn
-  description = "The ARN for the SNS topic"
-}
+# output "sns_topic_arn" {
+#   value       = data.aws_sns_topic.datashare_sns_topic.arn
+#   description = "The ARN for the SNS topic"
+# }
