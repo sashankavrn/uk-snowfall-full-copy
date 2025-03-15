@@ -1,89 +1,119 @@
-# Testing  
 import boto3
-import os
-import urllib.parse
 import logging
-import json
-
-from snowfall_sources.base_moving import base_moving
-from snowfall_sources.amazon_connect import amazon_connect
-
-target_bucket = os.environ.get('TARGET_BUCKET')
-sns_arn = os.environ.get('SNS_TOPIC_ARN')
-s3 = boto3.client('s3')
+import os
+import time
 
 # Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
-logger.setLevel("INFO")
 
+# Initialize S3 client
+s3_client = boto3.client('s3')
 
-# Load key mapping from a JSON file
-def load_key_mapping():
-    with open('mapping.json', 'r') as file:
-        mappings = json.load(file)
-    return mappings.get("fileMappings", {})
+# Fetch bucket names from environment variables
+PROCESSED_BUCKET = os.environ.get("PROCESSED_BUCKET")  # Source bucket
+DATASHARE_PROCESSED_BUCKET = os.environ.get("DATASHARE_PROCESSED_BUCKET")  # Destination bucket
 
+# Define folders to sync
+FOLDERS_TO_SYNC = [
+    "amazon_connect/",
+    "service_now/change_request/",
+    "service_now/incident/intraday/",
+    "service_now/incident/daily/",
+    "service_now/location/",
+    "service_now/problem_record/",
+    "service_now/service_request/",
+    "service_now/service_offering/",
+    "service_now/sys_user_group/",
+    "service_now/sys_user/",
+    "ods/trading_hours/",
+    "ods/location_hierarchy/",
+    "ods/adj_trading_hours/",
+    "meraki/",
+    "newrelic_rmp_device/"
+]
+
+# Lambda maximum execution time tracking
+MAX_EXECUTION_TIME = 14 * 60  # 14 minutes (in seconds)
 
 def lambda_handler(event, context):
-    try:
-        # Load the mappings
-        key_mapping = load_key_mapping()
-
-        # Get the bucket name and key from the S3 event
-        bucket = event['Records'][0]['s3']['bucket']['name']
-        key = urllib.parse.unquote(event['Records'][0]['s3']['object']['key'])
-
-        logger.info(f"Object Key is: {key}")
-        target_key = target_key_generator(key, key_mapping)
-
-        if target_key is None:
-            logger.info('Folder has been uploaded. Existing Function..')
-            return
-
-        logger.info(f"Target Key is: {target_key}")
-
-        if target_key == 'amazon_connect':
-            amazon_connect(bucket, key, target_bucket, target_key)
-        else:
-            # Trigger the functions
-            base_moving(bucket, key, target_bucket, target_key)
-
-        logger.info(f'Deleting {key}')
-        s3.delete_object(Bucket=bucket, Key=key)
+    start_time = time.time()  # Track execution start time
     
-    except Exception as e:
-        # Handle the error and notify the SNS topic
-        s3.copy_object(Bucket=target_bucket, CopySource={'Bucket': bucket, 'Key': key}, Key=f'error/{key}')
-        s3.delete_object(Bucket=bucket, Key=key)
-        logger.info(f"Moved file to: s3://{bucket}/error/{key}")
-        error_message = f"Lambda function encountered an error: {str(e)}"
-        send_sns_message(error_message)
-        raise e
+    if not PROCESSED_BUCKET or not DATASHARE_PROCESSED_BUCKET:
+        logger.error("Missing required environment variables: PROCESSED_BUCKET or DATASHARE_PROCESSED_BUCKET")
+        return {
+            'statusCode': 500,
+            'body': 'Error: Missing required environment variables.'
+        }
 
+    # Get the existing files in the destination bucket
+    destination_objects = get_existing_files(DATASHARE_PROCESSED_BUCKET)
 
-def target_key_generator(key, key_mapping):
-    if key.endswith('/'):
-        logger.info('Folder uploaded. Skipping...')
-        return None  
+    for record in event['Records']:
+        source_key = record['s3']['object']['key']
+
+        # Track elapsed execution time
+        elapsed_time = time.time() - start_time
+        if elapsed_time > MAX_EXECUTION_TIME:
+            logger.error(f"Execution time exceeded 14 minutes. Aborting! Elapsed Time: {elapsed_time:.2f} seconds")
+            return {
+                'statusCode': 500,
+                'body': f"Execution took too long ({elapsed_time:.2f} seconds). Process stopped."
+            }
+
+        # Check if the file belongs to a valid folder
+        folder_matched = next((folder for folder in FOLDERS_TO_SYNC if source_key.startswith(folder)), None)
+        if not folder_matched:
+            logger.info(f"Skipping file {source_key}, not in the allowed folders.")
+            continue
+
+        # Skip if the file already exists and is up to date
+        if is_file_up_to_date(PROCESSED_BUCKET, DATASHARE_PROCESSED_BUCKET, source_key, destination_objects):
+            logger.info(f"Skipping {source_key}, already exists and is up to date.")
+            continue
+
+        # Copy the file since it's new or modified
+        copy_source = {
+            'Bucket': PROCESSED_BUCKET,
+            'Key': source_key
+        }
+
+        try:
+            s3_client.copy_object(
+                Bucket=DATASHARE_PROCESSED_BUCKET,
+                CopySource=copy_source,
+                Key=source_key
+            )
+            logger.info(f"Copied {source_key} from {PROCESSED_BUCKET} to {DATASHARE_PROCESSED_BUCKET}")
+
+        except Exception as e:
+            logger.error(f"Error copying {source_key}: {str(e)}")
+
+    return {
+        'statusCode': 200,
+        'body': 'Incremental sync completed successfully.'
+    }
+
+def get_existing_files(bucket_name):
+    """Returns a dictionary of existing files in the destination bucket with their last modified timestamps."""
+    existing_files = {}
+    paginator = s3_client.get_paginator("list_objects_v2")
     
-    # Iterate through each dictionary in the list
-    for mapping_dict in key_mapping:
-        mapping_key = mapping_dict['fileName']
-        target_folder = mapping_dict['destinationPath']
-        # Check if the current mapping key is a substring of the input key
-        if mapping_key in key:
-            return target_folder
+    for page in paginator.paginate(Bucket=bucket_name):
+        if "Contents" in page:
+            for obj in page["Contents"]:
+                existing_files[obj["Key"]] = obj["LastModified"]
     
-    # If no matching key is found
-    raise Exception(f'The object {key} is not recognised')
+    return existing_files
 
+def is_file_up_to_date(source_bucket, destination_bucket, file_key, destination_objects):
+    """Checks if a file in the source bucket is newer than the one in the destination bucket."""
+    if file_key not in destination_objects:
+        return False  # File is missing in destination, so it needs to be copied.
 
-def send_sns_message(message, topic_arn=os.environ.get('SNS_TOPIC_ARN')):
-    sns = boto3.client('sns')
-    try:
-        response = sns.publish(TopicArn=topic_arn, Message=message, Subject="Error in Landing Bucket")
-        logger.info(f"Message sent to SNS topic: {topic_arn}")
-        return response
-    except Exception as e:
-        logger.info(f"Error sending message to SNS topic: {str(e)}")
-        return None
+    source_metadata = s3_client.head_object(Bucket=source_bucket, Key=file_key)
+    source_last_modified = source_metadata["LastModified"]
+
+    destination_last_modified = destination_objects[file_key]
+
+    return source_last_modified <= destination_last_modified  # If source is older or same, no need to copy.
