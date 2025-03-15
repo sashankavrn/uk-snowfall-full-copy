@@ -1,0 +1,37 @@
+// {
+//     "Version": "2008-10-17",
+//     "Statement": [
+//         {
+//             "Sid": "AllowAllActionsFromVPCEndpoint",
+//             "Effect": "Allow",
+//             "Principal": "*",
+//             "Action": "s3:*",
+//             "Resource": [
+//                 "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datasharing-landing-${account_number}",
+//                 "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datasharing-landing-${account_number}/*"
+//             ],
+//             "Condition": {
+//                 "StringEquals": {
+//                     "aws:SourceVpce": "${vpc_endpoint_id}"
+//                 }
+//             }
+//         }
+//     ]
+// }
+
+
+{
+    "Version": "2008-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowAllActionsForTesting",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:*",
+            "Resource": [
+                "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datasharing-landing-${account_number}",
+                "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datasharing-landing-${account_number}/*"
+            ]
+        }
+    ]
+}
