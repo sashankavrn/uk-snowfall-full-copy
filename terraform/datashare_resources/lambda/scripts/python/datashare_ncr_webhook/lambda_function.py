@@ -12,13 +12,13 @@ logger = logging.getLogger()
 s3_client = boto3.client('s3')
 
 # Environment variables
-DATASHARE_BUCKET = os.environ.get("DATASHARE_BUCKET")
+SOURCE_BUCKET = os.environ.get("SOURCE_BUCKET")  # Sources bucket (processed data)
 NCR_API_ENDPOINT = os.environ.get("NCR_API_ENDPOINT")  # NCR API URL
-TARGET_FOLDER = "rapid-newrelic-rmp-metrics/"
+TARGET_FOLDER = "rapid-newrelic-rmp-metrics/"  # Folder to monitor
 
 def lambda_handler(event, context):
-    if not DATASHARE_BUCKET or not NCR_API_ENDPOINT:
-        logger.error("Missing required environment variables: DATASHARE_BUCKET or NCR_API_ENDPOINT")
+    if not SOURCE_BUCKET or not NCR_API_ENDPOINT:
+        logger.error("Missing required environment variables: SOURCE_BUCKET or NCR_API_ENDPOINT")
         return {
             'statusCode': 500,
             'body': 'Error: Missing required environment variables.'
@@ -34,7 +34,7 @@ def lambda_handler(event, context):
             logger.info(f"Skipping file {source_key}, not in the {TARGET_FOLDER} folder.")
             continue
         
-        file_data = read_s3_file(DATASHARE_BUCKET, source_key)
+        file_data = read_s3_file(SOURCE_BUCKET, source_key)
         if file_data:
             collected_data.append({"file": source_key, "data": file_data})
 
