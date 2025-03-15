@@ -1,31 +1,34 @@
-output "landing_bucket_name" {
-  value = module.s3_module_main.landing_bucket_name
-  description = "The Name for the landing bucket"
+output "datashare_landing_bucket_name" {
+  value       = module.datashare_buckets.datashare_landing_bucket_name
+  description = "The Name for the Datashare Landing bucket"
 }
 
-output "landing_bucket_arn" {
-  value = module.s3_module_main.landing_bucket_arn
-  description = "The ARN for the Landing bucket"
+output "datashare_landing_bucket_arn" {
+  value       = module.datashare_buckets.datashare_landing_bucket_arn
+  description = "The ARN for the Datashare Landing bucket"
 }
 
-output "processed_bucket_name" {
-  value = module.s3_module_main.processed_bucket_name
-  description = "The Name for the Processed bucket"
+output "datashare_processed_bucket_name" {
+  value       = module.datashare_buckets.datashare_processed_bucket_name
+  description = "The Name for the Datashare Processed bucket"
 }
 
-output "processed_bucket_bucket_arn" {
-  value = module.s3_module_main.processed_bucket_bucket_arn
-  description = "The ARN for the Processed bucket"
+output "datashare_processed_bucket_arn" {
+  value       = module.datashare_buckets.datashare_processed_bucket_arn
+  description = "The ARN for the Datashare Processed bucket"
 }
 
-output "temporary_folder_path" {
-  value = module.s3_module_main.temporary_folder_path
+output "datashare_landing_trigger_arn" {
+  value       = module.datashare_lambda_module.datashare_landing_trigger_lambda_arn
+  description = "The ARN for the Datashare Landing Trigger Lambda"
 }
 
-output "snowfall_topic_arn" {
-  value = module.sns_module.snowfall_topic_arn
+output "datashare_s3_permission" {
+  value       = module.datashare_lambda_module.datashare_landing_trigger_lambda_s3_permission
+  description = "The S3 permission for the Datashare Lambda"
 }
 
-output "landing_trigger_arn" {
-  value = module.lambda_module.landing_trigger_arn
+output "sns_topic_arn" {
+  value       = data.aws_sns_topic.datashare_sns_topic.arn
+  description = "The ARN for the SNS topic"
 }
