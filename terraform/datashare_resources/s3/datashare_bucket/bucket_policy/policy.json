@@ -1,37 +1,34 @@
-// {
-//     "Version": "2008-10-17",
-//     "Statement": [
-//         {
-//             "Sid": "AllowAllActionsFromVPCEndpoint",
-//             "Effect": "Allow",
-//             "Principal": "*",
-//             "Action": "s3:*",
-//             "Resource": [
-//                 "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datasharing-landing-${account_number}",
-//                 "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datasharing-landing-${account_number}/*"
-//             ],
-//             "Condition": {
-//                 "StringEquals": {
-//                     "aws:SourceVpce": "${vpc_endpoint_id}"
-//                 }
-//             }
-//         }
-//     ]
-// }
-
-
 {
-    "Version": "2008-10-17",
+    "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "AllowAllActionsForTesting",
+            "Sid": "AllowReadAccess",
             "Effect": "Allow",
             "Principal": "*",
-            "Action": "s3:*",
+            "Action": [
+                "s3:GetObject",
+                "s3:ListBucket"
+            ],
             "Resource": [
-                "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datasharing-landing-${account_number}",
-                "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datasharing-landing-${account_number}/*"
+                "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-landing-${account_number}",
+                "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-landing-${account_number}/*",
+                "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-processed-${account_number}",
+                "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-processed-${account_number}/*"
+            ]
+        },
+        {
+            "Sid": "AllowWriteAccess",
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": [
+                "s3:PutObject",
+                "s3:DeleteObject"
+            ],
+            "Resource": [
+                "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-landing-${account_number}/*",
+                "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-processed-${account_number}/*"
             ]
         }
     ]
 }
+
