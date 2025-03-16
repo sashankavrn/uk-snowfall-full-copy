@@ -61,6 +61,6 @@ EOF
 # Attach the EventBridge rule to the Datashare Processed Lambda function
 resource "aws_cloudwatch_event_target" "datashare_processed_lambda_trigger_target" {
   rule     = aws_cloudwatch_event_rule.datashare_processed_lambda_trigger.name
-  arn      = aws_lambda_function.datashare_processed_trigger.arn  # Your Datashare Processed Trigger Lambda ARN
+  arn      = var.datashare_processed_trigger_lambda_arn
   role_arn = var.role_assumed_arn
 }
