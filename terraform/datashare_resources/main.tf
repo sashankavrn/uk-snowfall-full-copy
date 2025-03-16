@@ -54,15 +54,15 @@ module "datashare_lambda_module" {
 
 
 
-# # Triggering event bridge module
-# module "event_bridge_module" {
-#   source        = "./eventbridge"
-#   environment   = var.environment
-#   role_assumed_arn = var.role_assumed_arn
-#   account_number = var.account_number
-#   resource_tags = merge(var.resource_tags, { Environment = var.environment })
-#   terraform_bucket_name   = var.terraform_bucket_name
-# }
+# Triggering event bridge module
+module "event_bridge_module" {
+  source        = "./eventbridge"
+  environment   = var.environment
+  role_assumed_arn = var.role_assumed_arn
+  account_number = var.account_number
+  resource_tags = merge(var.resource_tags, { Environment = var.environment })
+  terraform_bucket_name   = var.terraform_bucket_name
+}
 
 
 
