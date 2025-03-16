@@ -250,6 +250,11 @@ resource "aws_s3_object" "processed_folder" {
     }
 }
 
+resource "aws_s3_bucket_notification" "enable_event_bridge_for_processed" {
+  bucket      = aws_s3_bucket.processed_bucket.bucket
+  eventbridge = true
+}
+
 
 
 # ####### Creation of Semantic Bucket ################
