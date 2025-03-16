@@ -124,6 +124,14 @@ resource "aws_lambda_function" "datashare_ncr_webhook" {
   }
 }
 
+resource "aws_lambda_permission" "allow_ncr_webhook" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.datashare_processed_trigger.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.datashare_processed_bucket_arn
+}
+
 # # Adding permissions for datashare_ncr_webhook Lambda
 # resource "aws_lambda_permission" "allow_ncr_webhook" {
 #   statement_id  = "AllowExecutionFromAPIGateway"
