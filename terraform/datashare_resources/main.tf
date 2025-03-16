@@ -62,6 +62,7 @@ module "event_bridge_module" {
   account_number = var.account_number
   resource_tags = merge(var.resource_tags, { Environment = var.environment })
   terraform_bucket_name   = var.terraform_bucket_name
+  datashare_processed_trigger_lambda_arn = module.datashare_lambda_module.datashare_processed_trigger_lambda_arn
 }
 
 
