@@ -90,7 +90,7 @@ class PreparationMeraki(TransformBase):
             .save(save_output_path)
 
             # Execute Athena query to create the table
-            self.aws_instance.create_athena_delta_table('preparation', 'meraki_devices_info', save_output_path, self.athena_output_path)
+            self.aws_instance.create_athena_delta_table('preparation', 'meraki_device_info', save_output_path, self.athena_output_path)
             
         else:
 
