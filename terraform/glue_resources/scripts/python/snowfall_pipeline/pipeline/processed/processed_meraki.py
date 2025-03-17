@@ -91,14 +91,14 @@ class ProcessedMeraki(TransformBase):
             'tags': ('tags', 'string'),
             'wan1Ip': ('wan1_ip', 'string'),
             'wan2Ip': ('wan2_ip', 'string'),
-            'configurationUpdatedAt': ('config_updated_at', 'string'),
+            'configurationUpdatedAt': ('config_updated_at', 'timestamp'),
             'firmware': ('firmware_version', 'string'),
             'url': ('device_url', 'string'),
             'Monitoring version': ('monitoring_version', 'string'),
             'Running software version': ('running_software_version', 'string'),
             'sys_updated_year': ('sys_updated_year', 'Integer'),
             'sys_updated_month': ('sys_updated_month', 'Integer'),
-            'sys_updated_timestamp_timestamp': ('sys_updated_timestamp', 'string'),
+            'sys_updated_timestamp_timestamp': ('sys_updated_timestamp', 'timestamp'),
             'sys_updated_timestamp_dt': ('sys_updated_date', 'date')
         }
         # Step 6. Changes column names and schema
@@ -131,16 +131,7 @@ class ProcessedMeraki(TransformBase):
                 .save(save_output_path)
 
                 # Execute Athena query to create the table
-                execution_query_id = self.aws_instance.create_athena_delta_table('processed', 'meraki_devices_info', save_output_path, self.athena_output_path)
-
-                # Change string data type to timestamp via glue schema
-                if self.aws_instance.check_query_status(execution_query_id) is True:
-                    timestamp_columns = [
-                    'sys_updated_timestamp',
-                    'config_updated_at'
-                    ]
-           
-                    self.aws_instance.update_table_columns_to_timestamp('processed','meraki_devices_info',timestamp_columns)
+                execution_query_id = self.aws_instance.create_athena_delta_table('processed', 'meraki_device_info', save_output_path, self.athena_output_path)
                 
             else:
 
