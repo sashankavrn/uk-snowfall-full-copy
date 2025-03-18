@@ -61,11 +61,11 @@
             "destinationPath": "meraki"
         },
         {
-            "fileName": "newrelic_rmp_device",
+            "fileName": "newrelic/newrelic_rmp_device",
             "destinationPath": "newrelic/newrelic_rmp_device"
         },
         {
-            "fileName": "newrelic_rmp_device_metrics",
+            "fileName": "newrelic/newrelic_rmp_device_metrics",
             "destinationPath": "newrelic/newrelic_rmp_device_metrics"
         }
         
