@@ -222,12 +222,12 @@ locals {
       schedule        = null
       reporting_date  = null
     },
-    "newrelic_rmp_device" = {
-      name            = "uk-snowfall-newrelic-rmp-device"
+    "newrelic_rmp_device_info" = {
+      name            = "uk-snowfall-newrelic-rmp-device_info"
       description     = "Workflow for the newrelic rmp device data"
-      dataset         = "newrelic_rmp_device"
+      dataset         = "newrelic_rmp_device_info"
       group           = "preparation"
-      trigger_name    = "uk-snowfall-newrelic-rmp-device-trigger"
+      trigger_name    = "uk-snowfall-newrelic-rmp-device-info-trigger"
       max_concurrent  = 1
       batch_size      = 100
       batch_window    = 10
@@ -284,7 +284,7 @@ resource "aws_glue_trigger" "glue_triggers" {
   }
 
   lifecycle {
-    prevent_destroy = true  # Prevent the trigger from being destroyed
+    prevent_destroy = false  # Prevent the trigger from being destroyed
     ignore_changes = [name, description]  # Ignore changes to these attributes
   }
 }
