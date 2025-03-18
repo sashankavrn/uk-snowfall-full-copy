@@ -238,7 +238,7 @@ locals {
     "device_metrics" = {
       name           = "uk-snowfall-newrelic-rmp-device-metrics"
       description    = "Workflow for the newrelic rmp device metrics data"
-      dataset        = "newrelic_rmp_device_metrics"
+      dataset        = "device_metrics"
       group          = "preparation"
       trigger_name   = "uk-snowfall-newrelic-rmp-device-metrics-trigger"
       max_concurrent = 1
