@@ -235,7 +235,7 @@ locals {
       schedule        = null
       reporting_date  = null
     },
-    "newrelic_rmp_device_metrics" = {
+    "device_metrics" = {
       name           = "uk-snowfall-newrelic-rmp-device-metrics"
       description    = "Workflow for the newrelic rmp device metrics data"
       dataset        = "newrelic_rmp_device_metrics"
