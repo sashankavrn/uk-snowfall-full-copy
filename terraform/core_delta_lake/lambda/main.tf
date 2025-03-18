@@ -162,7 +162,7 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke" {
   source_arn    = aws_cloudwatch_event_rule.meraki_lambda_schedule.arn
 }
 
-##########################################################################NEWRELIC-DEVICE-INFO-FETCH###################################################
+##########################################################################NEWRELIC-RMP-DEVICE-INFO-FETCH###################################################
 
 # Archive the newrelic-device-info Python script
 data "archive_file" "newrelic_fetch_data" {
@@ -230,6 +230,73 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.newrelic_lambda_schedule.arn
 }
+
+
+##########################################################################
+# NEWRELIC-RMP-DEVICE-METRICS
+##########################################################################
+
+# Archive the newrelic-device-metrics Python script
+data "archive_file" "newrelic_metrics_data" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/newrelic-rmp-device-metrics/"
+  output_path = "${path.module}/scripts/zips/newrelic-rmp-device-metrics.zip"
+}
+
+# Lambda Function for fetching New Relic device metrics
+resource "aws_lambda_function" "uk_snowfall_newrelic_metrics_function" {
+  filename         = "${path.module}/scripts/zips/newrelic-rmp-device-metrics.zip"
+  function_name    = "uk-snowfall-newrelic-rmp-device-metrics-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 4096                     # Increased memory if the data featch is slow (which also increases CPU)
+  timeout          = 720
+  description      = "Fetch metrics data from New Relic API and update to landing bucket"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-rmp-device-metrics.zip")
+  tags             = var.resource_tags
+  layers = [
+    "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1", # AWS SDK for Pandas
+    "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:4"   # Requests library
+  ]
+  environment {
+    variables = {
+      DATASHARE_BUCKET = "eu-central1-${var.environment}-uk-snowfall-datashare-processed-${var.account_number}"
+      TARGET_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+      
+    }
+  }
+}
+
+
+
+# CloudWatch Event Rule to trigger Lambda every 2 minutes
+resource "aws_cloudwatch_event_rule" "newrelic_metrics_lambda_schedule" {
+  name                = "uk-snowfall-newrelic-rmp-device-metrics-schedule"
+  description         = "Triggers the New Relic device metrics Lambda every 2 minutes"
+  schedule_expression = "rate(2 minutes)"
+}
+
+# Add Lambda as the target of the Event Rule
+resource "aws_cloudwatch_event_target" "invoke_newrelic_metrics_lambda" {
+  rule      = aws_cloudwatch_event_rule.newrelic_metrics_lambda_schedule.name
+  target_id = "newrelic-rmp-device-metrics-target"
+  arn       = aws_lambda_function.uk_snowfall_newrelic_metrics_function.arn
+}
+
+# Grant EventBridge permission to invoke the Lambda
+resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_metrics" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_newrelic_metrics_function.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.newrelic_metrics_lambda_schedule.arn
+}
+
+
+
+
 
 #######################################################################
 # NEWRELIC-DIGITAL-RESPONSE-FETCH LAMBDA
