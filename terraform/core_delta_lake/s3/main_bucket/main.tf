@@ -62,6 +62,7 @@ resource "aws_s3_object" "landing_folder" {
       restaurant_config   = "restaurant_config/"
       cisco_meraki        = "meraki/"
       newrelic_rmp_device = "newrelic_rmp_device/"
+      newrelic_rmp_device_metrics      = "newrelic_rmp_device_metrics/"
       ncr_service_request = "ncr_service_now/UK-SNowFall-ServiceNow-ServiceRequest/"
       newrelic_digital_response = "newrelic_digital_response/"
     }
@@ -118,6 +119,7 @@ resource "aws_s3_object" "raw_folder" {
       restaurant_config         = "restaurant_config/"
       cisco_meraki              = "meraki/"
       newrelic_rmp_device       = "newrelic_rmp_device/"
+      newrelic_rmp_device_metrics      = "newrelic_rmp_device_metrics/"
     }
 }
 
@@ -176,6 +178,7 @@ resource "aws_s3_object" "preparation_folder" {
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
       cisco_meraki              = "meraki/"
       newrelic_rmp_device       = "newrelic_rmp_device/"
+      newrelic_rmp_device_metrics      = "newrelic_rmp_device_metrics/"
     }
 }
 
@@ -247,6 +250,7 @@ resource "aws_s3_object" "processed_folder" {
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
       cisco_meraki              = "meraki/"
       newrelic_rmp_device       = "newrelic_rmp_device/"
+      newrelic_rmp_device_metrics      = "newrelic_rmp_device_metrics/"
     }
 }
 
