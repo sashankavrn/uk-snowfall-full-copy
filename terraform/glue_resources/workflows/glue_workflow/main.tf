@@ -247,6 +247,7 @@ locals {
       trigger_type    = "EVENT"
       schedule        = null
       reporting_date  = null
+    }
   }
 }
 
