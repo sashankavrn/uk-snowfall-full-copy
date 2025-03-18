@@ -28,7 +28,7 @@ def get_secret():
             print("[ERROR] Missing API key or account ID in Secrets Manager.")
             return None, None
 
-        return api_key, int(account_id)  # ✅ Ensure account ID is an integer
+        return api_key, int(account_id) 
 
     except Exception as e:
         print(f"[ERROR] Failed to retrieve secrets: {e}")
@@ -46,7 +46,7 @@ def new_relic_query(api_key, account_id, nrql):
         "query": f"""
         {{
           actor {{
-            account(id: {account_id}) {{  # ✅ Fix: Account ID as integer
+            account(id: {account_id}) {{  
               nrql(query: \"""
               {nrql}
               \""", timeout: 60) {{
@@ -58,13 +58,13 @@ def new_relic_query(api_key, account_id, nrql):
         """
     })
 
-    print("[DEBUG] Sending query to New Relic:", query_payload)  # ✅ Debugging NRQL Query
+    print("[DEBUG] Sending query to New Relic:", query_payload)  
 
     response = requests.post("https://api.newrelic.com/graphql", headers=headers, data=query_payload)
 
     if response.status_code == 200:
         response_json = response.json()
-        print("[DEBUG] New Relic Response:", json.dumps(response_json, indent=2))  # ✅ Print Response
+        print("[DEBUG] New Relic Response:", json.dumps(response_json, indent=2))  
         return response_json
     else:
         print(f"[ERROR] Failed to fetch data: {response.status_code}, {response.text}")

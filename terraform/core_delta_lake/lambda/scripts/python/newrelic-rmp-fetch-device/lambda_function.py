@@ -10,7 +10,7 @@ REGION_NAME = "eu-central-1"
 
 # Amazon S3 Details (from environment variable)
 S3_BUCKET = os.environ.get("TARGET_BUCKET")
-S3_PREFIX = "newrelic/newrelic_rmp_device/"
+S3_PREFIX = "newrelic/newrelic_rmp_device_info/"
 
 # Function to Fetch Secrets from AWS Secrets Manager
 def get_secret():
