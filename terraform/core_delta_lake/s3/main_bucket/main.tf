@@ -61,10 +61,10 @@ resource "aws_s3_object" "landing_folder" {
       ods                 = "ods/"
       restaurant_config   = "restaurant_config/"
       cisco_meraki        = "meraki/"
-      newrelic_rmp_device = "newrelic_rmp_device/"
-      newrelic_rmp_device_metrics      = "newrelic_rmp_device_metrics/"
       ncr_service_request = "ncr_service_now/UK-SNowFall-ServiceNow-ServiceRequest/"
-      newrelic_digital_response = "newrelic_digital_response/"
+      newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
+      newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
+      newrelic_digital_response = "newrelic/newrelic_digital_response/"
     }
 }
 
@@ -118,8 +118,9 @@ resource "aws_s3_object" "raw_folder" {
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
       restaurant_config         = "restaurant_config/"
       cisco_meraki              = "meraki/"
-      newrelic_rmp_device       = "newrelic_rmp_device/"
-      newrelic_rmp_device_metrics      = "newrelic_rmp_device_metrics/"
+      newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
+      newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
+      newrelic_digital_response = "newrelic/newrelic_digital_response/"
     }
 }
 
@@ -177,8 +178,9 @@ resource "aws_s3_object" "preparation_folder" {
       location_hierarchy        = "ods/location_hierarchy/"
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
       cisco_meraki              = "meraki/"
-      newrelic_rmp_device       = "newrelic_rmp_device/"
-      newrelic_rmp_device_metrics      = "newrelic_rmp_device_metrics/"
+      newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
+      newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
+      newrelic_digital_response = "newrelic/newrelic_digital_response/"
     }
 }
 
@@ -249,8 +251,9 @@ resource "aws_s3_object" "processed_folder" {
       location_hierarchy        = "ods/location_hierarchy/"
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
       cisco_meraki              = "meraki/"
-      newrelic_rmp_device       = "newrelic_rmp_device/"
-      newrelic_rmp_device_metrics      = "newrelic_rmp_device_metrics/"
+      newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
+      newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
+      newrelic_digital_response = "newrelic/newrelic_digital_response/"
     }
 }
 
