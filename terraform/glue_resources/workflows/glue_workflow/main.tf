@@ -222,10 +222,10 @@ locals {
       schedule        = null
       reporting_date  = null
     },
-    "device_info" = {
+    "newrelic_rmp_device" = {
       name            = "uk-snowfall-newrelic-rmp-device"
       description     = "Workflow for the newrelic rmp device data"
-      dataset         = "newrelic_rmp_device_info"
+      dataset         = "newrelic_rmp_device"
       group           = "preparation"
       trigger_name    = "uk-snowfall-newrelic-rmp-device-trigger"
       max_concurrent  = 1
@@ -235,19 +235,6 @@ locals {
       schedule        = null
       reporting_date  = null
     },
-    "metrics_info" = {
-      name            = "uk-snowfall-newrelic-rmp-metric"
-      description     = "Workflow for the newrelic rmp metric data"
-      dataset         = "newrelic_rmp_device_metrics"
-      group           = "preparation"
-      trigger_name    = "uk-snowfall-newrelic-rmp-metric-trigger"
-      max_concurrent  = 1
-      batch_size      = 100
-      batch_window    = 10
-      trigger_type    = "EVENT"
-      schedule        = null
-      reporting_date  = null
-    }
   }
 }
 
