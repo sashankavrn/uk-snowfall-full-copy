@@ -451,7 +451,7 @@ EOF
 
 resource "aws_cloudwatch_event_target" "newrelic_rmp_device_rule" {
   rule      = aws_cloudwatch_event_rule.newrelic_rmp_device_event_rule.name
-  arn       = local.workflow_trigger_arns["newrelic_rmp_device"]
+  arn       = local.workflow_trigger_arns["newrelic_rmp_device_info"]
   role_arn  = var.role_assumed_arn
 }
 
