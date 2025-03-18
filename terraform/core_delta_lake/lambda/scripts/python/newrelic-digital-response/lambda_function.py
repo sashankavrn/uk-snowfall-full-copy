@@ -10,7 +10,7 @@ REGION_NAME = "eu-central-1"
 
 # Amazon S3 Details (from environment variable)
 S3_BUCKET = os.environ.get("TARGET_BUCKET")  # Get bucket from Lambda environment variable
-S3_PREFIX = "newrelic_digital_response/"  # Folder in S3 bucket
+S3_PREFIX = "newrelic/newrelic_digital_response/"  # Folder in S3 bucket
 
 # Function to Fetch Secrets from AWS Secrets Manager
 def get_secret():

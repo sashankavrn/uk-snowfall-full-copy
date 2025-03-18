@@ -439,7 +439,7 @@ resource "aws_cloudwatch_event_rule" "newrelic_rmp_device_event_rule" {
     },
     "object": {
       "key": [{
-        "prefix": "newrelic_rmp_device/"
+        "prefix": "newrelic/newrelic_rmp_device/"
       }]
     }
   },
@@ -470,7 +470,7 @@ resource "aws_cloudwatch_event_target" "newrelic_rmp_device_rule" {
 #     },
 #     "object": {
 #       "key": [{
-#         "prefix": "newrelic_rmp_device_metrics/"
+#         "prefix": "newrelic/newrelic_rmp_device_metrics/"
 #       }]
 #     }
 #   },

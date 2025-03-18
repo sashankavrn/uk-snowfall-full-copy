@@ -12,7 +12,7 @@ REGION_NAME = "eu-central-1"
 DATASHARE_BUCKET = os.environ.get("DATASHARE_BUCKET")
 TARGET_BUCKET = os.environ.get("TARGET_BUCKET")
 # S3 key prefix for metrics data
-S3_PREFIX = "newrelic_rmp_device_metrics/"
+S3_PREFIX = "newrelic/newrelic_rmp_device_metrics/"
 
 def get_secret():
     """Retrieve API key and account ID from AWS Secrets Manager."""
