@@ -103,8 +103,8 @@ resource "aws_s3_object" "datashare_processed_folders" {
     location_hierarchy        = "ods/location_hierarchy/"
     location_adj_trading_hrs  = "ods/adj_trading_hours/"
     cisco_meraki              = "meraki/"
-    newrelic_rmp_device       = "newrelic_rmp_device/"
-    newrelic_rmp_device_metrics      = "newrelic_rmp_device_metrics/"
+    newrelic_rmp_device       = "newrelic/newrelic_rmp_device/"
+    newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
   }
 }
 
