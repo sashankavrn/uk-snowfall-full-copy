@@ -119,8 +119,12 @@ def lambda_handler(event, context):
         print("[ERROR] Failed to retrieve hostname prefixes from New Relic.")
         return {"statusCode": 500, "body": "Failed to retrieve hostname prefixes from New Relic."}
 
-    stores = data.get("data", {}).get("actor", {}).get("account", {}).get("nrql", {}).get("results", [0])[0]['HostnamePrefix']
-    
+    try:
+        stores = data.get("data", {}).get("actor", {}).get("account", {}).get("nrql", {}).get("results", [0])[0]['HostnamePrefix']
+    except Exception as e:
+        print(f"[ERROR] Unexpected response structure when retrieving hostname prefixes: {e}")
+        return {"statusCode": 500, "body": "Unexpected response structure for hostname prefixes."}
+
     if not stores:
         print("[WARNING] No hostname prefixes returned from New Relic.")
         return {"statusCode": 500, "body": "No hostname prefixes available from New Relic."}
@@ -134,7 +138,13 @@ def lambda_handler(event, context):
 
     while index < len(stores):
         where_condition = ",".join([f"'{stores[i]}'" for i in range(index, min(index + maxStoresPerRun, len(stores)))])
-        query = f"SELECT latest(instanceType), latest(kernelVersion), latest(linuxDistribution), latest(operatingSystem), latest(windowsFamily), latest(windowsPlatform), latest(windowsVersion) FROM SystemSample WHERE substring(hostname,0,7) in ({where_condition}) SINCE 1 day ago FACET hostname LIMIT MAX"
+        # Updated query with new facet logic using displayName over hostname
+        query = (
+            f"SELECT latest(instanceType), latest(kernelVersion), latest(linuxDistribution), "
+            f"latest(operatingSystem), latest(windowsFamily), latest(windowsPlatform), latest(windowsVersion) "
+            f"FROM SystemSample WHERE substring(hostname,0,7) in ({where_condition}) SINCE 1 day ago "
+            f"FACET if(displayName IS NULL OR displayName = '', hostname, displayName) as 'hostname' LIMIT MAX"
+        )
         queries.append(query)
         index += maxStoresPerRun
 
@@ -144,9 +154,33 @@ def lambda_handler(event, context):
     print("[INFO] Fetching New Relic data...")
     for query in queries:
         data = new_relic_query(api_key, account_id, query)
-        if data:
-            results = data.get("data", {}).get("actor", {}).get("account", {}).get("nrql", {}).get("results", [])
-            raw_data.extend(results)
+        if not data:
+            print(f"[ERROR] Query returned None for query: {query}")
+            continue
+
+        # Check for the expected nested structure
+        data_level = data.get("data")
+        if data_level is None:
+            print(f"[ERROR] 'data' key missing in response for query: {query}")
+            continue
+
+        actor = data_level.get("actor")
+        if actor is None:
+            print(f"[ERROR] 'actor' key missing in response for query: {query}")
+            continue
+
+        account = actor.get("account")
+        if account is None:
+            print(f"[ERROR] 'account' key missing in response for query: {query}")
+            continue
+
+        nrql = account.get("nrql")
+        if nrql is None:
+            print(f"[ERROR] 'nrql' key missing in response for query: {query}")
+            continue
+
+        results = nrql.get("results", [])
+        raw_data.extend(results)
 
     if not raw_data:
         print("[WARNING] No data fetched from New Relic.")

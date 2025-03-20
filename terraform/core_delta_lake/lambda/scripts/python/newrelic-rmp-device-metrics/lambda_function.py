@@ -3,6 +3,7 @@ import json
 import boto3
 import os
 from datetime import datetime
+import re
 
 # AWS Secrets Manager Details
 SECRET_NAME = "uk-snowfall"
@@ -37,7 +38,6 @@ def new_relic_query(api_key, account_id, nrql):
         "Content-Type": "application/json",
         "X-Api-Key": api_key
     }
-    # Build query using an f-string for clarity
     query = f'{{actor {{account(id: {account_id}) {{nrql(query: "{nrql}", timeout: 60) {{results}}}}}}}}'
     response = requests.post("https://api.newrelic.com/graphql", headers=headers, json={"query": query})
     if response.status_code == 200:
@@ -50,44 +50,73 @@ def process_data(raw_data):
     """
     Process raw metric data from New Relic into a structured list.
     Each entry is expected to contain fields for a hostname.
+    Additionally, this function derives:
+      - restaurant_number: integer derived from numeric digits found in hostname substring (indexes 2-7)
+      - device: last 5 characters of the hostname
     """
     processed_data = []
     for entry in raw_data:
+        hostname = entry.get("hostname")
+        restaurant_number = None
+        device = None
+        if hostname and len(hostname) >= 7:
+            # Attempt to extract digits from the substring (indexes 2 to 7)
+            substring = hostname[2:7]
+            match = re.search(r'\d+', substring)
+            if match:
+                try:
+                    restaurant_number = int(match.group())
+                except Exception as e:
+                    print(f"[WARNING] Failed to convert extracted digits from hostname {hostname}: {e}")
+            else:
+                # Optional: Try to extract digits from the entire hostname if desired
+                match = re.search(r'\d+', hostname)
+                if match:
+                    try:
+                        restaurant_number = int(match.group())
+                    except Exception as e:
+                        print(f"[WARNING] Failed to convert digits from hostname {hostname}: {e}")
+            # Get last 5 characters as device if hostname is long enough
+            if len(hostname) >= 5:
+                device = hostname[-5:]
+        
         processed_entry = {
-            "hostname": entry.get("hostname"),
-            "coreCount": entry.get("latest.coreCount"),
-            "processorCount": entry.get("latest.processorCount"),
-            "cpuIOWaitPercent": entry.get("average.cpuIOWaitPercent"),
-            "cpuIdlePercent": entry.get("average.cpuIdlePercent"),
-            "cpuPercent": entry.get("average.cpuPercent"),
-            "cpuStealPercent": entry.get("average.cpuStealPercent"),
-            "cpuSystemPercent": entry.get("average.cpuSystemPercent"),
-            "cpuUserPercent": entry.get("average.cpuUserPercent"),
-            "diskFreeBytes": entry.get("average.diskFreeBytes"),
-            "diskFreePercent": entry.get("average.diskFreePercent"),
-            "diskReadUtilizationPercent": entry.get("average.diskReadUtilizationPercent"),
-            "diskReadsPerSecond": entry.get("average.diskReadsPerSecond"),
-            "diskTotalBytes": entry.get("average.diskTotalBytes"),
-            "diskUsedBytes": entry.get("average.diskUsedBytes"),
-            "diskUsedPercent": entry.get("average.diskUsedPercent"),
-            "diskUtilizationPercent": entry.get("average.diskUtilizationPercent"),
-            "diskWriteUtilizationPercent": entry.get("average.diskWriteUtilizationPercent"),
-            "diskWritesPerSecond": entry.get("average.diskWritesPerSecond"),
-            "loadAverageFifteenMinute": entry.get("average.loadAverageFifteenMinute"),
-            "loadAverageFiveMinute": entry.get("average.loadAverageFiveMinute"),
-            "loadAverageOneMinute": entry.get("average.loadAverageOneMinute"),
-            "memoryCachedBytes": entry.get("average.memoryCachedBytes"),
-            "memoryFreeBytes": entry.get("average.memoryFreeBytes"),
-            "memoryFreePercent": entry.get("average.memoryFreePercent"),
-            "memorySharedBytes": entry.get("average.memorySharedBytes"),
-            "memorySlabBytes": entry.get("average.memorySlabBytes"),
-            "memoryTotalBytes": entry.get("average.memoryTotalBytes"),
-            "memoryUsedBytes": entry.get("average.memoryUsedBytes"),
-            "memoryUsedPercent": entry.get("average.memoryUsedPercent"),
-            "swapFreeBytes": entry.get("average.swapFreeBytes"),
-            "swapTotalBytes": entry.get("average.swapTotalBytes"),
-            "swapUsedBytes": entry.get("average.swapUsedBytes"),
-            "systemMemoryBytes": entry.get("latest.systemMemoryBytes"),
+            "hostname": hostname,
+            "restaurant_number": restaurant_number,
+            "device": device,
+            "latest.coreCount": entry.get("latest.coreCount"),
+            "latest.processorCount": entry.get("latest.processorCount"),
+            "average.cpuIOWaitPercent": entry.get("average.cpuIOWaitPercent"),
+            "average.cpuIdlePercent": entry.get("average.cpuIdlePercent"),
+            "average.cpuPercent": entry.get("average.cpuPercent"),
+            "average.cpuStealPercent": entry.get("average.cpuStealPercent"),
+            "average.cpuSystemPercent": entry.get("average.cpuSystemPercent"),
+            "average.cpuUserPercent": entry.get("average.cpuUserPercent"),
+            "average.diskFreeBytes": entry.get("average.diskFreeBytes"),
+            "average.diskFreePercent": entry.get("average.diskFreePercent"),
+            "average.diskReadUtilizationPercent": entry.get("average.diskReadUtilizationPercent"),
+            "average.diskReadsPerSecond": entry.get("average.diskReadsPerSecond"),
+            "average.diskTotalBytes": entry.get("average.diskTotalBytes"),
+            "average.diskUsedBytes": entry.get("average.diskUsedBytes"),
+            "average.diskUsedPercent": entry.get("average.diskUsedPercent"),
+            "average.diskUtilizationPercent": entry.get("average.diskUtilizationPercent"),
+            "average.diskWriteUtilizationPercent": entry.get("average.diskWriteUtilizationPercent"),
+            "average.diskWritesPerSecond": entry.get("average.diskWritesPerSecond"),
+            "average.loadAverageFifteenMinute": entry.get("average.loadAverageFifteenMinute"),
+            "average.loadAverageFiveMinute": entry.get("average.loadAverageFiveMinute"),
+            "average.loadAverageOneMinute": entry.get("average.loadAverageOneMinute"),
+            "average.memoryCachedBytes": entry.get("average.memoryCachedBytes"),
+            "average.memoryFreeBytes": entry.get("average.memoryFreeBytes"),
+            "average.memoryFreePercent": entry.get("average.memoryFreePercent"),
+            "average.memorySharedBytes": entry.get("average.memorySharedBytes"),
+            "average.memorySlabBytes": entry.get("average.memorySlabBytes"),
+            "average.memoryTotalBytes": entry.get("average.memoryTotalBytes"),
+            "average.memoryUsedBytes": entry.get("average.memoryUsedBytes"),
+            "average.memoryUsedPercent": entry.get("average.memoryUsedPercent"),
+            "average.swapFreeBytes": entry.get("average.swapFreeBytes"),
+            "average.swapTotalBytes": entry.get("average.swapTotalBytes"),
+            "average.swapUsedBytes": entry.get("average.swapUsedBytes"),
+            "latest.systemMemoryBytes": entry.get("latest.systemMemoryBytes"),
             "sys_updated_timestamp": datetime.utcnow().isoformat()
         }
         processed_data.append(processed_entry)
@@ -130,7 +159,6 @@ def lambda_handler(event, context):
         print("[ERROR] Prefix query returned no data.")
         return {"statusCode": 500, "body": "Failed to retrieve hostname prefixes from New Relic."}
     
-    # Log the raw response for debugging
     print("[DEBUG] Prefix data response:", json.dumps(prefix_data))
     
     prefix_results = prefix_data.get("data", {}).get("actor", {}).get("account", {}).get("nrql", {}).get("results", [])
@@ -152,6 +180,7 @@ def lambda_handler(event, context):
     while index < len(stores):
         batch = stores[index : index + maxPrefixesPerBatch]
         quoted = ",".join([f"'{prefix}'" for prefix in batch])
+        # Updated query with new facet logic using displayName over hostname
         detailed_query = (
             "SELECT latest(coreCount), latest(processorCount), average(cpuIOWaitPercent), average(cpuIdlePercent), "
             "average(cpuPercent), average(cpuStealPercent), average(cpuSystemPercent), average(cpuUserPercent), "
@@ -162,7 +191,8 @@ def lambda_handler(event, context):
             "average(memoryFreePercent), average(memorySharedBytes), average(memorySlabBytes), average(memoryTotalBytes), "
             "average(memoryUsedBytes), average(memoryUsedPercent), average(swapFreeBytes), average(swapTotalBytes), "
             "average(swapUsedBytes), latest(systemMemoryBytes) FROM SystemSample SINCE 1 day ago "
-            f"WHERE substring(hostname,0,7) in ({quoted}) FACET hostname LIMIT MAX"
+            f"WHERE substring(hostname,0,7) in ({quoted}) "
+            "FACET if(displayName IS NULL OR displayName = '', hostname, displayName) as 'hostname' LIMIT MAX"
         )
         queries.append(detailed_query)
         index += maxPrefixesPerBatch
