@@ -241,7 +241,7 @@ locals {
       dataset         = "newrelic_rmp_device_metrics"
       group           = "preparation"
       trigger_name    = "uk-snowfall-newrelic-rmp-device-metrics-trigger"
-      max_concurrent  = 1
+      max_concurrent  = 5
       batch_size      = 100
       batch_window    = 10
       trigger_type    = "EVENT"
