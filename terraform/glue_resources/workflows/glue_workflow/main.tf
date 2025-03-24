@@ -244,11 +244,24 @@ locals {
       max_concurrent  = 5
       batch_size      = 100
       batch_window    = 10
-      trigger_type    = "EVENT"
-      schedule        = null
-      reporting_date  = null
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 * * * ? *)"
+      reporting_date  = ""
     },
-
+    // New scheduled workflow that triggers at 1 AM UTC
+    "newrelic_rmp_device_metrics_daily" = {
+      name            = "uk-snowfall-newrelic-rmp-device_metrics-daily"
+      description     = "Workflow for the newrelic rmp device metrics data, triggered daily at 1 AM UTC"
+      dataset         = "newrelic_rmp_device_metrics"
+      group           = "dailry"
+      trigger_name    = "uk-snowfall-newrelic-rmp-device-metrics-daily-trigger"
+      max_concurrent  = 5
+      batch_size      = null
+      batch_window    = null
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0 1 * * ? *)"
+      reporting_date  = ""
+       },
   }
 }
 
