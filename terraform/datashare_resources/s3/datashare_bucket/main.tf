@@ -55,6 +55,7 @@ resource "aws_s3_object" "datashare_landing_folder" {
     ncr_service_request     = "ncr_service_now/UK-SNowFall-ServiceNow-ServiceRequest/"
     ncr_sys_user            = "ncr_service_now/UK-SNowFall-ServiceNow-SysUser/"
     ncr_sys_user_group      = "ncr_service_now/UK-SNowFall-ServiceNow-Sys-User-Group/"
+    ncr_case                = "ncr_service_now/UK-SNowFall-ServiceNow-Case/"
   }
 }
 
