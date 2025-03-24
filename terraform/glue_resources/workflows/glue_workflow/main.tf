@@ -281,7 +281,7 @@ resource "aws_glue_workflow" "glue_workflows" {
   }, each.value.reporting_date != null ? { REPORTING_DATE = each.value.reporting_date } : {})
 
   lifecycle {
-    prevent_destroy = false    # Prevent the workflow from being destroyed
+    prevent_destroy = true    # Prevent the workflow from being destroyed
     ignore_changes = [name, description]  # Ignore changes to these attributes
   }
 }
@@ -311,7 +311,7 @@ resource "aws_glue_trigger" "glue_triggers" {
   }
 
   lifecycle {
-    prevent_destroy = false   # Prevent the trigger from being destroyed
+    prevent_destroy = true   # Prevent the trigger from being destroyed
     ignore_changes = [name, description]  # Ignore changes to these attributes
   }
 }
