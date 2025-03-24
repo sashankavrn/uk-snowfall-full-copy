@@ -86,5 +86,15 @@ dq_rules = {
         ColumnCount <= 23,
         RowCount > 0,
         IsComplete "restaurant_number"
+    ]""",
+    "newrelic_rmp_device_info": """Rules = [
+        ColumnCount <= 12,
+        RowCount > 0,
+        IsComplete "restaurant_number"
+    ]""",
+    "newrelic_rmp_device_metrics": """Rules = [
+        ColumnCount <= 40,
+        RowCount > 0,
+        IsComplete "restaurant_number"
     ]"""
 }

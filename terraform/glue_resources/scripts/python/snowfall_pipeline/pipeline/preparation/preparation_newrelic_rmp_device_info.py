@@ -3,7 +3,7 @@ from snowfall_pipeline.common_utilities.data_quality_rules import dq_rules
 from delta.tables import DeltaTable
 
 
-class PreparationMeraki(TransformBase):
+class PreparationNewrelicRmpDeviceInfo(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
@@ -11,7 +11,7 @@ class PreparationMeraki(TransformBase):
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
         self.pipeline_config = self.full_configs[self.datasets]
         self.dq_rule = dq_rules.get(self.datasets)
-        self.file_path = "meraki"
+        self.file_path = "newrelic/newrelic_rmp_device_info"
         self.list_of_files = self.aws_instance.get_files_in_s3_path(f"{self.raw_bucket_name}/{self.file_path}/")
 
 
@@ -39,6 +39,7 @@ class PreparationMeraki(TransformBase):
         - DataFrame: Transformed DataFrame.
 
         """
+        df = self.parse_column_values(df, self.pipeline_config.get('new_column_params'))
 
         # Stpe 1: Fill null values in specified column
         df = self.replace_value(df, self.pipeline_config.get('replace_values'))
@@ -46,20 +47,19 @@ class PreparationMeraki(TransformBase):
         # Step 2: Remove duplicate records
         df = self.dropping_duplicates(df)
 
-        # Step 3: Removes trailing whitespaces
+        # Step 4: Removes trailing whitespaces
         df = self.remove_trailing_whitespace(df)
 
-        # Step 4: Data quality check
+        # Step 5: Data quality check
         df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'json')  
 
-        # Step 5: Add CDC columns
+        # Step 6: Add CDC columns
         df = self.adding_cdc_columns(df)
 
-        # Step 6: Adding Partiton Columns
+        # Step 7: Adding Partiton Columns
         df = self.create_partition_date_columns(df,'sys_updated_timestamp','sys_updated')
 
         return df
-
 
 
     def save_data(self, df):
@@ -86,7 +86,7 @@ class PreparationMeraki(TransformBase):
             .save(save_output_path)
 
             # Execute Athena query to create the table
-            self.aws_instance.create_athena_delta_table('preparation', 'meraki_device_info', save_output_path, self.athena_output_path)
+            self.aws_instance.create_athena_delta_table('preparation', 'newrelic_rmp_device_info', save_output_path, self.athena_output_path)
             
         else:
 
