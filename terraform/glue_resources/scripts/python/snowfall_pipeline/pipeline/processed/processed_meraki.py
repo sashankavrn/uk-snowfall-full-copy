@@ -73,11 +73,12 @@ class ProcessedMeraki(TransformBase):
             'sys_updated_year',
             'sys_updated_month',
             'sys_updated_timestamp_timestamp',
-            'sys_updated_timestamp_dt'
+            'sys_updated_timestamp_dt',
+            'cdc_timestamp'
         )
 
         column_mapping = {
-            'restaurant_number': ('restaurant_id', 'Integer'),
+            'restaurant_number': ('restaurant_number', 'Integer'),
             'name': ('device_name', 'string'),
             'serial': ('serial_number', 'string'),
             'mac': ('mac_address', 'string'),
@@ -99,7 +100,8 @@ class ProcessedMeraki(TransformBase):
             'sys_updated_year': ('sys_updated_year', 'Integer'),
             'sys_updated_month': ('sys_updated_month', 'Integer'),
             'sys_updated_timestamp_timestamp': ('sys_updated_timestamp', 'timestamp'),
-            'sys_updated_timestamp_dt': ('sys_updated_date', 'date')
+            'sys_updated_timestamp_dt': ('sys_updated_date', 'date'),
+            'cdc_timestamp': ('cdc_timestamp', 'timestamp')
         }
         # Step 6. Changes column names and schema
         df = self.change_column_names_and_schema(df,column_mapping)

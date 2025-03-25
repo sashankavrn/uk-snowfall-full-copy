@@ -59,6 +59,7 @@ class ProcessedNewrelicRmpDeviceInfo(TransformBase):
             'device',
             'sys_updated_timestamp_timestamp',
             'sys_updated_timestamp_dt',
+            'cdc_timestamp',
             'sys_updated_year',
             'sys_updated_month'
         )
@@ -75,6 +76,7 @@ class ProcessedNewrelicRmpDeviceInfo(TransformBase):
             'windowsVersion': ('windows_version', 'string'),
             'sys_updated_timestamp_timestamp': ('sys_updated_timestamp', 'timestamp'),
             'sys_updated_timestamp_dt': ('sys_updated_date', 'date'),
+            'cdc_timestamp': ('cdc_timestamp', 'timestamp'),
             'sys_updated_year': ('sys_updated_year', 'Integer'),
             'sys_updated_month': ('sys_updated_month', 'Integer')
         }
