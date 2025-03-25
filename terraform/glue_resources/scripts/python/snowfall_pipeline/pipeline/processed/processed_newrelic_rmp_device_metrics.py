@@ -85,6 +85,7 @@ class ProcessedNewrelicRmpDeviceMetrics(TransformBase):
             'average_swapUsedBytes',
             'sys_updated_timestamp_timestamp',
             'sys_updated_timestamp_dt',
+            'cdc_timestamp',
             'sys_updated_year',
             'sys_updated_month'
         )
@@ -128,6 +129,7 @@ class ProcessedNewrelicRmpDeviceMetrics(TransformBase):
             'average_swapUsedBytes': ('swap_used_bytes', 'double'),
             'sys_updated_timestamp_timestamp': ('sys_updated_timestamp', 'timestamp'),
             'sys_updated_timestamp_dt': ('sys_updated_date', 'date'),
+            'cdc_timestamp': ('cdc_timestamp', 'timestamp'),
             'sys_updated_year': ('sys_updated_year', 'Integer'),
             'sys_updated_month': ('sys_updated_month', 'Integer')
         }        
