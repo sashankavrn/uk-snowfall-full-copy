@@ -9,7 +9,7 @@ WITH ranked_devices AS (
     FROM "uk_snowfall_processed"."meraki_device_info"
 )
 SELECT 
-    restaurant_id,             
+    restaurant_number,             
     device_name,               
     serial_number,             
     mac_address,               
