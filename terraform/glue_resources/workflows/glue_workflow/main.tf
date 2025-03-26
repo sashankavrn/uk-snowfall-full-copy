@@ -253,7 +253,7 @@ locals {
       name            = "uk-snowfall-newrelic-rmp-device_metrics-daily"
       description     = "Workflow for the newrelic rmp device metrics data, triggered daily at 1 AM UTC"
       dataset         = "newrelic_rmp_device_metrics_daily"
-      group           = "preparation"
+      group           = "semantic"
       trigger_name    = "uk-snowfall-newrelic-rmp-device-metrics-daily-trigger"
       max_concurrent  = 1
       batch_size      = null
