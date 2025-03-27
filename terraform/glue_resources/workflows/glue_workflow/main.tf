@@ -279,6 +279,7 @@ resource "aws_glue_workflow" "glue_workflows" {
   default_run_properties = merge({
     "DATASET" = each.value.dataset
     "GROUP"   = each.value.group
+    "RETENTION_DAYS" = each.vaule.group
   }, each.value.reporting_date != null ? { REPORTING_DATE = each.value.reporting_date } : {})
 
   lifecycle {
