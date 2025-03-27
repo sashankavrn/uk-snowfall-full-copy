@@ -260,6 +260,7 @@ locals {
       batch_window    = null
       trigger_type    = "SCHEDULED"
       schedule        = "cron(0 1 * * ? *)"
+      reporting_date  = ""
       retention_days = 60
     },
   }
@@ -278,7 +279,7 @@ resource "aws_glue_workflow" "glue_workflows" {
   default_run_properties = merge({
     "DATASET" = each.value.dataset
     "GROUP"   = each.value.group
-    "RETENTION_DAYS" = each.value.group
+    "RETENTION_DAYS" = each.value.retention_days
   }, each.value.reporting_date != null ? { REPORTING_DATE = each.value.reporting_date } : {})
 
   lifecycle {
