@@ -261,7 +261,8 @@ locals {
       trigger_type    = "SCHEDULED"
       schedule        = "cron(0 1 * * ? *)"
       reporting_date  = ""
-       },
+      retention_days = 60
+    },
   }
 }
 
