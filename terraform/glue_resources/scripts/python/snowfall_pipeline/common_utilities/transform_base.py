@@ -899,6 +899,8 @@ class TransformBase:
         Returns:
         - DataFrame with specified values replaced.
         """
+
+        self.logger.info('Running the replace_value function.')
         for param in params:
             column = param["column_name"]
             old_value = param["old_value"]
@@ -933,7 +935,7 @@ class TransformBase:
         Returns:
         - DataFrame with new columns created based on the regex extraction.
         """
-
+        self.logger.info('Running the parse_column_values function.')
         # Loop through each parameter in the new_column_name configuration list
         for param in new_column_params:
             column_name = param["column_name"]

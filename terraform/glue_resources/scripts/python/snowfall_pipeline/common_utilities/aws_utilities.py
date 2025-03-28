@@ -401,3 +401,32 @@ class AwsUtilities:
 
         except Exception as e:
             self.logger.error(f"An error occurred: {str(e)}")
+
+
+    def delete_s3_object(self, bucket_name, object_key):
+        """Deletes an object from S3.
+
+        Args:
+            bucket_name (str): The name of the S3 bucket.
+            source_object_key (str): The key of the source object.
+
+        Returns:
+            bool: True if the delete operation was successful, False otherwise.
+        """
+        s3_resource = boto3.resource('s3')
+        object = s3_resource.Object(bucket_name, object_key)
+
+        try:
+
+            # Delete the original object
+            object.delete()
+            self.logger.info(f"Object deleted from '{object_key}'")
+
+        except ClientError as c:
+            if c.response['Error']['Code'] == 'NoSuchKey':
+                self.logger.error(f"The source object '{object_key}' does not exist in S3.")
+            else:
+                self.logger.error(f"Error in delete_s3_object: {c}")
+                raise c
+        except Exception as e:
+            raise e

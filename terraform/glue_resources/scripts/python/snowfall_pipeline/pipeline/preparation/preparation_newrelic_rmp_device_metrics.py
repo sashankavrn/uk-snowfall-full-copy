@@ -97,9 +97,9 @@ class PreparationNewrelicRmpDeviceMetrics(TransformBase):
             self.vacuum_table(save_output_path,48)
 
         
-        # Move files to the Archive folder
+        # Delete files
         for file_name in self.list_of_files:
-            self.aws_instance.move_s3_object(self.raw_bucket_name, file_name, f"archive/{file_name}")
+            self.aws_instance.delete_s3_object(self.raw_bucket_name, file_name)
         
         # If error detected from DQ failing then will raise
         if self.sns_trigger:

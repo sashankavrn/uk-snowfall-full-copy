@@ -12,7 +12,7 @@ class SemanticNewrelicRmpDeviceMetricsDaily(TransformBase):
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
         self.spark.conf.set("spark.sql.shuffle.partitions", "5")
-        self.retention_days = self.aws_instance.get_workflow_properties('RETENTION_DAYS')
+        self.pipeline_config = self.full_configs[self.datasets]
         self.file_path = "newrelic/newrelic_rmp_device_metrics"
 
     def get_data(self):
@@ -37,7 +37,7 @@ class SemanticNewrelicRmpDeviceMetricsDaily(TransformBase):
                 'restaurant_number',
                 'device',
                 'host_name',
-                'lates_core_count',
+                'latest_core_count',
                 'latest_processor_count',
                 'latest_system_memory_bytes'
             )
@@ -99,24 +99,11 @@ class SemanticNewrelicRmpDeviceMetricsDaily(TransformBase):
         - df (DataFrame): Input DataFrame to be saved.
 
         """
-
-        ## Convert retention_days to integer      
-        try:
-            self.retention_days = int(self.retention_days)
-        except (ValueError, TypeError):
-            self.logger.warning(f"Invalid retention_days ({self.retention_days}). Setting to default 60.")
-            self.retention_days = 60
-
-        # Ensure retention_days is positive
-        if self.retention_days <= 0:
-            self.logger.warning(f"Invalid retention_days ({self.retention_days}). Setting to default 60.")
-            self.retention_days = 60
-
+        retention_days = self.pipeline_config.get('retention_days')
 
         # Define the S3 save path
         save_output_path = f"s3://{self.semantic_bucket_name}/newrelic/newrelic_rmp_device_metrics/"
-        prepare_s3_path = f"s3://{self.preparation_bucket_name}/newrelic/newrelic_rmp_device_metrics/"
-        process_s3_path = f"s3://{self.processed_bucket_name}/newrelic/newrelic_rmp_device_metrics/"
+
 
         # Check if Delta table needs to be created
         if DeltaTable.isDeltaTable(self.spark, save_output_path) is False:
@@ -141,17 +128,21 @@ class SemanticNewrelicRmpDeviceMetricsDaily(TransformBase):
             df.write.format("delta").mode("append") \
                 .save(save_output_path)
             
+        if isinstance(retention_days, int) and retention_days > 0:
 
-        # Load the Delta table as a DeltaTable
-        delta_table_prepare = DeltaTable.forPath(self.spark, prepare_s3_path)
-        delta_table_process = DeltaTable.forPath(self.spark, process_s3_path)
+            s3_paths = [
+                f"s3://{self.preparation_bucket_name}/newrelic/newrelic_rmp_device_metrics/",
+                f"s3://{self.processed_bucket_name}/newrelic/newrelic_rmp_device_metrics/"
+            ]
 
-        # Delete records where sys_updated_date is older than {self.retention_days} days.
-        delta_table_prepare.delete(F.col("sys_updated_timestamp") < F.current_timestamp() - F.expr(f"INTERVAL {self.retention_days} DAYS"))
-        delta_table_prepare.vacuum(retentionHours=48)
-
-        delta_table_process.delete(F.col("sys_updated_timestamp") < F.current_timestamp() - F.expr(f"INTERVAL {self.retention_days} DAYS"))
-        delta_table_process.vacuum(retentionHours=48)
+            for s3_path in s3_paths:
+                delta_table = DeltaTable.forPath(self.spark, s3_path)
+                
+                delta_table.delete(F.col("sys_updated_timestamp") < F.current_timestamp() - F.expr(f"INTERVAL {retention_days} DAYS"))
+                
+                delta_table.vacuum(retentionHours=48)
+        else:
+            self.logger.info(f"Invalid retention days: {retention_days}. It must be an integer greater than 0.")
         
         self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
         

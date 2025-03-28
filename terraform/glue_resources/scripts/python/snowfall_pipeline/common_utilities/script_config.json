@@ -322,5 +322,9 @@
                 "new_value": -1
             }
         ]        
+    },
+    "newrelic_rmp_device_metrics_daily": {
+        "retention_days": 60
+      
     }
 }
