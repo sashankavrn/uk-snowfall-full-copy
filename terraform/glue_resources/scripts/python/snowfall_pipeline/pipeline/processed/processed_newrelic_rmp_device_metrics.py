@@ -96,7 +96,7 @@ class ProcessedNewrelicRmpDeviceMetrics(TransformBase):
             'hostname': ('host_name', 'string'),
             'latest_coreCount': ('latest_core_count', 'Integer'),
             'latest_processorCount': ('latest_processor_count', 'Integer'),
-            'latest_systemMemoryBytes': ('latest_system_memory_bytes', 'double'),
+            'latest_systemMemoryBytes': ('latest_system_memory_bytes', 'long'),
             'average_cpuIOWaitPercent': ('average_cpu_io_wait_percent', 'double'),
             'average_cpuIdlePercent': ('average_cpu_idle_percent', 'double'),
             'average_cpuPercent': ('average_cpu_percent', 'double'),
