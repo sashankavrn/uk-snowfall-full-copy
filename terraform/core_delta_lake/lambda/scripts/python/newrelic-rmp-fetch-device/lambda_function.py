@@ -12,12 +12,28 @@ REGION_NAME = "eu-central-1"
 S3_BUCKET = os.environ.get("TARGET_BUCKET")
 S3_PREFIX = "newrelic/newrelic_rmp_device_info/"
 
+def notify_failure(message):
+    """Send SNS notification for a failure event."""
+    topic_arn = os.environ.get('SNS_TOPIC_ARN')
+    if not topic_arn:
+        print("[ERROR] SNS_TOPIC_ARN not set in environment variables.")
+        return
+    try:
+        sns_client = boto3.client("sns")
+        sns_client.publish(
+            TopicArn=topic_arn,
+            Message=message,
+            Subject="newrelic-rmp-device-info-lambda-failure"
+        )
+        print("[INFO] SNS notification sent.")
+    except Exception as e:
+        print(f"[ERROR] Failed to send SNS notification: {e}")
+
 # Function to Fetch Secrets from AWS Secrets Manager
 def get_secret():
     """Retrieve API key and account ID from AWS Secrets Manager."""
     session = boto3.session.Session()
     client = session.client(service_name="secretsmanager", region_name=REGION_NAME)
-
     try:
         response = client.get_secret_value(SecretId=SECRET_NAME)
         secret = json.loads(response["SecretString"])
@@ -25,13 +41,17 @@ def get_secret():
         account_id = secret.get("uk-snowfall-newrelic-account-id-rmp")  # Fetching account ID dynamically
 
         if not api_key or not account_id:
-            print("[ERROR] Missing API key or account ID in Secrets Manager.")
+            error_message = "[ERROR] Missing API key or account ID in Secrets Manager."
+            print(error_message)
+            notify_failure(error_message)
             return None, None
 
         return api_key, account_id
 
     except Exception as e:
-        print(f"[ERROR] Failed to retrieve secrets: {e}")
+        error_message = f"[ERROR] Failed to retrieve secrets: {e}"
+        print(error_message)
+        notify_failure(error_message)
         return None, None
 
 # Function to Fetch Data from New Relic API
@@ -42,13 +62,20 @@ def new_relic_query(api_key, account_id, nrql):
         "X-Api-Key": api_key
     }
     query = "{actor {account(id: " + account_id + ") {nrql(query: \"" + nrql + "\" timeout: 60) {results}}}}"
-
-    response = requests.post("https://api.newrelic.com/graphql", headers=headers, json={"query": query})
+    try:
+        response = requests.post("https://api.newrelic.com/graphql", headers=headers, json={"query": query})
+    except Exception as e:
+        error_message = f"[ERROR] Exception during New Relic query: {e}"
+        print(error_message)
+        notify_failure(error_message)
+        return None
 
     if response.status_code == 200:
         return response.json()
     else:
-        print(f"[ERROR] Failed to fetch data: {response.status_code}, {response.text}")
+        error_message = f"[ERROR] Failed to fetch data: {response.status_code}, {response.text}"
+        print(error_message)
+        notify_failure(error_message)
         return None
 
 # Process and Structure Data
@@ -73,9 +100,10 @@ def process_data(raw_data):
 # Save Data to S3 with Timestamped Filename
 def save_to_s3(data):
     """Save JSON data to S3 with a timestamped filename."""
-    
     if not S3_BUCKET:
-        print("[ERROR] S3 Bucket environment variable `TARGET_BUCKET` is not set.")
+        error_message = "[ERROR] S3 Bucket environment variable `TARGET_BUCKET` is not set."
+        print(error_message)
+        notify_failure(error_message)
         return None
 
     s3_client = boto3.client("s3")
@@ -91,11 +119,13 @@ def save_to_s3(data):
             Body=data_to_write,
             ContentType="application/json"
         )
-        print(f"[SUCCESS] JSON data uploaded to s3://{S3_BUCKET}/{s3_key}")
+        success_message = f"[SUCCESS] JSON data uploaded to s3://{S3_BUCKET}/{s3_key}"
+        print(success_message)
         return f"s3://{S3_BUCKET}/{s3_key}"
-
     except Exception as e:
-        print(f"[ERROR] Failed to upload JSON data to S3: {e}")
+        error_message = f"[ERROR] Failed to upload JSON data to S3: {e}"
+        print(error_message)
+        notify_failure(error_message)
         return None
 
 # Lambda Function Handler
@@ -105,7 +135,8 @@ def lambda_handler(event, context):
     api_key, account_id = get_secret()
 
     if not api_key or not account_id:
-        print("[ERROR] Missing API credentials. Aborting process.")
+        error_message = "[ERROR] Missing API credentials. Aborting process."
+        notify_failure(error_message)
         return {"statusCode": 500, "body": "Failed to retrieve API credentials."}
 
     print(f"[INFO] Using New Relic Account ID: {account_id}")
@@ -116,17 +147,22 @@ def lambda_handler(event, context):
     data = new_relic_query(api_key, account_id, query)
 
     if not data:
-        print("[ERROR] Failed to retrieve hostname prefixes from New Relic.")
+        error_message = "[ERROR] Failed to retrieve hostname prefixes from New Relic."
+        notify_failure(error_message)
         return {"statusCode": 500, "body": "Failed to retrieve hostname prefixes from New Relic."}
 
     try:
         stores = data.get("data", {}).get("actor", {}).get("account", {}).get("nrql", {}).get("results", [0])[0]['HostnamePrefix']
     except Exception as e:
-        print(f"[ERROR] Unexpected response structure when retrieving hostname prefixes: {e}")
+        error_message = f"[ERROR] Unexpected response structure when retrieving hostname prefixes: {e}"
+        print(error_message)
+        notify_failure(error_message)
         return {"statusCode": 500, "body": "Unexpected response structure for hostname prefixes."}
 
     if not stores:
-        print("[WARNING] No hostname prefixes returned from New Relic.")
+        error_message = "[WARNING] No hostname prefixes returned from New Relic."
+        print(error_message)
+        notify_failure(error_message)
         return {"statusCode": 500, "body": "No hostname prefixes available from New Relic."}
     
     print(f"[INFO] Got {len(stores)} hostname prefixes from New Relic.")
@@ -155,35 +191,47 @@ def lambda_handler(event, context):
     for query in queries:
         data = new_relic_query(api_key, account_id, query)
         if not data:
-            print(f"[ERROR] Query returned None for query: {query}")
+            error_message = f"[ERROR] Query returned None for query: {query}"
+            print(error_message)
+            notify_failure(error_message)
             continue
 
         # Check for the expected nested structure
         data_level = data.get("data")
         if data_level is None:
-            print(f"[ERROR] 'data' key missing in response for query: {query}")
+            error_message = f"[ERROR] 'data' key missing in response for query: {query}"
+            print(error_message)
+            notify_failure(error_message)
             continue
 
         actor = data_level.get("actor")
         if actor is None:
-            print(f"[ERROR] 'actor' key missing in response for query: {query}")
+            error_message = f"[ERROR] 'actor' key missing in response for query: {query}"
+            print(error_message)
+            notify_failure(error_message)
             continue
 
         account = actor.get("account")
         if account is None:
-            print(f"[ERROR] 'account' key missing in response for query: {query}")
+            error_message = f"[ERROR] 'account' key missing in response for query: {query}"
+            print(error_message)
+            notify_failure(error_message)
             continue
 
         nrql = account.get("nrql")
         if nrql is None:
-            print(f"[ERROR] 'nrql' key missing in response for query: {query}")
+            error_message = f"[ERROR] 'nrql' key missing in response for query: {query}"
+            print(error_message)
+            notify_failure(error_message)
             continue
 
         results = nrql.get("results", [])
         raw_data.extend(results)
 
     if not raw_data:
-        print("[WARNING] No data fetched from New Relic.")
+        error_message = "[WARNING] No data fetched from New Relic."
+        print(error_message)
+        notify_failure(error_message)
         return {"statusCode": 500, "body": "No data fetched from New Relic."}
     
     print("[INFO] Processing data...")
@@ -192,7 +240,12 @@ def lambda_handler(event, context):
     print("[INFO] Saving to S3...")
     s3_url = save_to_s3(processed_data)
 
+    if not s3_url:
+        error_message = "[ERROR] Failed to save data to S3."
+        notify_failure(error_message)
+        return {"statusCode": 500, "body": "Failed to save data to S3."}
+
     return {
         "statusCode": 200,
-        "body": f"Processed data saved to {s3_url}" if s3_url else "Failed to save data to S3."
+        "body": f"Processed data saved to {s3_url}"
     }

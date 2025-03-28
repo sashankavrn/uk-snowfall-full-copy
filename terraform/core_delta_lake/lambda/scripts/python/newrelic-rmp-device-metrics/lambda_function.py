@@ -15,6 +15,23 @@ TARGET_BUCKET = os.environ.get("TARGET_BUCKET")
 # S3 key prefix for metrics data
 S3_PREFIX = "newrelic/newrelic_rmp_device_metrics/"
 
+def notify_failure(message):
+    """Send SNS notification for a failure event."""
+    topic_arn = os.environ.get('SNS_TOPIC_ARN')
+    if not topic_arn:
+        print("[ERROR] SNS_TOPIC_ARN not set in environment variables.")
+        return
+    try:
+        sns_client = boto3.client("sns")
+        sns_client.publish(
+            TopicArn=topic_arn,
+            Message=message,
+            Subject="newrelic-rmp-device-metrics-lambda-failure"
+        )
+        print("[INFO] SNS notification sent.")
+    except Exception as e:
+        print(f"[ERROR] Failed to send SNS notification: {e}")
+
 def get_secret():
     """Retrieve API key and account ID from AWS Secrets Manager."""
     session = boto3.session.Session()
@@ -25,11 +42,15 @@ def get_secret():
         api_key = secret.get("uk-snowfall-newrelic-api-key")
         account_id = secret.get("uk-snowfall-newrelic-account-id-rmp")
         if not api_key or not account_id:
-            print("[ERROR] Missing API key or account ID in Secrets Manager.")
+            error_message = "[ERROR] Missing API key or account ID in Secrets Manager."
+            print(error_message)
+            notify_failure(error_message)
             return None, None
         return api_key, str(account_id)
     except Exception as e:
-        print(f"[ERROR] Failed to retrieve secrets: {e}")
+        error_message = f"[ERROR] Failed to retrieve secrets: {e}"
+        print(error_message)
+        notify_failure(error_message)
         return None, None
 
 def new_relic_query(api_key, account_id, nrql):
@@ -43,7 +64,9 @@ def new_relic_query(api_key, account_id, nrql):
     if response.status_code == 200:
         return response.json()
     else:
-        print(f"[ERROR] Failed to fetch data: {response.status_code}, {response.text}")
+        error_message = f"[ERROR] Failed to fetch data: {response.status_code}, {response.text}"
+        print(error_message)
+        notify_failure(error_message)
         return None
 
 def process_data(raw_data):
@@ -125,7 +148,9 @@ def process_data(raw_data):
 def save_to_bucket(bucket, prefix, data):
     """Save JSON data to the specified S3 bucket with a timestamped filename."""
     if not bucket:
-        print("[ERROR] Bucket is not set.")
+        error_message = "[ERROR] Bucket is not set."
+        print(error_message)
+        notify_failure(error_message)
         return None
     s3_client = boto3.client("s3")
     timestamp = datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')
@@ -138,17 +163,22 @@ def save_to_bucket(bucket, prefix, data):
             Body=data_to_write,
             ContentType="application/json"
         )
-        print(f"[SUCCESS] JSON data uploaded to s3://{bucket}/{s3_key}")
+        success_message = f"[SUCCESS] JSON data uploaded to s3://{bucket}/{s3_key}"
+        print(success_message)
         return f"s3://{bucket}/{s3_key}"
     except Exception as e:
-        print(f"[ERROR] Failed to upload JSON data to bucket {bucket}: {e}")
+        error_message = f"[ERROR] Failed to upload JSON data to bucket {bucket}: {e}"
+        print(error_message)
+        notify_failure(error_message)
         return None
 
 def lambda_handler(event, context):
     print("[INFO] Fetching API credentials from AWS Secrets Manager...")
     api_key, account_id = get_secret()
     if not api_key or not account_id:
-        return {"statusCode": 500, "body": "Failed to retrieve API credentials."}
+        error_message = "Failed to retrieve API credentials."
+        return {"statusCode": 500, "body": error_message}
+    
     print(f"[INFO] Using New Relic Account ID: {account_id}")
 
     # Step 1: Fetch unique hostname prefixes over 1 day
@@ -156,20 +186,24 @@ def lambda_handler(event, context):
     print("[INFO] Fetching unique hostname prefixes from New Relic...")
     prefix_data = new_relic_query(api_key, account_id, prefix_query)
     if not prefix_data:
-        print("[ERROR] Prefix query returned no data.")
-        return {"statusCode": 500, "body": "Failed to retrieve hostname prefixes from New Relic."}
+        error_message = "Failed to retrieve hostname prefixes from New Relic."
+        return {"statusCode": 500, "body": error_message}
     
     print("[DEBUG] Prefix data response:", json.dumps(prefix_data))
     
     prefix_results = prefix_data.get("data", {}).get("actor", {}).get("account", {}).get("nrql", {}).get("results", [])
     if not prefix_results or len(prefix_results) == 0:
-        print("[WARNING] No hostname prefix results returned from New Relic.")
-        return {"statusCode": 500, "body": "No hostname prefixes available from New Relic."}
+        error_message = "No hostname prefixes available from New Relic."
+        print(f"[WARNING] {error_message}")
+        notify_failure(error_message)
+        return {"statusCode": 500, "body": error_message}
     
     stores = prefix_results[0].get("HostnamePrefix", [])
     if not stores:
-        print("[WARNING] The 'HostnamePrefix' key is missing or empty in the results.")
-        return {"statusCode": 500, "body": "No hostname prefixes available from New Relic."}
+        error_message = "No hostname prefixes available from New Relic."
+        print(f"[WARNING] {error_message}")
+        notify_failure(error_message)
+        return {"statusCode": 500, "body": error_message}
     
     print(f"[INFO] Retrieved {len(stores)} hostname prefixes.")
 
@@ -180,7 +214,6 @@ def lambda_handler(event, context):
     while index < len(stores):
         batch = stores[index : index + maxPrefixesPerBatch]
         quoted = ",".join([f"'{prefix}'" for prefix in batch])
-        # Updated query with new facet logic using displayName over hostname
         detailed_query = (
             "SELECT latest(coreCount), latest(processorCount), average(cpuIOWaitPercent), average(cpuIdlePercent), "
             "average(cpuPercent), average(cpuStealPercent), average(cpuSystemPercent), average(cpuUserPercent), "
@@ -212,12 +245,12 @@ def lambda_handler(event, context):
     print("[INFO] Saving data to DATASHARE_BUCKET...")
     datashare_url = save_to_bucket(DATASHARE_BUCKET, S3_PREFIX, processed_data)
 
-    return {
-        "statusCode": 200,
-        "body": f"Processed data saved to TARGET_BUCKET: {target_url} and DATASHARE_BUCKET: {datashare_url}"
-        if target_url and datashare_url
-        else "Failed to save data to one or both buckets."
-    }
-
-if __name__ == "__main__":
-    print(lambda_handler({}, {}))
+    if target_url and datashare_url:
+        return {
+            "statusCode": 200,
+            "body": f"Processed data saved to TARGET_BUCKET: {target_url} and DATASHARE_BUCKET: {datashare_url}"
+        }
+    else:
+        error_message = "Failed to save data to one or both buckets."
+        notify_failure(error_message)
+        return {"statusCode": 500, "body": error_message}
