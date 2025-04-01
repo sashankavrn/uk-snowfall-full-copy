@@ -49,7 +49,7 @@ resource "aws_cloudwatch_event_rule" "datashare_processed_lambda_trigger" {
         { "prefix": "ods/location_hierarchy/" },
         { "prefix": "ods/adj_trading_hours/" },
         { "prefix": "meraki/" },
-        { "prefix": "newrelic_rmp_device/" }
+        { "prefix": "newrelic/" }
       ]
     }
   },
