@@ -17,7 +17,7 @@ TARGET_BUCKET = os.environ.get("TARGET_BUCKET")
 FOLDERS_TO_SYNC = [
     "amazon_connect/",
     "meraki/",
-    "newrelic/"
+    "newrelic/newrelic_rmp_device_info/"
 ]
 
 # Threshold (in milliseconds) to stop processing before Lambda timeout
