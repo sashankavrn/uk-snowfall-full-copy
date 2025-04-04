@@ -35,8 +35,8 @@ module "datashare_buckets" {
   role_assumed_arn        = var.role_assumed_arn
   datashare_landing_trigger_arn = module.datashare_lambda_module.datashare_landing_trigger_lambda_arn
   allow_landing_trigger   = module.datashare_lambda_module.datashare_landing_trigger_lambda_s3_permission
-  datashare_ncr_webhook_arn = module.datashare_lambda_module.datashare_ncr_webhook_lambda_arn 
-  allow_ncr_webhook   = module.datashare_lambda_module.datashare_ncr_webhook_lambda_s3_permission
+  # datashare_ncr_webhook_arn = module.datashare_lambda_module.datashare_ncr_webhook_lambda_arn 
+  # allow_ncr_webhook   = module.datashare_lambda_module.datashare_ncr_webhook_lambda_s3_permission
 }
 
 
