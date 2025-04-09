@@ -36,15 +36,6 @@ resource "aws_cloudwatch_event_rule" "datashare_processed_lambda_trigger" {
     "object": {
       "key": [
         { "prefix": "amazon_connect/" },
-        { "prefix": "service_now/change_request/" },
-        { "prefix": "service_now/incident/intraday/" },
-        { "prefix": "service_now/incident/daily/" },
-        { "prefix": "service_now/location/" },
-        { "prefix": "service_now/problem_record/" },
-        { "prefix": "service_now/service_request/" },
-        { "prefix": "service_now/service_offering/" },
-        { "prefix": "service_now/sys_user_group/" },
-        { "prefix": "service_now/sys_user/" },
         { "prefix": "ods/trading_hours/" },
         { "prefix": "ods/location_hierarchy/" },
         { "prefix": "ods/adj_trading_hours/" },
