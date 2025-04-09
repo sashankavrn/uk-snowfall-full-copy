@@ -80,11 +80,38 @@ resource "aws_lambda_function" "datashare_processed_trigger" {
   }
 }
 
-# Adding permissions for datashare_processed_trigger Lambda
-resource "aws_lambda_permission" "allow_processed_trigger" {
-  statement_id  = "AllowExecutionFromS3Bucket"
+# # Adding permissions for datashare_processed_trigger Lambda
+# resource "aws_lambda_permission" "allow_processed_trigger" {
+#   statement_id  = "AllowExecutionFromS3Bucket"
+#   action        = "lambda:InvokeFunction"
+#   function_name = aws_lambda_function.datashare_processed_trigger.arn
+#   principal     = "s3.amazonaws.com"
+#   source_arn    = var.datashare_processed_bucket_arn
+# }
+
+# --------------------------------------------------------
+# CloudWatch Event configuration - trigger every 5 minutes-for testing 
+# --------------------------------------------------------
+
+# CloudWatch Event Rule to trigger datashare_processed_trigger Lambda every 5 minutes
+resource "aws_cloudwatch_event_rule" "datashare_trigger_schedule" {
+  name                = "uk-snowfall-datashare-processed-trigger-schedule"
+  description         = "Triggers the datashare_processed_trigger Lambda every 5 minutes"
+  schedule_expression = "rate(5 minutes)"
+}
+
+# Add datashare_processed_trigger Lambda as the target of the Event Rule
+resource "aws_cloudwatch_event_target" "invoke_datashare_processed_trigger" {
+  rule      = aws_cloudwatch_event_rule.datashare_trigger_schedule.name
+  target_id = "datashare-processed-trigger-target"
+  arn       = aws_lambda_function.datashare_processed_trigger.arn
+}
+
+# Grant EventBridge permission to invoke the datashare_processed_trigger Lambda
+resource "aws_lambda_permission" "allow_eventbridge_invoke_datashare" {
+  statement_id  = "AllowExecutionFromEventBridge"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.datashare_processed_trigger.arn
-  principal     = "s3.amazonaws.com"
-  source_arn    = var.datashare_processed_bucket_arn
+  function_name = aws_lambda_function.datashare_processed_trigger.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.datashare_trigger_schedule.arn
 }
