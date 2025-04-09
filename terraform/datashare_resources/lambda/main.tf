@@ -7,28 +7,30 @@ data "archive_file" "datashare_landing_trigger" {
 
 # Lambda function - datashare_landing_trigger
 resource "aws_lambda_function" "datashare_landing_trigger" {
-  filename         = "${path.module}/scripts/zips/datashare_landing_trigger.zip"
-  function_name    = "uk-snowfall-datashare-landing-trigger-${var.environment}"
-  role             = var.role_assumed_arn
-  handler          = "lambda_function.lambda_handler"
-  runtime         = "python3.12"
-  memory_size      = 512
-  timeout          = 120
-  description      = "Trigger to process data move NCR data to  landing bucket"
-  source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare_landing_trigger.zip")
-  tags             = var.resource_tags
+  filename                   = "${path.module}/scripts/zips/datashare_landing_trigger.zip"
+  function_name              = "uk-snowfall-datashare-landing-trigger-${var.environment}"
+  role                       = var.role_assumed_arn
+  handler                    = "lambda_function.lambda_handler"
+  runtime                    = "python3.12"
+  memory_size                = 1024
+  timeout                    = 300  # Increased from 120 to 300 seconds (5 minutes)
+  description                = "Trigger to process data move NCR data to landing bucket"
+  source_code_hash           = filebase64sha256("${path.module}/scripts/zips/datashare_landing_trigger.zip")
+  tags                       = var.resource_tags
   layers = [
     "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1",
     "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:4"
   ]
   environment {
     variables = {
-      TARGET_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
-      DATASHARE_LANDING_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-datashare-landing-${var.account_number}"
-      # SNS_TOPIC_ARN              = var.sns_topic_arn
+      TARGET_BUCKET             = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      DATASHARE_LANDING_BUCKET  = "eu-central1-${var.environment}-uk-snowfall-datashare-landing-${var.account_number}"
+      # SNS_TOPIC_ARN            = var.sns_topic_arn
     }
   }
+  reserved_concurrent_executions = 10
 }
+
 
 # Adding permissions for datashare_landing_trigger Lambda
 resource "aws_lambda_permission" "allow_landing_trigger" {
