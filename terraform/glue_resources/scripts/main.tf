@@ -25,3 +25,16 @@ resource "aws_s3_object" "snowfall_pipeline_zip" {
   etag = filemd5("${path.module}/zips/snowfall_pipeline.zip")
 }
 
+########### Uploading Athena Views ######################
+locals {
+  athena_sql_files = fileset("${path.module}/athena_views", "*.sql")
+}
+
+resource "aws_s3_object" "athena_views" {
+  for_each = { for file in local.athena_sql_files : file => file }
+
+  bucket = var.artifact_bucket_name
+  key    = "athena_views/${each.key}"
+  source = "${path.module}/athena_views/${each.key}"
+  etag   = filemd5("${path.module}/athena_views/${each.key}")
+}

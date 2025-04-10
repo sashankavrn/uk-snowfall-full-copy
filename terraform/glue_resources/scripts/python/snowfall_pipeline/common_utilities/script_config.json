@@ -264,5 +264,67 @@
         "primary_key":"sys_id",
         "appflow_name":"UK-SNowFall-ServiceNow-SysUser"
 
+    },
+    "meraki":{
+        "transform_json":[
+            "details"
+        ],
+        "process_timestamp": [
+            "sys_updated_timestamp"
+        ],
+        "replace_values": [
+            {
+                "column_name": "restaurant_number",
+                "old_value": "None",
+                "new_value": -1
+
+            }
+        ],          
+        "primary_key":"restaurant_number"
+
+    },
+    "newrelic_rmp_device_info": {
+        "process_timestamp": [
+            "sys_updated_timestamp"
+        ],
+        "primary_key": "restaurant_number",
+        "new_column_params": [
+            {
+                "column_name": "hostname",
+                "regex": "^[A-Za-z]{2}(\\d+)",
+                "new_column_name": "restaurant_number",
+                "data_type": "IntegerType"
+            },
+            {
+                "column_name": "hostname",
+                "regex": "([A-Za-z]{3}\\d{2})$",
+                "new_column_name": "device",
+                "data_type": "StringType"
+            }
+        ],
+        "replace_values": [
+            {
+                "column_name": "restaurant_number",
+                "old_value": "None",
+                "new_value": -1
+            }
+        ]        
+    },
+    "newrelic_rmp_device_metrics": {
+        "process_timestamp": [
+            "sys_updated_timestamp"
+        ],
+        "primary_key": "restaurant_number",
+        "replace_values": [
+            {
+                "column_name": "restaurant_number",
+                "old_value": 0,
+                "new_value": -1
+            }
+        ]        
+    },
+    "newrelic_rmp_device_metrics_daily": {
+        "retention_days": 60
+      
     }
 }

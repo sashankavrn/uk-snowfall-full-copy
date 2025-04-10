@@ -414,7 +414,7 @@ class TransformBase:
 
         return df
 
-    def read_data_from_s3(self,bucket_name,file_path, file_format='json',appflow_config = None):
+    def read_data_from_s3(self,bucket_name,file_path, file_format='json',appflow_config = None, multiline_json = False):
         """
         Read data from S3 based on the specified file format.
 
@@ -423,6 +423,7 @@ class TransformBase:
             file_path (str): The path to the file in the S3 bucket.
             file_format (str, optional): The format of the file to read. Supported formats: 'json', 'csv','delta'. Defaults to 'json'.
             appflow_config (str, optional): If there is an appflow config, it is passed in to get rows extracted. Defaults to None.
+            multiline_json (bool, optional): Whether the JSON file is multiline. When set to `True`, each line in the JSON file is treated as a separate JSON object. Defaults to `False`.
 
         Returns:
             DataFrame: The DataFrame containing the read data.
@@ -434,7 +435,10 @@ class TransformBase:
             self.logger.info(f"Files processed: {self.list_of_files}")
 
         if file_format == 'json':
-            source_df = self.spark.read.json(f"s3://{bucket_name}/{file_path}/")
+            if multiline_json:
+                source_df = self.spark.read.option("multiline", "true").json(f"s3://{bucket_name}/{file_path}/")
+            else:
+                source_df = self.spark.read.json(f"s3://{bucket_name}/{file_path}/")
 
         elif file_format == 'csv':
             source_df = self.spark.read.csv(f"s3://{bucket_name}/{file_path}/", header=True)
@@ -614,7 +618,7 @@ class TransformBase:
             DataFrame: The processed Spark DataFrame.
         """
         self.logger.info('Running the split_datetime_column function')
-        timestamp_formats = ["yyyy-MM-dd HH:mm:ss", "dd-MM-yyyy HH:mm:ss"]
+        timestamp_formats = ["yyyy-MM-dd HH:mm:ss", "dd-MM-yyyy HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX", "yyyy-MM-dd'T'HH:mm:ss.SSSSSS", "yyyy-MM-dd'T'HH:mm:ss"]
         
         for col_name in input_columns:
             check = F.lit(None).cast("timestamp")
@@ -847,3 +851,107 @@ class TransformBase:
         # Vacuum the Delta table
         delta_table.vacuum(retentionHours=retention_hours)
         return
+
+
+    @transformation_timer
+    def explode_pivot_json_column(self,df, columns):
+        """
+        Parse JSON strings in specified columns of a DataFrame and create new columns.
+        
+        Args:
+        - df: DataFrame to operate on.
+        - column: Single column name containing an array of structs
+        
+        Returns:
+        - DataFrame with new columns containing parsed JSON data.
+        """
+        self.logger.info('Running the explode_pivot_json_column function')
+
+        if not columns:
+            self.logger.info("The columns list is empty. Skipping processing.")
+        else:
+            column = columns[0]
+            all_columns = df.columns
+            excluded_columns = [f"{column}_name", f"{column}_value"]
+
+
+            # Explode column, extract fields, pivot, and aggregate
+            df = df.withColumn(column, F.explode(F.col(column))) 
+            df = df.select(*df.columns, F.col(f"{column}.name").alias(f"{column}_name"), F.col(f"{column}.value").alias(f"{column}_value"))
+
+            selected_columns = [col for col in all_columns if col != column and col not in excluded_columns]
+
+            df = df.groupBy(*selected_columns).pivot(f"{column}_name").agg(F.first(f"{column}_value"))
+            return df
+
+    @transformation_timer
+    def replace_value(self, df, params):
+        """
+        Replace a specific old value with a new value in a given column of a DataFrame.
+
+        Args:
+        - df: DataFrame to operate on.
+        - params: List of dictionaries with keys:
+            - "column_name": Name of the column where values should be replaced.
+            - "old_value": The value to be replaced.
+            - "new_value": The value to replace with.
+
+        Returns:
+        - DataFrame with specified values replaced.
+        """
+
+        self.logger.info('Running the replace_value function.')
+        for param in params:
+            column = param["column_name"]
+            old_value = param["old_value"]
+            new_value = param["new_value"]
+
+            if old_value == 'None':
+                df = df.withColumn(column, F.when(F.col(column).isNull(), F.lit(new_value)).otherwise(F.col(column)))
+            elif new_value == 'None':
+                df = df.withColumn(column, F.when(F.col(column) == old_value, F.lit(None)).otherwise(F.col(column)))
+            else:
+                df = df.withColumn(column, F.when(F.col(column) == old_value, F.lit(new_value)).otherwise(F.col(column)))
+
+        return df
+    
+
+    @transformation_timer
+    def parse_column_values(self, df, new_column_params):
+
+        """
+        Extract values from a column using regular expressions based on a provided configuration.
+
+        Args:
+        - df: DataFrame to operate on.
+        - new_column_params: List of dictionaries containing configuration details for each new column.
+
+        The dictionary must contain the following keys:
+        - "column_name": The name of the column to extract the value from.
+        - "regex": The regular expression pattern to match.
+        - "new_column_name": The name of the new column to create.
+        - "data_type": The desired data type of the extracted value.
+
+        Returns:
+        - DataFrame with new columns created based on the regex extraction.
+        """
+        self.logger.info('Running the parse_column_values function.')
+        # Loop through each parameter in the new_column_name configuration list
+        for param in new_column_params:
+            column_name = param["column_name"]
+            regex_pattern = param["regex"]
+            new_column_name = param["new_column_name"]
+            data_type_str = param["data_type"]
+
+            # Convert the string representation of the data type into a type
+            data_type = eval(data_type_str)()
+
+            # Apply regex extraction and create a new column
+            df = df.withColumn(
+                new_column_name,
+                F.when(F.regexp_extract(df[column_name], regex_pattern, 1) != "",
+                    F.regexp_extract(df[column_name], regex_pattern, 1).cast(data_type))
+                .otherwise(F.lit(None).cast(data_type))
+            )
+
+        return df    

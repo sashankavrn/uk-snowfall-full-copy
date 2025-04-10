@@ -208,7 +208,60 @@ locals {
       trigger_type    = "EVENT"
       schedule        = null
       reporting_date  = null
-    }
+    },
+    "meraki" = {
+      name            = "uk-snowfall-meraki"
+      description     = "Workflow for the Meraki data"
+      dataset         = "meraki"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-meraki-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
+    },
+    "newrelic_rmp_device_info" = {
+      name            = "uk-snowfall-newrelic-rmp-device_info"
+      description     = "Workflow for the newrelic rmp device data"
+      dataset         = "newrelic_rmp_device_info"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-newrelic-rmp-device-info-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
+    },
+    "newrelic_rmp_device_metrics" = {
+      name            = "uk-snowfall-newrelic-rmp-device_metrics"
+      description     = "Workflow for the newrelic rmp device metrics data"
+      dataset         = "newrelic_rmp_device_metrics"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-newrelic-rmp-device-metrics-trigger"
+      max_concurrent  = 5
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 * * * ? *)"
+      reporting_date  = ""
+    },
+    // New scheduled workflow that triggers at 1 AM UTC
+    "newrelic_rmp_device_metrics_daily" = {
+      name            = "uk-snowfall-newrelic-rmp-device_metrics-daily"
+      description     = "Workflow for the newrelic rmp device metrics data, triggered daily at 1 AM UTC"
+      dataset         = "newrelic_rmp_device_metrics_daily"
+      group           = "semantic"
+      trigger_name    = "uk-snowfall-newrelic-rmp-device-metrics-daily-trigger"
+      max_concurrent  = 1
+      batch_size      = null
+      batch_window    = null
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0 1 * * ? *)"
+      reporting_date  = ""
+    },
   }
 }
 
@@ -228,7 +281,7 @@ resource "aws_glue_workflow" "glue_workflows" {
   }, each.value.reporting_date != null ? { REPORTING_DATE = each.value.reporting_date } : {})
 
   lifecycle {
-    prevent_destroy = true   # Prevent the workflow from being destroyed
+    prevent_destroy = true    # Prevent the workflow from being destroyed
     ignore_changes = [name, description]  # Ignore changes to these attributes
   }
 }
@@ -258,7 +311,7 @@ resource "aws_glue_trigger" "glue_triggers" {
   }
 
   lifecycle {
-    prevent_destroy = true  # Prevent the trigger from being destroyed
+    prevent_destroy = true   # Prevent the trigger from being destroyed
     ignore_changes = [name, description]  # Ignore changes to these attributes
   }
 }

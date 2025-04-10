@@ -1,3 +1,4 @@
+import os
 import boto3
 import sys
 import json
@@ -347,64 +348,6 @@ class AwsUtilities:
                 raise TimeoutError("Query execution timed out")
             time.sleep(1)
 
-    def create_athena_view(self, database, view_name, view_query, output_location):
-        """
-        Create an Athena view.
-
-        Parameters:
-        - database (str): Name of the database (schema) where the view will be created.
-        - view_name (str): Name of the view to be created.
-        - view_query (str): SQL query defining the view.
-        - output_location (str): S3 bucket location where query results will be stored.
-
-        Returns:
-        - str: Query execution ID.
-        """
-
-        # Determine the full database name
-        databases = {
-            'raw': 'uk_snowfall_raw',
-            'preparation': 'uk_snowfall_preparation',
-            'processed': 'uk_snowfall_processed',
-            'semantic': 'uk_snowfall_semantic'
-        }
-
-        full_database_name = databases.get(database)
-        if full_database_name is None:
-            self.logger.error(f"No matching database name found for '{database}'")
-            raise Exception(f"No matching database name found for '{database}'")
-
-        # Initialize Athena client
-        client = boto3.client('athena')
-
-        sql_query = f"""{view_query}"""
-
-        try:
-            # Start query execution
-            self.logger.info(f"Starting the Athena query to create view '{view_name}': {sql_query}")
-            response = client.start_query_execution(
-                QueryString=sql_query,
-                ResultConfiguration={
-                    'OutputLocation': f"s3://{output_location}"
-                }
-            )
-
-            # Extract and return query execution ID
-            query_execution_id = response['QueryExecutionId']
-
-            # Check status of the query execution
-            if self.check_query_status(query_execution_id):
-                self.logger.info(f"Athena view '{view_name}' creation successful.")
-                return query_execution_id
-            else:
-                self.logger.error(f"Athena view '{view_name}' creation failed or was cancelled.")
-                raise Exception(f"Athena view '{view_name}' creation failed or was cancelled.")
-
-        except Exception as e:
-            # Log the error and continue
-            self.logger.error(f"An error occurred while creating Athena view '{view_name}': {str(e)}")
-            raise
-
     def update_table_columns_to_timestamp(self, db_name, table_name, columns_to_convert):
         """
         Update specified columns in a table to have the data type 'timestamp' in AWS Glue catalog.
@@ -458,3 +401,32 @@ class AwsUtilities:
 
         except Exception as e:
             self.logger.error(f"An error occurred: {str(e)}")
+
+
+    def delete_s3_object(self, bucket_name, object_key):
+        """Deletes an object from S3.
+
+        Args:
+            bucket_name (str): The name of the S3 bucket.
+            source_object_key (str): The key of the source object.
+
+        Returns:
+            bool: True if the delete operation was successful, False otherwise.
+        """
+        s3_resource = boto3.resource('s3')
+        object = s3_resource.Object(bucket_name, object_key)
+
+        try:
+
+            # Delete the original object
+            object.delete()
+            self.logger.info(f"Object deleted from '{object_key}'")
+
+        except ClientError as c:
+            if c.response['Error']['Code'] == 'NoSuchKey':
+                self.logger.error(f"The source object '{object_key}' does not exist in S3.")
+            else:
+                self.logger.error(f"Error in delete_s3_object: {c}")
+                raise c
+        except Exception as e:
+            raise e

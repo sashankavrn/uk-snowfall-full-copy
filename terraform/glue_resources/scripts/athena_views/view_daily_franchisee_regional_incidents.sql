@@ -1,4 +1,7 @@
-CREATE OR REPLACE VIEW "view_daily_franchisee_regional_incidents" AS 
+--This view depends on below table
+    --"uk_snowfall_semantic"."view_daily_franchisee_restaurant_incidents"
+
+CREATE OR REPLACE VIEW "view_daily_franchisee_regional_incidents" AS
 SELECT
   count(DISTINCT restaurant_id) "restaurant_count"
 , count(DISTINCT incident_id) "incident_count"
