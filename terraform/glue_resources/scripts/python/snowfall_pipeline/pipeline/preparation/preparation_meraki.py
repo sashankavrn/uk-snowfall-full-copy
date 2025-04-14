@@ -97,6 +97,9 @@ class PreparationMeraki(TransformBase):
             # Vacuum the table
             self.vacuum_table(save_output_path,48)
 
+        if not self.aws_instance.athena_table_exists('preparation', 'meraki_device_info'):
+            # Execute Athena query to create the table
+            self.aws_instance.create_athena_delta_table('preparation', 'meraki_device_info', save_output_path, self.athena_output_path)
         
         # Move files to the Archive folder
         for file_name in self.list_of_files:

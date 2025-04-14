@@ -10,6 +10,7 @@ output_location = f"s3://{athena_output_location}"
 bucket_name = os.environ['S3_BUCKET_NAME']
 athena_client = boto3.client('athena', region_name='eu-central-1')
 s3_client = boto3.client('s3')
+workgroup_name = os.environ['WORKGROUP_NAME']
 
 # Configure logging
 logger = logging.getLogger()
@@ -52,7 +53,8 @@ def lambda_handler(event, context):
                 response = athena_client.start_query_execution(
                     QueryString=query,
                     QueryExecutionContext={'Database': database},
-                    ResultConfiguration={'OutputLocation': output_location}
+                    ResultConfiguration={'OutputLocation': output_location},
+                    WorkGroup = workgroup_name
                 )
                 query_execution_id = response['QueryExecutionId']
                 # Wait for the query to complete

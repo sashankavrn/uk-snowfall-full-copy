@@ -116,18 +116,20 @@ class SemanticNewrelicRmpDeviceMetricsDaily(TransformBase):
                 .partitionBy('sys_updated_year','sys_updated_month') \
                 .save(save_output_path)
 
-            # Execute Athena query to create the table
-            execution_query_id = self.aws_instance.create_athena_delta_table('semantic',
-                                                                             'newrelic_rmp_device_metrics',
-                                                                             save_output_path,
-                                                                             self.athena_output_path)
-
         else:
 
             # Append the new DataFrame to the Delta table
             df.write.format("delta").mode("append") \
                 .save(save_output_path)
             
+        if not self.aws_instance.athena_table_exists('semantic', 'newrelic_rmp_device_metrics'):
+            # Execute Athena query to create the table
+            execution_query_id = self.aws_instance.create_athena_delta_table('semantic',
+                                                                             'newrelic_rmp_device_metrics',
+                                                                             save_output_path,
+                                                                             self.athena_output_path)
+
+                      
         if isinstance(retention_days, int) and retention_days > 0:
 
             s3_paths = [

@@ -84,8 +84,7 @@ class PreparationNewrelicRmpDeviceMetrics(TransformBase):
             .partitionBy('sys_updated_year','sys_updated_month') \
             .save(save_output_path)
 
-            # Execute Athena query to create the table
-            self.aws_instance.create_athena_delta_table('preparation', 'newrelic_rmp_device_metrics', save_output_path, self.athena_output_path)
+            
             
         else:
 
@@ -95,6 +94,10 @@ class PreparationNewrelicRmpDeviceMetrics(TransformBase):
             
             # Vacuum the table
             self.vacuum_table(save_output_path,48)
+
+        if not self.aws_instance.athena_table_exists('preparation', 'newrelic_rmp_device_metrics'):
+            # Execute Athena query to create the table
+            self.aws_instance.create_athena_delta_table('preparation', 'newrelic_rmp_device_metrics', save_output_path, self.athena_output_path)
 
         
         # Delete files
