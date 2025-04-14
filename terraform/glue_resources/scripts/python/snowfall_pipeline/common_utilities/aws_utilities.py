@@ -265,7 +265,7 @@ class AwsUtilities:
             else:
                 raise FileNotFoundError("JSON file not found in the zip archive.")
 
-    def create_athena_delta_table(self, database, table_name, s3_path_to_delta, output_location):
+    def create_athena_delta_table(self, database, table_name, s3_path_to_delta, output_location, workgroup_name = 'uk-snowfall-pipeline'):
         """
         Create an Athena external table for Delta data.
 
@@ -274,6 +274,7 @@ class AwsUtilities:
         - table_name (str): Name of the table to be created.
         - s3_path_to_delta (str): S3 location where the Delta data is stored.
         - output_location (str): S3 bucket location where query results will be stored.
+        - workgroup_name (str): athena workgroup name where table will be created.
 
         Returns:
         - str: Query execution ID.
@@ -317,7 +318,8 @@ class AwsUtilities:
                 QueryString=sql_query,
                 ResultConfiguration={
                     'OutputLocation': f"s3://{output_location}"
-                }
+                },
+            WorkGroup = workgroup_name
             )
 
             # Extract and return query execution ID
@@ -430,3 +432,40 @@ class AwsUtilities:
                 raise c
         except Exception as e:
             raise e
+
+    def athena_table_exists(self, database_name: str, table_name: str, region: str = "eu-central-1") -> bool:
+        """
+        Check if an Athena table exists in the Glue Data Catalog.
+
+        Parameters:
+        - database_name (str): Name of the Glue database.
+        - table_name (str): Name of the table to check.
+        - region (str): AWS region (default is 'eu-central-1').
+
+        Returns:
+        - bool: True if the table exists, False if it doesn't.
+        """
+
+        # Determine the full database name
+        databases = {
+            'raw': 'uk_snowfall_raw',
+            'preparation': 'uk_snowfall_preparation',
+            'processed': 'uk_snowfall_processed',
+            'semantic': 'uk_snowfall_semantic'
+        }
+
+        full_database_name = databases.get(database_name)
+        if full_database_name is None:
+            self.logger.error('No matching database name found')
+            raise Exception('No matching database name found')
+        
+        # Initialize Glue client
+        glue_client = boto3.client('glue', region_name=region)
+
+        try:
+            response = glue_client.get_table(DatabaseName=full_database_name, Name=table_name)
+            return True
+        except glue_client.exceptions.EntityNotFoundException:
+            return False
+        except ClientError as e:
+            raise RuntimeError(f"Error checking table existence: {e}")

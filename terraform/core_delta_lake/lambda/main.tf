@@ -61,6 +61,7 @@ resource "aws_lambda_function" "uk_snowfall_create_athena_views" {
       ATHENA_OUTPUT_LOCATION = "eu-central1-${var.environment}-uk-snowfall-athena-${var.account_number}"
       ATHENA_DATABASE = "uk_snowfall_semantic"
       S3_BUCKET_NAME = "eu-central1-${var.environment}-uk-snowfall-artifact-${var.account_number}"
+      WORKGROUP_NAME = "uk-snowfall-pipeline"
     }
   }
 }

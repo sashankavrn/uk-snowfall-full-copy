@@ -84,9 +84,6 @@ class PreparationNewrelicRmpDeviceInfo(TransformBase):
             df.write.format("delta").mode("overwrite") \
             .partitionBy('sys_updated_year','sys_updated_month') \
             .save(save_output_path)
-
-            # Execute Athena query to create the table
-            self.aws_instance.create_athena_delta_table('preparation', 'newrelic_rmp_device_info', save_output_path, self.athena_output_path)
             
         else:
 
@@ -97,6 +94,9 @@ class PreparationNewrelicRmpDeviceInfo(TransformBase):
             # Vacuum the table
             self.vacuum_table(save_output_path,48)
 
+        if not self.aws_instance.athena_table_exists('preparation', 'newrelic_rmp_device_info'):
+            # Execute Athena query to create the table
+            self.aws_instance.create_athena_delta_table('preparation', 'newrelic_rmp_device_info', save_output_path, self.athena_output_path)
         
         # Move files to the Archive folder
         for file_name in self.list_of_files:

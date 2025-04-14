@@ -109,9 +109,6 @@ class ProcessedNewrelicRmpDeviceInfo(TransformBase):
                 df.write.format("delta").mode("overwrite") \
                 .partitionBy('sys_updated_year','sys_updated_month') \
                 .save(save_output_path)
-
-                # Execute Athena query to create the table
-                execution_query_id = self.aws_instance.create_athena_delta_table('processed', 'newrelic_rmp_device_info', save_output_path, self.athena_output_path)
                 
             else:
 
@@ -122,6 +119,9 @@ class ProcessedNewrelicRmpDeviceInfo(TransformBase):
                 # Vacuum the table
                 self.vacuum_table(save_output_path,48)
 
+            if not self.aws_instance.athena_table_exists('processed', 'newrelic_rmp_device_info'):
+                # Execute Athena query to create the table
+                self.aws_instance.create_athena_delta_table('processed', 'newrelic_rmp_device_info', save_output_path, self.athena_output_path)
 
             # If error detected from DQ failing then will raise
             if self.sns_trigger:
