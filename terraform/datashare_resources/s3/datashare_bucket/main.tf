@@ -50,7 +50,7 @@ resource "aws_s3_object" "datashare_landing_folder" {
     ncr_incident_daily      = "ncr_service_now/incident/daily/"
     ncr_incident_intraday   = "ncr_service_now/incident/intraday/"
     ncr_problem_record      = "ncr_service_now/problem_record/"
-    ncr_service_now_case    = "ncr_service_now/service_case"
+    ncr_service_now_case    = "ncr_service_now/service_case/"
     ncr_incident_task       = "ncr_service_now/incident_task/"
     ncr_knowledge_base      = "ncr_service_now/knowledge_base/"
     ncr_knowledge      = "ncr_service_now/knowledge/"
