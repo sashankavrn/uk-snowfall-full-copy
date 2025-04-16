@@ -70,7 +70,7 @@
         },
         {
             "fileName": "ncr_service_now/service-case",
-            "destinationPath": "ncr_service_now/service-case"
+            "destinationPath": "ncr_service_now/service_case"
         }
         
         
