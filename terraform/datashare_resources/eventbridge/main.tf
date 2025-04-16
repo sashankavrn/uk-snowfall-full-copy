@@ -60,16 +60,16 @@ resource "aws_cloudwatch_event_target" "datashare_processed_lambda_trigger_targe
 ###################################### Datashare landing  Lambda Trigger #################################################
 
 
-# Enable EventBridge notifications for the S3 bucket
-resource "aws_s3_bucket_notification" "enable_eventbridge" {
+# Enable EventBridge notifications on the landing bucket
+resource "aws_s3_bucket_notification" "enable_eventbridge_landing" {
   bucket      = aws_s3_bucket.datashare_landing_bucket.id
   eventbridge = true
 }
 
-# EventBridge rule for S3 ObjectCreated events in specific folders
-resource "aws_cloudwatch_event_rule" "s3_object_created_rule" {
+# EventBridge Rule for the landing bucket
+resource "aws_cloudwatch_event_rule" "datashare_landing_trigger" {
   name        = "uk-snowfall-datashare-landing-trigger-rule"
-  description = "Trigger Lambda on object creation in Datashare Landing bucket"
+  description = "Trigger Lambda on S3 object creation in Datashare Landing bucket"
 
   event_pattern = jsonencode({
     source       = ["aws.s3"],
@@ -90,18 +90,18 @@ resource "aws_cloudwatch_event_rule" "s3_object_created_rule" {
   })
 }
 
-# Attach the Lambda as the target for the EventBridge rule
-resource "aws_cloudwatch_event_target" "lambda_target" {
-  rule      = aws_cloudwatch_event_rule.s3_object_created_rule.name
+# Attach Lambda to EventBridge
+resource "aws_cloudwatch_event_target" "landing_lambda_target" {
+  rule      = aws_cloudwatch_event_rule.datashare_landing_trigger.name
   arn       = aws_lambda_function.datashare_landing_trigger.arn
-  role_arn  = aws_iam_role.eventbridge_invoke_lambda.arn
+  role_arn  = var.role_assumed_arn
 }
 
 # Allow EventBridge to invoke the Lambda
-resource "aws_lambda_permission" "allow_eventbridge" {
-  statement_id  = "AllowExecutionFromEventBridge"
+resource "aws_lambda_permission" "allow_eventbridge_landing" {
+  statement_id  = "AllowExecutionFromEventBridgeLanding"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.datashare_landing_trigger.function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.s3_object_created_rule.arn
+  source_arn    = aws_cloudwatch_event_rule.datashare_landing_trigger.arn
 }
