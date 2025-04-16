@@ -121,7 +121,19 @@ resource "aws_s3_object" "raw_folder" {
       newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
       newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
       newrelic_digital_response = "newrelic/newrelic_digital_response/"
-      service_now_ncr_case = "ncr_service_now/service_case/"
+      ncr_incident_daily      = "ncr_service_now/incident/daily/"
+      ncr_incident_intraday   = "ncr_service_now/incident/intraday/"
+      ncr_location            = "ncr_service_now/location/"
+      ncr_problem_record      = "ncr_service_now/problem_record/"
+      ncr_service_offering    = "ncr_service_now/service_offering/"
+      ncr_service_request     = "ncr_service_now/service_request/"
+      ncr_sys_user            = "ncr_service_now/sys_user/"
+      ncr_sys_user_group      = "ncr_service_now/sys_user_group/"
+      ncr_service_now_case    = "ncr_service_now/service_case"
+      ncr_incident_task       = "ncr_service_now/incident_task/"
+      genesys                 = "genesys/"
+      google_contact_center   = "gcc/"
+      happysignals            = "happysignals/"
     }
 }
 
@@ -182,7 +194,19 @@ resource "aws_s3_object" "preparation_folder" {
       newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
       newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
       newrelic_digital_response = "newrelic/newrelic_digital_response/"
-      service_now_ncr_case = "ncr_service_now/service_case/"
+      ncr_incident_daily      = "ncr_service_now/incident/daily/"
+      ncr_incident_intraday   = "ncr_service_now/incident/intraday/"
+      ncr_location            = "ncr_service_now/location/"
+      ncr_problem_record      = "ncr_service_now/problem_record/"
+      ncr_service_offering    = "ncr_service_now/service_offering/"
+      ncr_service_request     = "ncr_service_now/service_request/"
+      ncr_sys_user            = "ncr_service_now/sys_user/"
+      ncr_sys_user_group      = "ncr_service_now/sys_user_group/"
+      ncr_service_now_case    = "ncr_service_now/service_case"
+      ncr_incident_task       = "ncr_service_now/incident_task/"
+      genesys                 = "genesys/"
+      google_contact_center   = "gcc/"
+      happysignals            = "happysignals/"
     }
 }
 
@@ -256,7 +280,19 @@ resource "aws_s3_object" "processed_folder" {
       newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
       newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
       newrelic_digital_response = "newrelic/newrelic_digital_response/"
-      service_now_ncr_case = "ncr_service_now/service_case/"
+      ncr_incident_daily      = "ncr_service_now/incident/daily/"
+      ncr_incident_intraday   = "ncr_service_now/incident/intraday/"
+      ncr_location            = "ncr_service_now/location/"
+      ncr_problem_record      = "ncr_service_now/problem_record/"
+      ncr_service_offering    = "ncr_service_now/service_offering/"
+      ncr_service_request     = "ncr_service_now/service_request/"
+      ncr_sys_user            = "ncr_service_now/sys_user/"
+      ncr_sys_user_group      = "ncr_service_now/sys_user_group/"
+      ncr_service_now_case    = "ncr_service_now/service_case"
+      ncr_incident_task       = "ncr_service_now/incident_task/"
+      genesys                 = "genesys/"
+      google_contact_center   = "gcc/"
+      happysignals            = "happysignals/"
     }
 }
 
