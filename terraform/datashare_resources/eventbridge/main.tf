@@ -62,30 +62,21 @@ resource "aws_cloudwatch_event_target" "datashare_processed_lambda_trigger_targe
 
 # Enable EventBridge notifications on the landing bucket
 resource "aws_s3_bucket_notification" "enable_eventbridge_landing" {
-  bucket      = aws_s3_bucket.datashare_landing_bucket.id
+  bucket      = var.datashare_landing_bucket_name
   eventbridge = true
 }
 
-# EventBridge Rule for the landing bucket
 resource "aws_cloudwatch_event_rule" "datashare_landing_trigger" {
-  name        = "uk-snowfall-datashare-landing-trigger-rule"
-  description = "Trigger Lambda on S3 object creation in Datashare Landing bucket"
+  ...
 
   event_pattern = jsonencode({
     source       = ["aws.s3"],
     "detail-type": ["Object Created"],
     detail = {
       bucket = {
-        name = [aws_s3_bucket.datashare_landing_bucket.bucket]
+        name = [var.datashare_landing_bucket_name]
       },
-      object = {
-        key = [
-          { "prefix": "ncr_service_now/" },
-          { "prefix": "genesys/" },
-          { "prefix": "gcc/" },
-          { "prefix": "happysignals/" }
-        ]
-      }
+      ...
     }
   })
 }
