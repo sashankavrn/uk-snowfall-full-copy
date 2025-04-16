@@ -262,6 +262,19 @@ locals {
       schedule        = "cron(0 1 * * ? *)"
       reporting_date  = ""
     },
+    "ncr_service_now_service_case" = {
+      name            = "uk-snowfall-ncr-service-now-service-case"
+      description     = "Workflow for the newrelic rmp device metrics data"
+      dataset         = "ncr_service_now_service_case"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-service-case-trigger"
+      max_concurrent  = 5
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 * * * ? *)"
+      reporting_date  = ""
+    },
   }
 }
 
