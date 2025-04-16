@@ -23,10 +23,10 @@ output "datashare_landing_trigger_arn" {
   description = "The ARN for the Datashare Landing Trigger Lambda"
 }
 
-output "datashare_s3_permission" {
-  value       = module.datashare_lambda_module.datashare_landing_trigger_lambda_s3_permission
-  description = "The S3 permission for the Datashare Lambda"
-}
+# output "datashare_s3_permission" {
+#   value       = module.datashare_lambda_module.datashare_landing_trigger_lambda_s3_permission
+#   description = "The S3 permission for the Datashare Lambda"
+# }
 
 # output "sns_topic_arn" {
 #   value       = data.aws_sns_topic.datashare_sns_topic.arn

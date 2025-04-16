@@ -60,6 +60,13 @@ resource "aws_cloudwatch_event_target" "datashare_processed_lambda_trigger_targe
 ###################################### Datashare landing  Lambda Trigger #################################################
 
 
+# Enable EventBridge on the landing bucket
+resource "aws_s3_bucket_notification" "enable_eventbridge_landing" {
+  bucket      = var.datashare_landing_bucket_name
+  eventbridge = true
+}
+
+# EventBridge rule to trigger on object creation
 resource "aws_cloudwatch_event_rule" "datashare_landing_trigger" {
   name        = "uk-snowfall-datashare-landing-trigger-rule"
   description = "Trigger Lambda on S3 object creation in Datashare Landing bucket"
@@ -83,10 +90,10 @@ resource "aws_cloudwatch_event_rule" "datashare_landing_trigger" {
   })
 }
 
-# Attach Lambda to EventBridge
+# Attach the Lambda to the EventBridge rule
 resource "aws_cloudwatch_event_target" "landing_lambda_target" {
   rule      = aws_cloudwatch_event_rule.datashare_landing_trigger.name
-  arn       = aws_lambda_function.datashare_landing_trigger.arn
+  arn       = var.datashare_landing_lambda_arn
   role_arn  = var.role_assumed_arn
 }
 
@@ -94,7 +101,7 @@ resource "aws_cloudwatch_event_target" "landing_lambda_target" {
 resource "aws_lambda_permission" "allow_eventbridge_landing" {
   statement_id  = "AllowExecutionFromEventBridgeLanding"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.datashare_landing_trigger.function_name
+  function_name = var.datashare_landing_lambda_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.datashare_landing_trigger.arn
 }
