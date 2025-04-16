@@ -121,7 +121,7 @@ resource "aws_s3_object" "raw_folder" {
       newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
       newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
       newrelic_digital_response = "newrelic/newrelic_digital_response/"
-      service_now_ncr_case = "ncr_service_now/service-case/"
+      service_now_ncr_case = "ncr_service_now/service_case/"
     }
 }
 
@@ -182,7 +182,7 @@ resource "aws_s3_object" "preparation_folder" {
       newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
       newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
       newrelic_digital_response = "newrelic/newrelic_digital_response/"
-      service_now_ncr_case = "ncr_service_now/service-case/"
+      service_now_ncr_case = "ncr_service_now/service_case/"
     }
 }
 
@@ -256,7 +256,7 @@ resource "aws_s3_object" "processed_folder" {
       newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
       newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
       newrelic_digital_response = "newrelic/newrelic_digital_response/"
-      service_now_ncr_case = "ncr_service_now/service-case/"
+      service_now_ncr_case = "ncr_service_now/service_case/"
     }
 }
 

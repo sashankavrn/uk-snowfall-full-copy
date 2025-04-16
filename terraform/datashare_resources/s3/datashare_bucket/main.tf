@@ -46,20 +46,21 @@ resource "aws_s3_object" "datashare_landing_folder" {
   source                  = "/dev/null"
   server_side_encryption  = "aws:kms"
   for_each = {
-    ncr_change_request      = "ncr_service_now/ChangeRequest/"
-    ncr_incident_daily      = "ncr_service_now/Incident-Daily/"
-    ncr_incident_intraday   = "ncr_service_now/Incident-Intraday/"
-    ncr_location            = "ncr_service_now/Location/"
-    ncr_problem_record      = "ncr_service_now/ProblemRecord/"
-    ncr_service_offering    = "ncr_service_now/ServiceOffering/"
-    ncr_service_request     = "ncr_service_now/ServiceRequest/"
-    ncr_sys_user            = "ncr_service_now/SysUser/"
-    ncr_sys_user_group      = "ncr_service_now/Sys-User-Group/"
-    ncr_service_now_case    = "ncr_service_now/service-case"
-    ncr_incident_task       = "ncr_service_now/Incident-Task/"
+    ncr_change_request      = "ncr_service_now/change_request/"
+    ncr_incident_daily      = "ncr_service_now/incident/daily/"
+    ncr_incident_intraday   = "ncr_service_now/incident/intraday/"
+    ncr_location            = "ncr_service_now/location/"
+    ncr_problem_record      = "ncr_service_now/problem_record/"
+    ncr_service_offering    = "ncr_service_now/service_offering/"
+    ncr_service_request     = "ncr_service_now/service_request/"
+    ncr_sys_user            = "ncr_service_now/sys_user/"
+    ncr_sys_user_group      = "ncr_service_now/sys_user_group/"
+    ncr_service_now_case    = "ncr_service_now/service_case"
+    ncr_incident_task       = "ncr_service_now/incident_task/"
     genesys                 = "genesys/"
     google_contact_center   = "gcc/"
     happysignals            = "happysignals/"
+
   }
 }
 
