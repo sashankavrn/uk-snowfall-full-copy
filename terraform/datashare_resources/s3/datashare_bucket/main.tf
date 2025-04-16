@@ -59,6 +59,7 @@ resource "aws_s3_object" "datashare_landing_folder" {
     genesys                 = "genesys/"
     google_contact_center   = "gcc/"
     happysignals            = "happysignals/"
+    error= "error"
 
   }
 }
@@ -66,17 +67,7 @@ resource "aws_s3_object" "datashare_landing_folder" {
   
 
 
-# Updated to use Landing Sync Lambda
-resource "aws_s3_bucket_notification" "datashare_landing_trigger_notification" {
-  bucket = aws_s3_bucket.datashare_landing_bucket.id
 
-  lambda_function {
-    lambda_function_arn = var.datashare_landing_trigger_arn
-    events              = ["s3:ObjectCreated:*"]
-    id                  = "moving the file to original landing bucket "
-  }
-  depends_on = [ aws_s3_bucket.datashare_landing_bucket, var.datashare_landing_trigger_arn, var.allow_landing_trigger]
-}
 
 
 # ####### Creation of Datashare Processed Bucket ################
@@ -122,20 +113,4 @@ resource "aws_s3_bucket_lifecycle_configuration" "datashare_processed_lifecycle_
     status = "Enabled"
   }
 }
-
-# # Updated to use Processed Trigger Lambda (Datashare NCR Webhook)
-# resource "aws_s3_bucket_notification" "datashare_processed_trigger_notification" {
-#   bucket = aws_s3_bucket.datashare_processed_bucket.id
-
-#   lambda_function {
-#     lambda_function_arn = var.datashare_ncr_webhook_arn
-#     events              = ["s3:ObjectCreated:*"]
-#     id                  = "trigger ncr webhook  "
-#   }
-#   depends_on = [
-#     aws_s3_bucket.datashare_processed_bucket,
-#     var.datashare_ncr_webhook_arn,
-#     var.allow_ncr_webhook
-#   ]
-# }
 

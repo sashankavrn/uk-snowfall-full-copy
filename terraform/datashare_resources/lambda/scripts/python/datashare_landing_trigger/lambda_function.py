@@ -1,72 +1,96 @@
 import boto3
-import logging
 import os
 import urllib.parse
+import logging
+
+# Initialize clients
+s3 = boto3.client('s3')
+sns = boto3.client('sns')
+
+# Environment variables
+TARGET_BUCKET = os.environ.get('TARGET_BUCKET')
+SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN')
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
-# Initialize S3 client
-s3_client = boto3.client('s3')
-
-# Fetch bucket names from environment variables
-DATASHARE_LANDING_BUCKET = os.environ.get("DATASHARE_LANDING_BUCKET")  # Source Bucket (Bucket A)
-TARGET_BUCKET = os.environ.get("TARGET_BUCKET")  # Destination Bucket (Bucket B)
-
-# Define supported source prefixes and their corresponding destination prefixes
-FOLDER_MAPPING = {
-    "ncr_servicenow/": "ncr_servicenow/",
-    "gcc/": "gcc/"
-}
+# Valid prefixes to accept
+SUPPORTED_PREFIXES = [
+    "ncr_service_now/change_request/",
+    "ncr_service_now/incident/daily/",
+    "ncr_service_now/incident/intraday/",
+    "ncr_service_now/problem_record/",
+    "ncr_service_now/service_case/",
+    "ncr_service_now/incident_task/",
+    "ncr_service_now/knowledge_base/",
+    "ncr_service_now/knowledge/",
+    "ncr_service_now/knowledge_feedback/",
+    "ncr_service_now/knowledge_use/",
+    "genesys/",
+    "gcc/",
+    "happysignals/"
+]
 
 def lambda_handler(event, context):
-    if not DATASHARE_LANDING_BUCKET or not TARGET_BUCKET:
-        logger.error("Missing required environment variables: DATASHARE_LANDING_BUCKET or TARGET_BUCKET")
-        return {
-            'statusCode': 500,
-            'body': 'Error: Missing required environment variables.'
-        }
+    try:
+        bucket = event['Records'][0]['s3']['bucket']['name']
+        key = urllib.parse.unquote(event['Records'][0]['s3']['object']['key'])
 
-    for record in event['Records']:
-        # URL decode the key to handle spaces/special characters
-        source_key = urllib.parse.unquote(record['s3']['object']['key'])
-        logger.info(f"Received file: {source_key}")
+        logger.info(f"Processing file: s3://{bucket}/{key}")
 
-        # Determine the destination key based on FOLDER_MAPPING
-        destination_key = None
-        for src_prefix, dest_prefix in FOLDER_MAPPING.items():
-            if source_key.startswith(src_prefix):
-                destination_key = source_key.replace(src_prefix, dest_prefix, 1)
-                break
+        if key.endswith('/'):
+            logger.info("Folder detected. Skipping.")
+            return
 
-        if destination_key is None:
-            logger.info(f"Skipping file {source_key}, not in recognized source folders.")
-            continue
+        # Check if prefix is valid
+        matched_prefix = next((p for p in SUPPORTED_PREFIXES if key.startswith(p)), None)
+        if not matched_prefix:
+            raise Exception(f"Unrecognized prefix for file: {key}")
 
-        copy_source = {
-            'Bucket': DATASHARE_LANDING_BUCKET,
-            'Key': source_key
-        }
+        # Check if file is a .parquet
+        if not key.endswith('.parquet'):
+            raise Exception(f"Invalid file extension. Only .parquet allowed: {key}")
 
+        # Copy to target bucket (same key structure)
+        s3.copy_object(
+            Bucket=TARGET_BUCKET,
+            CopySource={'Bucket': bucket, 'Key': key},
+            Key=key
+        )
+        logger.info(f"Copied to target bucket: s3://{TARGET_BUCKET}/{key}")
+
+        # Delete original from landing bucket
+        s3.delete_object(Bucket=bucket, Key=key)
+        logger.info(f"Deleted original file from source: s3://{bucket}/{key}")
+
+    except Exception as e:
+        logger.error(f"Error occurred: {str(e)}")
+
+        # Move to error folder in same bucket
         try:
-            # Copy the file to the target bucket under the mapped destination key
-            s3_client.copy_object(
-                Bucket=TARGET_BUCKET,
-                CopySource=copy_source,
-                Key=destination_key
+            error_key = f"error/{key}"
+            s3.copy_object(
+                Bucket=bucket,
+                CopySource={'Bucket': bucket, 'Key': key},
+                Key=error_key
             )
-            logger.info(f"Copied {source_key} from {DATASHARE_LANDING_BUCKET} to {destination_key} in {TARGET_BUCKET}")
+            s3.delete_object(Bucket=bucket, Key=key)
+            logger.info(f"Moved to error folder: s3://{bucket}/{error_key}")
+        except Exception as move_error:
+            logger.error(f"Failed to move to error folder: {str(move_error)}")
 
-            # Delete the file from the source bucket and log the response for confirmation
-            delete_response = s3_client.delete_object(Bucket=DATASHARE_LANDING_BUCKET, Key=source_key)
-            logger.info(f"Delete response for {source_key}: {delete_response}")
+        # Send SNS notification
+        send_sns_message(f"Error processing file {key}: {str(e)}")
 
-        except Exception as e:
-            logger.error(f"Error processing {source_key}: {str(e)}")
-            # Optionally add error handling logic here
 
-    return {
-        'statusCode': 200,
-        'body': 'File processing completed successfully.'
-    }
+def send_sns_message(message):
+    try:
+        sns.publish(
+            TopicArn=SNS_TOPIC_ARN,
+            Message=message,
+            Subject="Landing Bucket File Processing Error"
+        )
+        logger.info("SNS notification sent.")
+    except Exception as e:
+        logger.error(f"Failed to send SNS notification: {str(e)}")
