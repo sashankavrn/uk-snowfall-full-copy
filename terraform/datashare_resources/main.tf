@@ -58,14 +58,24 @@ module "datashare_lambda_module" {
 
 # Triggering event bridge module
 module "event_bridge_module" {
-  source        = "./eventbridge"
-  environment   = var.environment
-  role_assumed_arn = var.role_assumed_arn
-  account_number = var.account_number
-  resource_tags = merge(var.resource_tags, { Environment = var.environment })
-  terraform_bucket_name   = var.terraform_bucket_name
-  datashare_processed_trigger_lambda_arn = module.datashare_lambda_module.datashare_processed_trigger_lambda_arn
+  source              = "./eventbridge"
+  environment         = var.environment
+  role_assumed_arn    = var.role_assumed_arn
+  account_number      = var.account_number
+  resource_tags       = merge(var.resource_tags, { Environment = var.environment })
+  terraform_bucket_name = var.terraform_bucket_name
+
+  # Pass both processed and landing Lambda ARNs
+  datashare_processed_trigger_lambda_arn  = module.datashare_lambda_module.datashare_processed_trigger_lambda_arn
+  datashare_processed_trigger_lambda_name = module.datashare_lambda_module.datashare_processed_trigger_lambda_name
+
+  datashare_landing_lambda_arn  = module.datashare_lambda_module.datashare_landing_trigger_lambda_arn
+  datashare_landing_lambda_name = module.datashare_lambda_module.datashare_landing_trigger_lambda_name
+
+  datashare_landing_bucket_name = module.datashare_s3_module.datashare_landing_bucket_name
+  datashare_landing_bucket_arn  = module.datashare_s3_module.datashare_landing_bucket_arn
 }
+
 
 
 
