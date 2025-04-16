@@ -32,13 +32,13 @@ resource "aws_lambda_function" "datashare_landing_trigger" {
 }
 
 
-resource "aws_lambda_permission" "allow_eventbridge_landing" {
-  statement_id  = "AllowExecutionFromEventBridgeLanding"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.datashare_landing_trigger.function_name
-  principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.datashare_landing_trigger.arn
-}
+# resource "aws_lambda_permission" "allow_eventbridge_landing" {
+#   statement_id  = "AllowExecutionFromEventBridgeLanding"
+#   action        = "lambda:InvokeFunction"
+#   function_name = aws_lambda_function.datashare_landing_trigger.function_name
+#   principal     = "events.amazonaws.com"
+#   source_arn    = aws_cloudwatch_event_rule.datashare_landing_trigger.arn
+# }
 
 
 
