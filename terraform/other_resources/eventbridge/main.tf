@@ -498,7 +498,7 @@ resource "aws_cloudwatch_event_rule" "ncr_service_now_service_case_event_rule" {
     },
     "object": {
       "key": [{
-        "prefix": "ncr_service_now/service-case/"
+        "prefix": "ncr_service_now/service_case/"
       }]
     }
   },
