@@ -1,96 +1,81 @@
 import boto3
 import os
-import urllib.parse
+import json
 import logging
+import urllib.parse
+from base_moving import base_moving
 
-# Initialize clients
+# Initialize AWS clients
 s3 = boto3.client('s3')
-sns = boto3.client('sns')
 
-# Environment variables
-TARGET_BUCKET = os.environ.get('TARGET_BUCKET')
-SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN')
-
-# Configure logging
+# Logging setup
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-# Valid prefixes to accept
-SUPPORTED_PREFIXES = [
-    "ncr_service_now/change_request/",
-    "ncr_service_now/incident/daily/",
-    "ncr_service_now/incident/intraday/",
-    "ncr_service_now/problem_record/",
-    "ncr_service_now/service_case/",
-    "ncr_service_now/incident_task/",
-    "ncr_service_now/knowledge_base/",
-    "ncr_service_now/knowledge/",
-    "ncr_service_now/knowledge_feedback/",
-    "ncr_service_now/knowledge_use/",
-    "genesys/",
-    "gcc/",
-    "happysignals/"
-]
+# Environment variables
+LANDING_BUCKET = os.environ.get('LANDING_BUCKET')
+TARGET_BUCKET = os.environ.get('TARGET_BUCKET')
+
+# Load mapping.json
+def load_key_mapping():
+    with open('mapping.json', 'r') as file:
+        mappings = json.load(file)
+    return mappings.get("fileMappings", [])
+
+# Determine destination path based on fileName match
+def match_mapping(key, mappings):
+    for mapping in mappings:
+        if mapping["fileName"] in key:
+            return mapping["destinationPath"]
+    return None
 
 def lambda_handler(event, context):
+    mappings = load_key_mapping()
+
     try:
-        bucket = event['Records'][0]['s3']['bucket']['name']
-        key = urllib.parse.unquote(event['Records'][0]['s3']['object']['key'])
+        # List all prefixes in the mappings
+        for mapping in mappings:
+            prefix = mapping["fileName"]
+            destination = mapping["destinationPath"]
 
-        logger.info(f"Processing file: s3://{bucket}/{key}")
+            logger.info(f"Scanning prefix: {prefix}")
+            response = s3.list_objects_v2(Bucket=LANDING_BUCKET, Prefix=prefix)
+            contents = response.get("Contents", [])
 
-        if key.endswith('/'):
-            logger.info("Folder detected. Skipping.")
-            return
+            # Filter out folders and placeholders
+            data_files = [
+                obj["Key"] for obj in contents
+                if not obj["Key"].endswith("/") and "_PLACEHOLDER" not in obj["Key"]
+            ]
 
-        # Check if prefix is valid
-        matched_prefix = next((p for p in SUPPORTED_PREFIXES if key.startswith(p)), None)
-        if not matched_prefix:
-            raise Exception(f"Unrecognized prefix for file: {key}")
+            if not data_files:
+                logger.info(f"No files found in prefix: {prefix}")
+                ensure_placeholder(prefix)
+                continue
 
-        # Check if file is a .parquet
-        if not key.endswith('.parquet'):
-            raise Exception(f"Invalid file extension. Only .parquet allowed: {key}")
+            for key in data_files:
+                if key.endswith(".parquet"):
+                    logger.info(f"Copying .parquet file: {key}")
+                    base_moving(LANDING_BUCKET, key, TARGET_BUCKET, destination)
+                    s3.delete_object(Bucket=LANDING_BUCKET, Key=key)
+                    logger.info(f"Deleted: {key}")
+                else:
+                    logger.info(f"Skipping non-parquet file: {key}")
 
-        # Copy to target bucket (same key structure)
-        s3.copy_object(
-            Bucket=TARGET_BUCKET,
-            CopySource={'Bucket': bucket, 'Key': key},
-            Key=key
-        )
-        logger.info(f"Copied to target bucket: s3://{TARGET_BUCKET}/{key}")
-
-        # Delete original from landing bucket
-        s3.delete_object(Bucket=bucket, Key=key)
-        logger.info(f"Deleted original file from source: s3://{bucket}/{key}")
+            # Add placeholder if nothing left in the prefix
+            remaining = s3.list_objects_v2(Bucket=LANDING_BUCKET, Prefix=prefix).get("Contents", [])
+            remaining_files = [
+                o["Key"] for o in remaining
+                if not o["Key"].endswith("/") and "_PLACEHOLDER" not in o["Key"]
+            ]
+            if not remaining_files:
+                ensure_placeholder(prefix)
 
     except Exception as e:
-        logger.error(f"Error occurred: {str(e)}")
+        logger.error(f"Unhandled error: {str(e)}")
 
-        # Move to error folder in same bucket
-        try:
-            error_key = f"error/{key}"
-            s3.copy_object(
-                Bucket=bucket,
-                CopySource={'Bucket': bucket, 'Key': key},
-                Key=error_key
-            )
-            s3.delete_object(Bucket=bucket, Key=key)
-            logger.info(f"Moved to error folder: s3://{bucket}/{error_key}")
-        except Exception as move_error:
-            logger.error(f"Failed to move to error folder: {str(move_error)}")
-
-        # Send SNS notification
-        send_sns_message(f"Error processing file {key}: {str(e)}")
-
-
-def send_sns_message(message):
-    try:
-        sns.publish(
-            TopicArn=SNS_TOPIC_ARN,
-            Message=message,
-            Subject="Landing Bucket File Processing Error"
-        )
-        logger.info("SNS notification sent.")
-    except Exception as e:
-        logger.error(f"Failed to send SNS notification: {str(e)}")
+# Optional: Keep folder visible in console
+def ensure_placeholder(prefix):
+    placeholder_key = f"{prefix}/_PLACEHOLDER"
+    s3.put_object(Bucket=LANDING_BUCKET, Key=placeholder_key, Body=b"")
+    logger.info(f"Added placeholder: s3://{LANDING_BUCKET}/{placeholder_key}")

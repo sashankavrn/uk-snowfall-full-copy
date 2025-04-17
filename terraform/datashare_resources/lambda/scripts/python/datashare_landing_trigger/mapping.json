@@ -1,0 +1,57 @@
+{
+    "fileMappings": [
+      {
+        "fileName": "ncr_service_now/change_request/",
+        "destinationPath": "ncr_service_now/change_request/"
+      },
+      {
+        "fileName": "ncr_service_now/incident/daily/",
+        "destinationPath": "ncr_service_now/incident/daily/"
+      },
+      {
+        "fileName": "ncr_service_now/incident/intraday/",
+        "destinationPath": "ncr_service_now/incident/intraday/"
+      },
+      {
+        "fileName": "ncr_service_now/problem_record/",
+        "destinationPath": "ncr_service_now/problem_record/"
+      },
+      {
+        "fileName": "ncr_service_now/service_case/",
+        "destinationPath": "ncr_service_now/service_case/"
+      },
+      {
+        "fileName": "ncr_service_now/incident_task/",
+        "destinationPath": "ncr_service_now/incident_task/"
+      },
+      {
+        "fileName": "ncr_service_now/knowledge_base/",
+        "destinationPath": "ncr_service_now/knowledge_base/"
+      },
+      {
+        "fileName": "ncr_service_now/knowledge/",
+        "destinationPath": "ncr_service_now/knowledge/"
+      },
+      {
+        "fileName": "ncr_service_now/knowledge_feedback/",
+        "destinationPath": "ncr_service_now/knowledge_feedback/"
+      },
+      {
+        "fileName": "ncr_service_now/knowledge_use/",
+        "destinationPath": "ncr_service_now/knowledge_use/"
+      },
+      {
+        "fileName": "genesys/",
+        "destinationPath": "genesys/"
+      },
+      {
+        "fileName": "gcc/",
+        "destinationPath": "gcc/"
+      },
+      {
+        "fileName": "happysignals/",
+        "destinationPath": "happysignals/"
+      }
+    ]
+  }
+  
