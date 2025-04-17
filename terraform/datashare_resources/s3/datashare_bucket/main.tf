@@ -60,7 +60,7 @@ resource "aws_s3_object" "datashare_landing_folder" {
     google_contact_center   = "gcc/"
     happysignals            = "happysignals/"
     error= "error/nonparquet/"
-
+    test= "test/"
   }
 }
 
