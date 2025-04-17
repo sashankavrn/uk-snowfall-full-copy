@@ -275,6 +275,58 @@ locals {
       schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
+    "ncr_service_now_incident_daily" = {
+      name            = "uk-snowfall-ncr-service-now-incident-daily"
+      description     = "Workflow for the NCR ServiceNow Incident Daily data"
+      dataset         = "ncr_service_now_incident_daily"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-incident-daily-trigger"
+      max_concurrent  = 5
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 * * * ? *)"
+      reporting_date  = ""
+    },
+    "ncr_service_now_incident_intraday" = {
+      name            = "uk-snowfall-ncr-service-now-incident-intraday"
+      description     = "Workflow for the NCR ServiceNow Incident Intraday data"
+      dataset         = "ncr_service_now_incident_intraday"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-incident-intraday-trigger"
+      max_concurrent  = 5
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 * * * ? *)"
+      reporting_date  = ""
+    },
+    "ncr_service_now_problem_record" = {
+      name            = "uk-snowfall-ncr-service-now-problem-record"
+      description     = "Workflow for the NCR ServiceNow Problem Record data"
+      dataset         = "ncr_service_now_problem_record"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-problem-record-trigger"
+      max_concurrent  = 5
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 * * * ? *)"
+      reporting_date  = ""
+    },
+    "ncr_service_now_change_request" = {
+      name            = "uk-snowfall-ncr-service-now-change-request"
+      description     = "Workflow for the NCR ServiceNow Change Request data"
+      dataset         = "ncr_service_now_change_request"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-change-request-trigger"
+      max_concurrent  = 5
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 * * * ? *)"
+      reporting_date  = ""
+    }
   }
 }
 
