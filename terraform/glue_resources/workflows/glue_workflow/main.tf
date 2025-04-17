@@ -241,7 +241,7 @@ locals {
       dataset         = "newrelic_rmp_device_metrics"
       group           = "preparation"
       trigger_name    = "uk-snowfall-newrelic-rmp-device-metrics-trigger"
-      max_concurrent  = 5
+      max_concurrent  = 1
       batch_size      = 100
       batch_window    = 10
       trigger_type    = "SCHEDULED"
@@ -268,7 +268,7 @@ locals {
       dataset         = "ncr_service_now_service_case"
       group           = "preparation"
       trigger_name    = "uk-snowfall-ncr-service-now-service-case-trigger"
-      max_concurrent  = 5
+      max_concurrent  = 1
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
@@ -281,7 +281,7 @@ locals {
       dataset         = "ncr_service_now_incident_daily"
       group           = "preparation"
       trigger_name    = "uk-snowfall-ncr-service-now-incident-daily-trigger"
-      max_concurrent  = 5
+      max_concurrent  = 1
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
@@ -294,7 +294,7 @@ locals {
       dataset         = "ncr_service_now_incident_intraday"
       group           = "preparation"
       trigger_name    = "uk-snowfall-ncr-service-now-incident-intraday-trigger"
-      max_concurrent  = 5
+      max_concurrent  = 1
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
@@ -307,7 +307,7 @@ locals {
       dataset         = "ncr_service_now_problem_record"
       group           = "preparation"
       trigger_name    = "uk-snowfall-ncr-service-now-problem-record-trigger"
-      max_concurrent  = 5
+      max_concurrent  = 1
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
@@ -320,7 +320,7 @@ locals {
       dataset         = "ncr_service_now_change_request"
       group           = "preparation"
       trigger_name    = "uk-snowfall-ncr-service-now-change-request-trigger"
-      max_concurrent  = 5
+      max_concurrent  = 1
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
