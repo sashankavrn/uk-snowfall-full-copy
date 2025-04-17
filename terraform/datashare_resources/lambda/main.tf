@@ -7,28 +7,53 @@ data "archive_file" "datashare_landing_trigger" {
 
 # Lambda function - datashare_landing_trigger
 resource "aws_lambda_function" "datashare_landing_trigger" {
-  filename                   = "${path.module}/scripts/zips/datashare_landing_trigger.zip"
-  function_name              = "uk-snowfall-datashare-landing-trigger-${var.environment}"
-  role                       = var.role_assumed_arn
-  handler                    = "lambda_function.lambda_handler"
-  runtime                    = "python3.12"
-  memory_size                = 1024
-  timeout                    = 300  # Increased from 120 to 300 seconds (5 minutes)
-  description                = "Trigger to process data move NCR data to landing bucket"
-  source_code_hash           = filebase64sha256("${path.module}/scripts/zips/datashare_landing_trigger.zip")
-  tags                       = var.resource_tags
+  filename         = "${path.module}/scripts/zips/datashare_landing_trigger.zip"
+  function_name    = "uk-snowfall-datashare-landing-trigger-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 300
+  description      = "Trigger to process NCR data from landing to target bucket"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/datashare_landing_trigger.zip")
+  reserved_concurrent_executions = 10
+  tags = var.resource_tags
+
   layers = [
     "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1",
     "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:4"
   ]
+
   environment {
     variables = {
-      TARGET_BUCKET             = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      TARGET_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
       LANDING_BUCKET  = "eu-central1-${var.environment}-uk-snowfall-datashare-landing-${var.account_number}"
-      # SNS_TOPIC_ARN            = var.sns_topic_arn
+      # SNS_TOPIC_ARN              = var.sns_topic_arn
     }
   }
-  reserved_concurrent_executions = 10
+}
+
+# EventBridge Schedule Rule (every 15 minutes)
+resource "aws_cloudwatch_event_rule" "datashare_trigger_schedule" {
+  name                = "uk-snowfall-datashare-landing-trigger-schedule-${var.environment}"
+  description         = "Runs datashare landing trigger Lambda every 15 mins"
+  schedule_expression = "rate(15 minutes)"
+}
+
+# Target Lambda for Event Rule
+resource "aws_cloudwatch_event_target" "trigger_lambda_target" {
+  rule      = aws_cloudwatch_event_rule.datashare_trigger_schedule.name
+  target_id = "datashare-landing-trigger"
+  arn       = aws_lambda_function.datashare_landing_trigger.arn
+}
+
+# Allow EventBridge to invoke Lambda
+resource "aws_lambda_permission" "allow_eventbridge_invoke_landing_trigger" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.datashare_landing_trigger.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.datashare_trigger_schedule.arn
 }
 
 
