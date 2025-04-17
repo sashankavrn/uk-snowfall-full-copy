@@ -34,7 +34,7 @@ resource "aws_lambda_function" "datashare_landing_trigger" {
 }
 
 # EventBridge Schedule Rule (every 15 minutes)
-resource "aws_cloudwatch_event_rule" "datashare_trigger_schedule" {
+resource "aws_cloudwatch_event_rule" "datashare_landing_trigger_schedule" {
   name                = "uk-snowfall-datashare-landing-trigger-schedule-${var.environment}"
   description         = "Runs datashare landing trigger Lambda every 15 mins"
   schedule_expression = "rate(15 minutes)"
@@ -42,7 +42,7 @@ resource "aws_cloudwatch_event_rule" "datashare_trigger_schedule" {
 
 # Target Lambda for Event Rule
 resource "aws_cloudwatch_event_target" "trigger_lambda_target" {
-  rule      = aws_cloudwatch_event_rule.datashare_trigger_schedule.name
+  rule      = aws_cloudwatch_event_rule.datashare_landing_trigger_schedule.name
   target_id = "datashare-landing-trigger"
   arn       = aws_lambda_function.datashare_landing_trigger.arn
 }
@@ -53,7 +53,7 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_landing_trigger" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.datashare_landing_trigger.function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.datashare_trigger_schedule.arn
+  source_arn    = aws_cloudwatch_event_rule.datashare_landing_trigger_schedule.arn
 }
 
 
