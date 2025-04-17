@@ -27,7 +27,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    if: startsWith(github.event.ref, 'refs/tags/v') # Will be skipped if not working with prod
+    if: startsWith(github.event.ref, 'refs/tags/f') # Will be skipped if not working with prod
 
     steps:
       - name: Checkout Repository
