@@ -69,7 +69,7 @@
             "destinationPath": "newrelic/newrelic_rmp_device_metrics"
         },
         {
-            "fileName": "ncr_service_now/service-case",
+            "fileName": "ncr_service_now/service_case",
             "destinationPath": "ncr_service_now/service_case"
         }
         
