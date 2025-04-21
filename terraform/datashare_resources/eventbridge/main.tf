@@ -20,6 +20,12 @@ resource "aws_s3_bucket_notification" "enable_event_bridge_for_datashare" {
   eventbridge = true
 }
 
+
+data "aws_sns_topic" "snowfall_topic" {
+  name = "uk-snowfall-notification-${var.environment}"
+}
+
+
 ###################################### Datashare Processed Lambda Trigger #################################################
 
 # Create an EventBridge rule for S3 object creation in the processed bucket

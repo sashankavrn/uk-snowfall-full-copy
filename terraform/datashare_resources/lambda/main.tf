@@ -28,7 +28,8 @@ resource "aws_lambda_function" "datashare_landing_trigger" {
     variables = {
       TARGET_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
       LANDING_BUCKET  = "eu-central1-${var.environment}-uk-snowfall-datashare-landing-${var.account_number}"
-      # SNS_TOPIC_ARN              = var.sns_topic_arn
+      SNS_TOPIC_ARN = data.aws_sns_topic.snowfall_topic.arn
+
     }
   }
 }
@@ -94,7 +95,7 @@ resource "aws_lambda_function" "datashare_processed_trigger" {
     variables = {
       TARGET_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-datashare-processed-${var.account_number}"
       SOURCE_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-processed-${var.account_number}"
-      # SNS_TOPIC_ARN              = var.sns_topic_arn
+      SNS_TOPIC_ARN = data.aws_sns_topic.snowfall_topic.arn
     }
   }
 }
