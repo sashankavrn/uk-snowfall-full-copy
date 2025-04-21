@@ -21,9 +21,6 @@ resource "aws_s3_bucket_notification" "enable_event_bridge_for_datashare" {
 }
 
 
-data "aws_sns_topic" "snowfall_topic" {
-  name = "uk-snowfall-notification-${var.environment}"
-}
 
 
 ###################################### Datashare Processed Lambda Trigger #################################################

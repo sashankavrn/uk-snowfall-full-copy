@@ -1,3 +1,7 @@
+data "aws_sns_topic" "snowfall_topic" {
+  name = "uk-snowfall-notification-${var.environment}"
+}
+
 # Archive the datashare_landing_trigger Python script
 data "archive_file" "datashare_landing_trigger" {
   type        = "zip"
