@@ -22,10 +22,3 @@ output "datashare_landing_trigger_arn" {
   value       = module.datashare_lambda_module.datashare_landing_trigger_lambda_arn
   description = "The ARN for the Datashare Landing Trigger Lambda"
 }
-
-
-
-output "sns_topic_arn" {
-  value       = data.aws_sns_topic.datashare_sns_topic.arn
-  description = "The ARN for the SNS topic"
-}
