@@ -46,7 +46,7 @@ module "datashare_lambda_module" {
   role_assumed_arn   = var.role_assumed_arn
   datashare_landing_bucket_arn = module.datashare_buckets.datashare_landing_bucket_arn
   datashare_processed_bucket_arn = module.datashare_buckets.datashare_processed_bucket_arn
-  sns_topic_arn      = data.aws_sns_topic.datashare_sns_topic.arn
+  sns_topic_arn      = "arn:aws:sns:eu-central-1:${var.account_number}:uk-snowfall-notification-${var.environment}"
   account_number     = var.account_number
 }
 
