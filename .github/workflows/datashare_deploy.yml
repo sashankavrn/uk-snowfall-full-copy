@@ -1,67 +1,84 @@
-name: Datashare Resources Deployment
+name: Data Share Deployment
+
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Allows manual trigger
     inputs:
-      branch:
-        description: 'Branch to deploy from'
+      environment:
+        description: 'Environment to deploy to'
         required: true
         default: 'dev'
-env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  ENVIRONMENT: ${{ github.event.inputs.branch == 'dev' && 'dev' || github.event.inputs.branch == 'main' && 'nprod' || startsWith(github.event.inputs.branch, 'refs/tags/v') && 'prod' }}
-  VAR_FILE: ${{ github.event.inputs.branch == 'dev' && '../dev.tfvars' || github.event.inputs.branch == 'main' && '../nprod.tfvars' || startsWith(github.event.inputs.branch, 'refs/tags/v') && '../prod.tfvars' }}
-concurrency:
-  group: ${{ github.event.inputs.branch == 'dev' && 'deploy-development' || github.event.inputs.branch == 'main' && 'deploy-nprod' || startsWith(github.event.inputs.branch, 'refs/tags/v') && 'deploy-production' || 'default' }}
-  cancel-in-progress: true
+        options:
+          - dev
+          - nprod
+          - prod
+
 jobs:
   terraform:
-    name: Terraform Plan & Apply
+    concurrency:
+      group: ${{ github.event.inputs.environment == 'dev' && 'deploy-development' 
+        || github.event.inputs.environment == 'nprod' && 'deploy-nprod' ||
+        github.event.inputs.environment == 'prod' && 'deploy-production' || 'default' }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
+
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      VAR_FILE: ${{ github.event.inputs.environment == 'dev' && '../dev.tfvars' ||
+        github.event.inputs.environment == 'nprod' && '../nprod.tfvars' ||
+        github.event.inputs.environment == 'prod' && '../prod.tfvars' }}
+
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2
-      - name: Install Python 3
-        run: sudo apt-get update && sudo apt-get install -y python3
-      - name: Install boto3
-        run: python3 -m pip install boto3
-      - name: Load AWS Role and State Bucket
-        id: load_env
-        run: |
-          echo "Loading AWS_ROLE_TO_ASSUME and STATE_BUCKET..."
-          VAR_FILE_AWS="${{ github.event.inputs.branch == 'dev' && 'terraform/dev.tfvars' || github.event.inputs.branch == 'main' && 'terraform/nprod.tfvars' || startsWith(github.event.inputs.branch, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
-          AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
-          STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
-          echo "AWS_ROLE_TO_ASSUME=${AWS_ROLE_TO_ASSUME}" >> $GITHUB_ENV
-          echo "STATE_BUCKET=${STATE_BUCKET}" >> $GITHUB_ENV
-        env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          ENVIRONMENT: ${{ github.event.inputs.branch == 'dev' && 'dev' || github.event.inputs.branch == 'main' && 'nprod' || startsWith(github.event.inputs.branch, 'refs/tags/v') && 'prod' }}
-          VAR_FILE: ${{ github.event.inputs.branch == 'dev' && '../dev.tfvars' || github.event.inputs.branch == 'main' && '../nprod.tfvars' || startsWith(github.event.inputs.branch, 'refs/tags/v') && '../prod.tfvars' }}
-      - name: Print Variable Values
-        run: |
-          echo "ENVIRONMENT: $ENVIRONMENT"
-          echo "AWS_ROLE_TO_ASSUME: $AWS_ROLE_TO_ASSUME"
-          echo "STATE_BUCKET: $STATE_BUCKET"
-          echo "VAR_FILE: $VAR_FILE"
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
-          role-session-name: GitHubActions
-          web-identity-token-file: ${{ steps.oidc-token.outputs.token }}
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v1
-        with:
-          terraform_version: 1.7.4
-      - name: Running the Datashare Resources Deployment stage
-        run: |
-          cd terraform/datashare_resources
-          terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}" -backend-config="key=datashare/terraform.tfstate"
-          terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
-          terraform apply -auto-approve tfplan
-        env:
-          AWS_REGION: ${{ env.AWS_REGION }}
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Install Python 3
+      run: sudo apt-get update && sudo apt-get install -y python3
+
+    - name: Install boto3
+      run: python3 -m pip install boto3
+
+    - name: Load AWS Role and State Bucket
+      id: load_env
+      run: |
+        echo "Loading AWS_ROLE_TO_ASSUME and STATE_BUCKET from VAR_FILE_AWS..."
+        VAR_FILE_AWS="${{ github.event.inputs.environment == 'dev' && 'terraform/dev.tfvars' ||
+        github.event.inputs.environment == 'nprod' && 'terraform/nprod.tfvars' ||
+        github.event.inputs.environment == 'prod' && 'terraform/prod.tfvars' }}"
+
+        AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
+        STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
+
+        echo "AWS_ROLE_TO_ASSUME=${AWS_ROLE_TO_ASSUME}" >> $GITHUB_ENV
+        echo "STATE_BUCKET=${STATE_BUCKET}" >> $GITHUB_ENV
+
+    - name: Print Variable Values
+      run: |
+        echo "ENVIRONMENT: $ENVIRONMENT"
+        echo "AWS_ROLE_TO_ASSUME: $AWS_ROLE_TO_ASSUME"
+        echo "STATE_BUCKET: $STATE_BUCKET"
+        echo "VAR_FILE: $VAR_FILE"
+
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-region: ${{ env.AWS_REGION }}
+        role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+        role-session-name: GitHubActions
+        web-identity-token-file: ${{ steps.oidc-token.outputs.token }}
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: 1.7.4
+
+    - name: Running the Data Share Stage
+      run: |
+        cd terraform/datashare_resources
+        terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
+        terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
+        terraform apply -auto-approve tfplan
+      env:
+        AWS_REGION: ${{ env.AWS_REGION }}
