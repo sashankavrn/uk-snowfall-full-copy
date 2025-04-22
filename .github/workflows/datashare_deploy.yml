@@ -36,6 +36,10 @@ jobs:
           STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=${AWS_ROLE_TO_ASSUME}" >> $GITHUB_ENV
           echo "STATE_BUCKET=${STATE_BUCKET}" >> $GITHUB_ENV
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          ENVIRONMENT: ${{ github.event.inputs.branch == 'dev' && 'dev' || github.event.inputs.branch == 'main' && 'nprod' || startsWith(github.event.inputs.branch, 'refs/tags/v') && 'prod' }}
+          VAR_FILE: ${{ github.event.inputs.branch == 'dev' && '../dev.tfvars' || github.event.inputs.branch == 'main' && '../nprod.tfvars' || startsWith(github.event.inputs.branch, 'refs/tags/v') && '../prod.tfvars' }}
       - name: Print Variable Values
         run: |
           echo "ENVIRONMENT: $ENVIRONMENT"
