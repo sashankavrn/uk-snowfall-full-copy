@@ -1,72 +1,74 @@
 import boto3
-import logging
 import os
-import urllib.parse
+import json
+import logging
+from base_moving import base_moving
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# AWS Clients
+s3 = boto3.client('s3')
+sns = boto3.client('sns')
+
+# Logging
 logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
-# Initialize S3 client
-s3_client = boto3.client('s3')
+# Environment Variables
+LANDING_BUCKET = os.environ.get('LANDING_BUCKET')
+TARGET_BUCKET = os.environ.get('TARGET_BUCKET')
+SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN')
 
-# Fetch bucket names from environment variables
-DATASHARE_LANDING_BUCKET = os.environ.get("DATASHARE_LANDING_BUCKET")  # Source Bucket (Bucket A)
-TARGET_BUCKET = os.environ.get("TARGET_BUCKET")  # Destination Bucket (Bucket B)
+# Load mapping.json
+def load_key_mapping():
+    with open('mapping.json', 'r') as file:
+        mappings = json.load(file)
+    return mappings.get("fileMappings", [])
 
-# Define supported source prefixes and their corresponding destination prefixes
-FOLDER_MAPPING = {
-    "ncr_servicenow/": "ncr_servicenow/",
-    "gcc/": "gcc/"
-}
+# Send SNS notification on failure
+def send_sns_notification(context, error_message):
+    subject = f"Lambda Failure - {context.function_name}"
 
+    try:
+        response = sns.publish(
+            TopicArn=SNS_TOPIC_ARN,
+            Subject=subject,
+            Message=error_message
+        )
+        logger.info(f"SNS notification sent: {response['MessageId']}")
+    except Exception as e:
+        logger.error(f"Failed to send SNS notification: {str(e)}")
+
+# Main Lambda Handler
 def lambda_handler(event, context):
-    if not DATASHARE_LANDING_BUCKET or not TARGET_BUCKET:
-        logger.error("Missing required environment variables: DATASHARE_LANDING_BUCKET or TARGET_BUCKET")
-        return {
-            'statusCode': 500,
-            'body': 'Error: Missing required environment variables.'
-        }
+    mappings = load_key_mapping()
 
-    for record in event['Records']:
-        # URL decode the key to handle spaces/special characters
-        source_key = urllib.parse.unquote(record['s3']['object']['key'])
-        logger.info(f"Received file: {source_key}")
+    try:
+        for mapping in mappings:
+            prefix = mapping["fileName"].rstrip("/")
+            destination = mapping["destinationPath"].rstrip("/")
 
-        # Determine the destination key based on FOLDER_MAPPING
-        destination_key = None
-        for src_prefix, dest_prefix in FOLDER_MAPPING.items():
-            if source_key.startswith(src_prefix):
-                destination_key = source_key.replace(src_prefix, dest_prefix, 1)
-                break
+            logger.info(f"Scanning prefix: {prefix}")
+            response = s3.list_objects_v2(Bucket=LANDING_BUCKET, Prefix=prefix)
+            contents = response.get("Contents", [])
 
-        if destination_key is None:
-            logger.info(f"Skipping file {source_key}, not in recognized source folders.")
-            continue
+            data_files = [
+                obj["Key"] for obj in contents
+                if not obj["Key"].endswith("/") and "_PLACEHOLDER" not in obj["Key"]
+            ]
 
-        copy_source = {
-            'Bucket': DATASHARE_LANDING_BUCKET,
-            'Key': source_key
-        }
+            if not data_files:
+                logger.info(f"No files found in prefix: {prefix}")
+                continue
 
-        try:
-            # Copy the file to the target bucket under the mapped destination key
-            s3_client.copy_object(
-                Bucket=TARGET_BUCKET,
-                CopySource=copy_source,
-                Key=destination_key
-            )
-            logger.info(f"Copied {source_key} from {DATASHARE_LANDING_BUCKET} to {destination_key} in {TARGET_BUCKET}")
+            for key in data_files:
+                if key.endswith(".parquet"):
+                    logger.info(f"Copying .parquet file: {key}")
+                    base_moving(LANDING_BUCKET, key, TARGET_BUCKET, destination)
+                    s3.delete_object(Bucket=LANDING_BUCKET, Key=key)
+                    logger.info(f"Deleted: {key}")
+                else:
+                    logger.info(f"Skipping non-parquet file: {key}")
 
-            # Delete the file from the source bucket and log the response for confirmation
-            delete_response = s3_client.delete_object(Bucket=DATASHARE_LANDING_BUCKET, Key=source_key)
-            logger.info(f"Delete response for {source_key}: {delete_response}")
-
-        except Exception as e:
-            logger.error(f"Error processing {source_key}: {str(e)}")
-            # Optionally add error handling logic here
-
-    return {
-        'statusCode': 200,
-        'body': 'File processing completed successfully.'
-    }
+    except Exception as e:
+        error_msg = f"Error in Lambda execution:\n{str(e)}"
+        logger.error(error_msg)
+        send_sns_notification(context, error_msg)

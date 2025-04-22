@@ -67,8 +67,27 @@
         {
             "fileName": "newrelic/newrelic_rmp_device_metrics",
             "destinationPath": "newrelic/newrelic_rmp_device_metrics"
+        },
+        {
+            "fileName": "ncr_service_now/service_case",
+            "destinationPath": "ncr_service_now/service_case"
+        },
+        {
+            "fileName": "ncr_service_now/incident/daily",
+            "destinationPath": "ncr_service_now/incident/daily"
+        },
+        {
+            "fileName": "ncr_service_now/incident/intraday",
+            "destinationPath": "ncr_service_now/incident/intraday"
+        },
+        {
+            "fileName": "ncr_service_now/problem_record",
+            "destinationPath": "ncr_service_now/problem_record"
+        },
+        {
+            "fileName": "ncr_service_now/change_request",
+            "destinationPath": "ncr_service_now/change_request"
         }
-        
         
     ]
 }

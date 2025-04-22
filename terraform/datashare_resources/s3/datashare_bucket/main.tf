@@ -46,37 +46,39 @@ resource "aws_s3_object" "datashare_landing_folder" {
   source                  = "/dev/null"
   server_side_encryption  = "aws:kms"
   for_each = {
-    ncr_change_request      = "ncr_service_now/UK-SNowFall-ServiceNow-ChangeRequest/"
-    ncr_incident_daily      = "ncr_service_now/UK-SNowFall-ServiceNow-Incident-Daily/"
-    ncr_incident_intraday   = "ncr_service_now/UK-SNowFall-ServiceNow-Incident-Intraday/"
-    ncr_location            = "ncr_service_now/UK-SNowFall-ServiceNow-Location/"
-    ncr_problem_record      = "ncr_service_now/UK-SNowFall-ServiceNow-ProblemRecord/"
-    ncr_service_offering    = "ncr_service_now/UK-SNowFall-ServiceNow-ServiceOffering/"
-    ncr_service_request     = "ncr_service_now/UK-SNowFall-ServiceNow-ServiceRequest/"
-    ncr_sys_user            = "ncr_service_now/UK-SNowFall-ServiceNow-SysUser/"
-    ncr_sys_user_group      = "ncr_service_now/UK-SNowFall-ServiceNow-Sys-User-Group/"
-    ncr_case                = "ncr_service_now/UK-SNowFall-ServiceNow-Case/"
-    ncr_incident_task       ="ncr_service_now/UK-SNowFall-ServiceNow-Incident-Task/"
-    genesys                 ="genesys/"
-    google_contact_center= "gcc/"
-    happysignals = "happysignals/"
+    ncr_change_request      = "ncr_service_now/change_request/"
+    ncr_incident_daily      = "ncr_service_now/incident/daily/"
+    ncr_incident_intraday   = "ncr_service_now/incident/intraday/"
+    ncr_problem_record      = "ncr_service_now/problem_record/"
+    ncr_service_now_case    = "ncr_service_now/service_case/"
+    ncr_incident_task       = "ncr_service_now/incident_task/"
+    ncr_knowledge_base      = "ncr_service_now/knowledge_base/"
+    ncr_knowledge      = "ncr_service_now/knowledge/"
+    ncr_knowledge_feedback      = "ncr_service_now/knowledge_feedback/"
+    ncr_knowledge_use      = "ncr_service_now/knowledge_use/"
+    genesys_contact_settings  = "genesys/contact_center_settings/"
+    genesys_conv_attributes   = "genesys/conversation_attributes/"
+    genesys_conversations_det = "genesys/conversations_detail/"
+    genesys_conversations     = "genesys/conversations/"
+    genesys_presence          = "genesys/primary_presence/"
+    genesys_queue_abandons    = "genesys/queue_abandons/"
+    genesys_queue_config      = "genesys/queue_configuration/"
+    genesys_routing_status    = "genesys/routing_status/"
+    genesys_queue_history     = "genesys/queue_interval_history/"
+    genesys_session_summary   = "genesys/session_summary/"
+    genesys_user_details      = "genesys/user_details/"
+    genesys_user_status_history = "genesys/user_status_interval_history/"
+    google_contact_center   = "gcc/"
+    happysignals            = "happysignals/"
+    error= "error/nonparquet/"
+    test= "test/"
   }
 }
 
   
 
 
-# Updated to use Landing Sync Lambda
-resource "aws_s3_bucket_notification" "datashare_landing_trigger_notification" {
-  bucket = aws_s3_bucket.datashare_landing_bucket.id
 
-  lambda_function {
-    lambda_function_arn = var.datashare_landing_trigger_arn
-    events              = ["s3:ObjectCreated:*"]
-    id                  = "moving the file to original landing bucket "
-  }
-  depends_on = [ aws_s3_bucket.datashare_landing_bucket, var.datashare_landing_trigger_arn, var.allow_landing_trigger]
-}
 
 
 # ####### Creation of Datashare Processed Bucket ################
@@ -122,20 +124,4 @@ resource "aws_s3_bucket_lifecycle_configuration" "datashare_processed_lifecycle_
     status = "Enabled"
   }
 }
-
-# # Updated to use Processed Trigger Lambda (Datashare NCR Webhook)
-# resource "aws_s3_bucket_notification" "datashare_processed_trigger_notification" {
-#   bucket = aws_s3_bucket.datashare_processed_bucket.id
-
-#   lambda_function {
-#     lambda_function_arn = var.datashare_ncr_webhook_arn
-#     events              = ["s3:ObjectCreated:*"]
-#     id                  = "trigger ncr webhook  "
-#   }
-#   depends_on = [
-#     aws_s3_bucket.datashare_processed_bucket,
-#     var.datashare_ncr_webhook_arn,
-#     var.allow_ncr_webhook
-#   ]
-# }
 

@@ -484,3 +484,33 @@ resource "aws_cloudwatch_event_target" "newrelic_rmp_device_rule" {
 #   arn      = local.workflow_trigger_arns["newrelic_rmp_device_metrics"]
 #   role_arn = var.role_assumed_arn
 # }
+
+
+resource "aws_cloudwatch_event_rule" "ncr_service_now_service_case_event_rule" {
+  name = "uk-snowfall-ncr-service-now-service-case-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "ncr_service_now/service_case/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "ncr_service_now_service_case_rule" {
+  rule      = aws_cloudwatch_event_rule.ncr_service_now_service_case_event_rule.name
+  arn       = local.workflow_trigger_arns["ncr_service_now_service_case"]
+  role_arn = var.role_assumed_arn
+
+}
+

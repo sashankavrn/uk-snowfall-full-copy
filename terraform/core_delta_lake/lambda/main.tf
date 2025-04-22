@@ -246,7 +246,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_metrics_function" {
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
-  memory_size      = 4096                     # Increased memory if the data featch is slow (which also increases CPU)
+  memory_size      = 4096                     # Increased 
   timeout          = 720
   description      = "Fetch metrics data from New Relic API and update to landing bucket"
   source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-rmp-device-metrics.zip")
