@@ -1,19 +1,18 @@
 name: Datashare Resources Deployment
-
 on:
   push:
     branches:
       - dev
-
+      - main
+  tags:
+    - v*
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  ENVIRONMENT: "dev"
-  VAR_FILE: "../dev.tfvars"  # Corrected variable file
-
+  ENVIRONMENT: ${{ github.ref == 'refs/heads/dev' && 'dev' || github.ref == 'refs/heads/main' && 'nprod' || startsWith(github.ref, 'refs/tags/v') && 'prod' }}
+  VAR_FILE: ${{ github.ref == 'refs/heads/dev' && '../dev.tfvars' || github.ref == 'refs/heads/main' && '../nprod.tfvars' || startsWith(github.ref, 'refs/tags/v') && '../prod.tfvars' }}
 concurrency:
-  group: "deploy-datashare"
+  group: ${{ github.ref == 'refs/heads/dev' && 'deploy-development' || github.ref == 'refs/heads/main' && 'deploy-nprod' || startsWith(github.ref, 'refs/tags/v') && 'deploy-production' || 'default' }}
   cancel-in-progress: true
-
 jobs:
   terraform:
     name: Terraform Plan & Apply
@@ -21,36 +20,28 @@ jobs:
     permissions:
       contents: read
       id-token: write
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
-
       - name: Install Python 3
         run: sudo apt-get update && sudo apt-get install -y python3
-
       - name: Install boto3
         run: python3 -m pip install boto3
-
       - name: Load AWS Role and State Bucket
         id: load_env
         run: |
           echo "Loading AWS_ROLE_TO_ASSUME and STATE_BUCKET..."
-          VAR_FILE_AWS="terraform/dev.tfvars"
-
-          AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' \"')
-          STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' \"')
-
+          VAR_FILE_AWS="${{ github.ref == 'refs/heads/dev' && 'terraform/dev.tfvars' || github.ref == 'refs/heads/main' && 'terraform/nprod.tfvars' || startsWith(github.ref, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
+          AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
+          STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=${AWS_ROLE_TO_ASSUME}" >> $GITHUB_ENV
           echo "STATE_BUCKET=${STATE_BUCKET}" >> $GITHUB_ENV
-
       - name: Print Variable Values
         run: |
           echo "ENVIRONMENT: $ENVIRONMENT"
           echo "AWS_ROLE_TO_ASSUME: $AWS_ROLE_TO_ASSUME"
           echo "STATE_BUCKET: $STATE_BUCKET"
           echo "VAR_FILE: $VAR_FILE"
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -58,25 +49,15 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           role-session-name: GitHubActions
           web-identity-token-file: ${{ steps.oidc-token.outputs.token }}
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: 1.7.4
-
       - name: Running the Datashare Resources Deployment stage
         run: |
           cd terraform/datashare_resources
-          
-          # Initialize Terraform with Datashare backend
-          terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}" \
-                         -backend-config="key=datashare/terraform.tfstate"
-          
-          # Plan and Apply Terraform changes
+          terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}" -backend-config="key=datashare/terraform.tfstate"
           terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
           terraform apply -auto-approve tfplan
-          
-          # Uncomment this to destroy infrastructure when needed
-          # terraform destroy -var-file=${{ env.VAR_FILE }} -auto-approve
         env:
           AWS_REGION: ${{ env.AWS_REGION }}
