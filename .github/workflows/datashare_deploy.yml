@@ -1,17 +1,17 @@
 name: Datashare Resources Deployment
 on:
-  push:
-    branches:
-      - dev
-      - main
-  tags:
-    - v*
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy from'
+        required: true
+        default: 'dev'
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  ENVIRONMENT: ${{ github.ref == 'refs/heads/dev' && 'dev' || github.ref == 'refs/heads/main' && 'nprod' || startsWith(github.ref, 'refs/tags/v') && 'prod' }}
-  VAR_FILE: ${{ github.ref == 'refs/heads/dev' && '../dev.tfvars' || github.ref == 'refs/heads/main' && '../nprod.tfvars' || startsWith(github.ref, 'refs/tags/v') && '../prod.tfvars' }}
+  ENVIRONMENT: ${{ github.event.inputs.branch == 'dev' && 'dev' || github.event.inputs.branch == 'main' && 'nprod' || startsWith(github.event.inputs.branch, 'refs/tags/v') && 'prod' }}
+  VAR_FILE: ${{ github.event.inputs.branch == 'dev' && '../dev.tfvars' || github.event.inputs.branch == 'main' && '../nprod.tfvars' || startsWith(github.event.inputs.branch, 'refs/tags/v') && '../prod.tfvars' }}
 concurrency:
-  group: ${{ github.ref == 'refs/heads/dev' && 'deploy-development' || github.ref == 'refs/heads/main' && 'deploy-nprod' || startsWith(github.ref, 'refs/tags/v') && 'deploy-production' || 'default' }}
+  group: ${{ github.event.inputs.branch == 'dev' && 'deploy-development' || github.event.inputs.branch == 'main' && 'deploy-nprod' || startsWith(github.event.inputs.branch, 'refs/tags/v') && 'deploy-production' || 'default' }}
   cancel-in-progress: true
 jobs:
   terraform:
@@ -31,7 +31,7 @@ jobs:
         id: load_env
         run: |
           echo "Loading AWS_ROLE_TO_ASSUME and STATE_BUCKET..."
-          VAR_FILE_AWS="${{ github.ref == 'refs/heads/dev' && 'terraform/dev.tfvars' || github.ref == 'refs/heads/main' && 'terraform/nprod.tfvars' || startsWith(github.ref, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
+          VAR_FILE_AWS="${{ github.event.inputs.branch == 'dev' && 'terraform/dev.tfvars' || github.event.inputs.branch == 'main' && 'terraform/nprod.tfvars' || startsWith(github.event.inputs.branch, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
           AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=${AWS_ROLE_TO_ASSUME}" >> $GITHUB_ENV
