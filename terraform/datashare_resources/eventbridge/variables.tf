@@ -12,3 +12,4 @@ variable "datashare_landing_lambda_name" {}
 
 variable "datashare_landing_bucket_name" {}
 variable "datashare_landing_bucket_arn" {}
+variable "core_state_bucket" {}
