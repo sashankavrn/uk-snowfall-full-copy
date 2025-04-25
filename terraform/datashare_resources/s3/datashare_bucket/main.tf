@@ -47,8 +47,7 @@ resource "aws_s3_object" "datashare_landing_folder" {
   server_side_encryption  = "aws:kms"
   for_each = {
     ncr_change_request      = "ncr_service_now/change_request/"
-    ncr_incident_daily      = "ncr_service_now/incident/daily/"
-    ncr_incident_intraday   = "ncr_service_now/incident/intraday/"
+    ncr_incident     = "ncr_service_now/incident/"
     ncr_problem_record      = "ncr_service_now/problem_record/"
     ncr_service_now_case    = "ncr_service_now/service_case/"
     ncr_incident_task       = "ncr_service_now/incident_task/"
