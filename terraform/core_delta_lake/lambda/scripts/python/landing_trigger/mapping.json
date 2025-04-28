@@ -77,10 +77,6 @@
             "destinationPath": "ncr_service_now/incident/daily"
         },
         {
-            "fileName": "ncr_service_now/incident/intraday",
-            "destinationPath": "ncr_service_now/incident/intraday"
-        },
-        {
             "fileName": "ncr_service_now/problem_record",
             "destinationPath": "ncr_service_now/problem_record"
         },
