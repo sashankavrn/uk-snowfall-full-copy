@@ -24,19 +24,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "datashare_landing_lifecycle_ru
   }
 }
 
-# resource "aws_s3_bucket_policy" "datashare_landing_bucket_policy" {
-#   bucket = aws_s3_bucket.datashare_landing_bucket.id
-#   policy = data.template_file.datashare_bucket_policy.rendered
-# }
 
-# data "template_file" "datashare_bucket_policy" {
-#   template = file("${path.module}/bucket_policy/policy.json")
-
-#   vars = {
-#     environment    = var.environment
-#     account_number = var.account_number
-#   }
-# }
 
 # Creating folders in Datashare Landing Bucket with "datasharing_service_now" prefix
 resource "aws_s3_object" "datashare_landing_folder" {

@@ -20,10 +20,7 @@ provider "aws" {
   region      = var.AWS_REGION
 }
 
-# # Fetch the existing SNS topic ARN
-# data "aws_sns_topic" "datashare_sns_topic" {
-#   name = "uk-snowfall-notification-dev"  # Name of the existing SNS topic
-# }
+
 
 
 # Triggering the Datashare S3 Module
