@@ -46,4 +46,4 @@ variable "terraform_bucket_name" {
 
   description = "Bucket Name for where terraform state file is stored"  
 }
-variable "terraform_bucket_name" {}
+# variable "terraform_bucket_name" {}
