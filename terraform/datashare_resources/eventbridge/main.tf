@@ -3,7 +3,7 @@ data "terraform_remote_state" "core_infra_state" {
   backend = "s3"
 
   config = {
-    bucket  = "eu-central1-dev-uk-snowfall-terraform-295446674139"  # Core state bucket
+    bucket  = var.terraform_bucket_name  # Core state bucket
     key     = "snowfall-data-pipeline/core_delta_lake/terraform.tfstate"  # Path to your state file
     region  = "eu-central-1"
   }
