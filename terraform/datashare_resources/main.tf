@@ -70,7 +70,7 @@ module "event_bridge_module" {
 
   datashare_landing_bucket_name           = module.datashare_buckets.datashare_landing_bucket_name
   datashare_landing_bucket_arn            = module.datashare_buckets.datashare_landing_bucket_arn
-  core_state_bucket = var.core_state_bucket
+  terraform_bucket_name = var.terraform_bucket_name
 }
 
 
