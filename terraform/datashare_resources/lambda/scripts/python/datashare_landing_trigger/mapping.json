@@ -5,12 +5,8 @@
         "destinationPath": "ncr_service_now/change_request/"
       },
       {
-        "fileName": "ncr_service_now/incident/daily/",
-        "destinationPath": "ncr_service_now/incident/daily/"
-      },
-      {
-        "fileName": "ncr_service_now/incident/intraday/",
-        "destinationPath": "ncr_service_now/incident/intraday/"
+        "fileName": "ncr_service_now/incident/",
+        "destinationPath": "ncr_service_now/incident/"
       },
       {
         "fileName": "ncr_service_now/problem_record/",
