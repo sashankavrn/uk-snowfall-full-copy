@@ -20,10 +20,7 @@ provider "aws" {
   region      = var.AWS_REGION
 }
 
-# # Fetch the existing SNS topic ARN
-# data "aws_sns_topic" "datashare_sns_topic" {
-#   name = "uk-snowfall-notification-dev"  # Name of the existing SNS topic
-# }
+
 
 
 # Triggering the Datashare S3 Module
@@ -70,7 +67,7 @@ module "event_bridge_module" {
 
   datashare_landing_bucket_name           = module.datashare_buckets.datashare_landing_bucket_name
   datashare_landing_bucket_arn            = module.datashare_buckets.datashare_landing_bucket_arn
-  core_state_bucket = var.core_state_bucket
+  # terraform_bucket_name = var.terraform_bucket_name
 }
 
 
