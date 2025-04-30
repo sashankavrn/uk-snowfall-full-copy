@@ -17,7 +17,7 @@ SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN")
 
 # Define folders to sync
 FOLDERS_TO_SYNC = [
-    "amazon_connect/",
+    "ods/",
     "meraki/",
     "newrelic/newrelic_rmp_device_info/"
 ]
