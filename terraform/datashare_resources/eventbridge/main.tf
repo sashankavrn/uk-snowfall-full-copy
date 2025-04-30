@@ -38,12 +38,11 @@ resource "aws_cloudwatch_event_rule" "datashare_processed_lambda_trigger" {
     },
     "object": {
       "key": [
-        { "prefix": "amazon_connect/" },
         { "prefix": "ods/trading_hours/" },
         { "prefix": "ods/location_hierarchy/" },
         { "prefix": "ods/adj_trading_hours/" },
         { "prefix": "meraki/" },
-        { "prefix": "newrelic/" }
+        { "prefix": "newrelic/newrelic_rmp_device_info/" }
       ]
     }
   },
