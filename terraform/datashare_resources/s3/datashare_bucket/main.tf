@@ -83,7 +83,6 @@ resource "aws_s3_object" "datashare_processed_folders" {
   source                  = "/dev/null"
   server_side_encryption  = "aws:kms"
   for_each = {
-    amazon_connect            = "amazon_connect/"
     location_trading_hrs      = "ods/trading_hours/"
     location_hierarchy        = "ods/location_hierarchy/"
     location_adj_trading_hrs  = "ods/adj_trading_hours/"
