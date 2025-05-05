@@ -86,8 +86,11 @@
         },
         {
             "fileName": "newrelic/newrelic_digital_gma_foe_response",
-            "destinationPath": "newrelic/digital_gma_foe_response"
+            "destinationPath": "newrelic/newrelic_digital_gma_foe_response"
+        },        
+        {
+            "fileName": "newrelic/newrelic_digital_3po_foe_response",
+            "destinationPath": "newrelic/newrelic_digital_3po_foe_response"
         }        
-        
     ]
 }
