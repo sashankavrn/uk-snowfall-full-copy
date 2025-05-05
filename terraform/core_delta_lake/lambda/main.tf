@@ -289,3 +289,70 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_metrics" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.newrelic_metrics_lambda_schedule.arn
 }
+#######################################################################
+# NEWRELIC-DIGITAL-GMA-FOE-RESPONSE LAMBDA
+#######################################################################
+
+# Archive the Python script for Lambda deployment
+data "archive_file" "newrelic_digital_gma_foe_response" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/newrelic-digital-gma-foe-response/"
+  output_path = "${path.module}/scripts/zips/newrelic-digital-gma-foe-response.zip"
+}
+
+# Lambda Function for fetching New Relic Digital Response info
+resource "aws_lambda_function" "newrelic_digital_gma_foe_response_function" {
+  filename         = "${path.module}/scripts/zips/newrelic-digital-gma-foe-response.zip"
+  function_name    = "newrelic-digital-gma-foe-response-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 2048
+  timeout          = 720
+  description      = "Fetch digital response data from New Relic API and upload to landing bucket"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-digital-gma-foe-response.zip")
+  tags             = var.resource_tags
+  layers = [
+    "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1",
+    "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:4"
+  ]
+  environment {
+    variables = {
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+# Lambda Permission for S3 invocation (if required)
+resource "aws_lambda_permission" "allow_landing_newrelic_digital_gma_foe_response_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.newrelic_digital_gma_foe_response_function.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.landing_bucket_arn
+  depends_on    = [var.landing_bucket_arn, aws_lambda_function.newrelic_digital_gma_foe_response_function]
+}
+
+# CloudWatch Event Rule to trigger Lambda every day at 1 AM UTC
+resource "aws_cloudwatch_event_rule" "newrelic_digital_gma_foe_response_lambda_schedule" {
+  name                = "newrelic-digital-gma-foe-response-schedule"
+  description         = "Triggers the Lambda function every day at 1 AM UTC"
+  schedule_expression = "cron(0 1 * * ? *)"  # 01:00 UTC
+}
+
+# CloudWatch Target to link Event Rule to Lambda
+resource "aws_cloudwatch_event_target" "invoke_newrelic_digital_gma_foe_response_lambda" {
+  rule      = aws_cloudwatch_event_rule.newrelic_digital_gma_foe_response_lambda_schedule.name
+  target_id = "newrelic-digital-gma-foe-response-target"
+  arn       = aws_lambda_function.newrelic_digital_gma_foe_response_function.arn
+}
+
+# Grant EventBridge Permission to Invoke Lambda
+resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_digital_gma_foe_response" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.newrelic_digital_gma_foe_response_function.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.newrelic_digital_gma_foe_response_lambda_schedule.arn
+}

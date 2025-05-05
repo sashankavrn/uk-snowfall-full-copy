@@ -262,6 +262,19 @@ locals {
       schedule        = "cron(0 1 * * ? *)"
       reporting_date  = ""
     },
+     "newrelic_digital_gma_foe_response" = {
+     name            = "uk-snowfall-newrelic-digital-gma-foe-response"
+     description     = "Workflow for the New Relic Digital GMA FOE Response data"
+     dataset         = "newrelic_digital_gma_foe_response"
+     group           = "preparation"
+     trigger_name    = "uk-snowfall-newrelic-digital-gma-foe-response-trigger"
+     max_concurrent  = 1
+     batch_size      = 100
+     batch_window    = 10
+     trigger_type    = "EVENT"
+     schedule        = null
+     reporting_date  = null
+    },
     "ncr_service_now_service_case" = {
       name            = "uk-snowfall-ncr-service-now-service-case"
       description     = "Workflow for the newrelic rmp device metrics data"

@@ -83,7 +83,11 @@
         {
             "fileName": "ncr_service_now/change_request",
             "destinationPath": "ncr_service_now/change_request"
-        }
+        },
+        {
+            "fileName": "newrelic/newrelic_digital_gma_foe_response",
+            "destinationPath": "newrelic/digital_gma_foe_response"
+        }        
         
     ]
 }
