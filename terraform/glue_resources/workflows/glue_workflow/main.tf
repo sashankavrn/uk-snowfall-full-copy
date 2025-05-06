@@ -288,19 +288,6 @@ locals {
       schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
-    "ncr_service_now_incident_daily" = {
-      name            = "uk-snowfall-ncr-service-now-incident-daily"
-      description     = "Workflow for the NCR ServiceNow Incident Daily data"
-      dataset         = "ncr_service_now_incident_daily"
-      group           = "preparation"
-      trigger_name    = "uk-snowfall-ncr-service-now-incident-daily-trigger"
-      max_concurrent  = 1
-      batch_size      = 100
-      batch_window    = 1
-      trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/15 * * * ? *)"
-      reporting_date  = ""
-    },
     "ncr_service_now_problem_record" = {
       name            = "uk-snowfall-ncr-service-now-problem-record"
       description     = "Workflow for the NCR ServiceNow Problem Record data"
@@ -372,7 +359,7 @@ resource "aws_glue_workflow" "glue_workflows" {
   }, each.value.reporting_date != null ? { REPORTING_DATE = each.value.reporting_date } : {})
 
   lifecycle {
-    prevent_destroy = true   # Prevent the workflow from being destroyed
+    prevent_destroy = false   # Prevent the workflow from being destroyed
     ignore_changes = [name, description]  # Ignore changes to these attributes
   }
 }
@@ -402,7 +389,7 @@ resource "aws_glue_trigger" "glue_triggers" {
   }
 
   lifecycle {
-    prevent_destroy = true   # Prevent the trigger from being destroyed
+    prevent_destroy = false   # Prevent the trigger from being destroyed
     ignore_changes = [name, description]  # Ignore changes to these attributes
   }
 }
