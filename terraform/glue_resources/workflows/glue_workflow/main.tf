@@ -326,6 +326,32 @@ locals {
       trigger_type    = "SCHEDULED"
       schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
+    },
+    "ncr_service_now_incident" = {
+      name            = "uk-snowfall-ncr-service-now-incident"
+      description     = "Workflow for the NCR ServiceNow Incident data"
+      dataset         = "ncr_service_now_incident"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-incident-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 * * * ? *)"
+      reporting_date  = ""
+    },
+    "ncr_service_now_knowledge_base" = {
+      name            = "uk-snowfall-ncr-service-now-knowledge-base"
+      description     = "Workflow for the NCR ServiceNow Knowledge Base data"
+      dataset         = "ncr_service_now_knowledge_base"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-knowledge-base-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 * * * ? *)"
+      reporting_date  = ""
     }
   }
 }

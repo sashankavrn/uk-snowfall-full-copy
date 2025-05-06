@@ -69,12 +69,20 @@
             "destinationPath": "newrelic/newrelic_rmp_device_metrics"
         },
         {
+            "fileName": "newrelic/newrelic_digital_gma_foe_response",
+            "destinationPath": "newrelic/newrelic_digital_gma_foe_response"
+        },        
+        {
+            "fileName": "newrelic/newrelic_digital_3po_foe_response",
+            "destinationPath": "newrelic/newrelic_digital_3po_foe_response"
+        }
+        {
             "fileName": "ncr_service_now/service_case",
             "destinationPath": "ncr_service_now/service_case"
         },
         {
-            "fileName": "ncr_service_now/incident/daily",
-            "destinationPath": "ncr_service_now/incident/daily"
+            "fileName": "ncr_service_now/incident",
+            "destinationPath": "ncr_service_now/incident"
         },
         {
             "fileName": "ncr_service_now/problem_record",
@@ -85,12 +93,36 @@
             "destinationPath": "ncr_service_now/change_request"
         },
         {
-            "fileName": "newrelic/newrelic_digital_gma_foe_response",
-            "destinationPath": "newrelic/newrelic_digital_gma_foe_response"
-        },        
+            "fileName": "ncr_service_now/incident_task/",
+            "destinationPath": "ncr_service_now/incident_task/"
+        },
         {
-            "fileName": "newrelic/newrelic_digital_3po_foe_response",
-            "destinationPath": "newrelic/newrelic_digital_3po_foe_response"
-        }        
+            "fileName": "ncr_service_now/knowledge_base/",
+            "destinationPath": "ncr_service_now/knowledge_base/"
+        },
+        {
+            "fileName": "ncr_service_now/knowledge/",
+            "destinationPath": "ncr_service_now/knowledge/"
+        },
+        {
+            "fileName": "ncr_service_now/knowledge_feedback/",
+            "destinationPath": "ncr_service_now/knowledge_feedback/"
+        },
+        {
+            "fileName": "ncr_service_now/knowledge_use/",
+            "destinationPath": "ncr_service_now/knowledge_use/"
+        },
+        {
+            "fileName": "genesys/",
+            "destinationPath": "genesys/"
+        },
+        {
+            "fileName": "gcc/",
+            "destinationPath": "gcc/"
+        },
+        {
+            "fileName": "happysignals/",
+            "destinationPath": "happysignals/"
+        }      
     ]
 }
