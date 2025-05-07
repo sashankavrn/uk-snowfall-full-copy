@@ -368,16 +368,16 @@ data "archive_file" "newrelic_digital_3po_foe_response" {
   output_path = "${path.module}/scripts/zips/newrelic-digital-3po-foe-response.zip"
 }
 
-resource "aws_lambda_function" "newrelic_digital_3po_foe_responses_function" {
-  filename         = "${path.module}/scripts/zips/newrelic-digital-3po-foe-responses.zip"
-  function_name    = "uk-snowfall-newrelic-digital-3po-foe-responses-${var.environment}"
+resource "aws_lambda_function" "newrelic_digital_3po_foe_response_function" {
+  filename         = "${path.module}/scripts/zips/newrelic-digital-3po-foe-response.zip"
+  function_name    = "uk-snowfall-newrelic-digital-3po-foe-response-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"  # Make sure this matches the Python file inside the ZIP
   runtime          = "python3.12"
   memory_size      = 2048
   timeout          = 720
   description      = "Fetch digital response data from New Relic API and upload to landing bucket"
-  source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-digital-3po-foe-responses.zip")
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-digital-3po-foe-response.zip")
   tags             = var.resource_tags
 
   layers = [
@@ -393,32 +393,32 @@ resource "aws_lambda_function" "newrelic_digital_3po_foe_responses_function" {
   }
 }
 
-resource "aws_lambda_permission" "allow_landing_newrelic_digital_3po_foe_responses_bucket" {
+resource "aws_lambda_permission" "allow_landing_newrelic_digital_3po_foe_response_bucket" {
   statement_id  = "AllowExecutionFromS3Bucket"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.newrelic_digital_3po_foe_responses_function.arn
+  function_name = aws_lambda_function.newrelic_digital_3po_foe_response_function.arn
   principal     = "s3.amazonaws.com"
   source_arn    = var.landing_bucket_arn
-  depends_on    = [aws_lambda_function.newrelic_digital_3po_foe_responses_function]
+  depends_on    = [aws_lambda_function.newrelic_digital_3po_foe_response_function]
 }
 
-resource "aws_cloudwatch_event_rule" "newrelic_digital_3po_foe_responses_lambda_schedule" {
-  name                = "uk-snowfall-newrelic-digital-3po-foe-responses-schedule"
+resource "aws_cloudwatch_event_rule" "newrelic_digital_3po_foe_response_lambda_schedule" {
+  name                = "uk-snowfall-newrelic-digital-3po-foe-response-schedule"
   description         = "Triggers the Lambda function every day at 1:30 AM UTC"
   schedule_expression = "cron(30 1 * * ? *)"
 }
 
 
-resource "aws_cloudwatch_event_target" "invoke_newrelic_digital_3po_foe_responses_lambda" {
-  rule      = aws_cloudwatch_event_rule.newrelic_digital_3po_foe_responses_lambda_schedule.name
-  target_id = "newrelic-digital-3po-foe-responses-target"
-  arn       = aws_lambda_function.newrelic_digital_3po_foe_responses_function.arn
+resource "aws_cloudwatch_event_target" "invoke_newrelic_digital_3po_foe_response_lambda" {
+  rule      = aws_cloudwatch_event_rule.newrelic_digital_3po_foe_response_lambda_schedule.name
+  target_id = "newrelic-digital-3po-foe-response-target"
+  arn       = aws_lambda_function.newrelic_digital_3po_foe_response_function.arn
 }
 
-resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_digital_3po_foe_responses" {
+resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_digital_3po_foe_response" {
   statement_id  = "AllowExecutionFromEventBridge"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.newrelic_digital_3po_foe_responses_function.function_name
+  function_name = aws_lambda_function.newrelic_digital_3po_foe_response_function.function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.newrelic_digital_3po_foe_responses_lambda_schedule.arn
+  source_arn    = aws_cloudwatch_event_rule.newrelic_digital_3po_foe_response_lambda_schedule.arn
 }
