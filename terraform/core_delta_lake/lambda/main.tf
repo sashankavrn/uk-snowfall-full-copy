@@ -362,7 +362,7 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_digital_gma_
 # NEWRELIC-DIGITAL-3PO-FOE-RESPONSE LAMBDA
 #######################################################################
 # Archive the Python script for Lambda deployment
-data "archive_file" "newrelic_digital_gma_foe_response" {
+data "archive_file" "newrelic_digital_3po_foe_response" {
   type        = "zip"
   source_dir  = "${path.module}/scripts/python/newrelic-digital-3po-foe-response/"
   output_path = "${path.module}/scripts/zips/newrelic-digital-3po-foe-response.zip"
