@@ -75,7 +75,7 @@
         {
             "fileName": "newrelic/newrelic_digital_3po_foe_response",
             "destinationPath": "newrelic/newrelic_digital_3po_foe_response"
-        }
+        },
         {
             "fileName": "ncr_service_now/service_case",
             "destinationPath": "ncr_service_now/service_case"
