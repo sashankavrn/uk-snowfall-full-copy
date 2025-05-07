@@ -275,6 +275,19 @@ locals {
      schedule        = null
      reporting_date  = null
     },
+      "newrelic_digital_3po_foe_response" = {
+        name            = "uk-snowfall-newrelic-digital-3po-foe-response"
+        description     = "Workflow for the New Relic Digital 3PO FOE Response data"
+        dataset         = "newrelic_digital_3po_foe_response"
+        group           = "preparation"
+        trigger_name    = "uk-snowfall-newrelic-digital-3po-foe-response-trigger"
+        max_concurrent  = 1
+        batch_size      = 100
+        batch_window    = 10
+        trigger_type    = "EVENT"
+        schedule        = null
+        reporting_date  = null
+    },
     "ncr_service_now_service_case" = {
       name            = "uk-snowfall-ncr-service-now-service-case"
       description     = "Workflow for the newrelic rmp device metrics data"
