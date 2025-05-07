@@ -9,7 +9,7 @@ SECRET_NAME = "uk-snowfall"
 REGION_NAME = "eu-central-1"
 S3_BUCKET = os.environ.get("TARGET_BUCKET")
 S3_PREFIX = "newrelic/newrelic_digital_3po_foe_response/"
-SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN")  # <- Add this env variable in Lambda config
+SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN")  
 
 # Send SNS Notification on failure
 def send_sns_notification(subject, message):
@@ -75,7 +75,7 @@ def save_to_s3(data):
         return None
     s3_client = boto3.client("s3")
     timestamp = datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')
-    s3_key = f"{S3_PREFIX}newrelic_digital_response_{timestamp}.json"
+    s3_key = f"{S3_PREFIX}newrelic_digital_3po_foe_response_{timestamp}.json"
     try:
         s3_client.put_object(
             Bucket=S3_BUCKET,
