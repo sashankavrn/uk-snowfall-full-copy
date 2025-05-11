@@ -2,7 +2,7 @@ import requests
 import json
 import boto3
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from botocore.exceptions import ClientError
 
 # AWS Secrets Manager Details
@@ -64,9 +64,7 @@ def new_relic_query(api_key, account_id, nrql):
         {{
           actor {{
             account(id: {account_id}) {{
-              nrql(query: \"""
-              {nrql}
-              \""", timeout: 60) {{
+              nrql(query: \"\"\"{nrql}\"\"\", timeout: 60) {{
                 results
               }}
             }}
@@ -125,15 +123,25 @@ def lambda_handler(event, context):
 
         print(f"[INFO] Using New Relic Account ID: {account_id}")
 
-        query = """
+        # Calculate last full hour in UTC
+        now = datetime.utcnow()
+        this_hour_end = now.replace(minute=0, second=0, microsecond=0)
+        last_hour_start = this_hour_end - timedelta(hours=1)
+
+        since_str = last_hour_start.strftime("%Y-%m-%d %H:%M:%S")
+        until_str = this_hour_end.strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[INFO] Querying New Relic from {since_str} until {until_str}")
+
+        # Dynamic NRQL query
+        query = f"""
             SELECT uniqueCount(substring(aparse(message, '%ORDER * :%'), 1, 36)) as 'Count' 
             FROM Log 
             WHERE market = 'uk' 
             AND message LIKE '%UpdateOrderStateAsync : MARKET UK : ORDER%' 
             AND (message LIKE '%UpdateOrderStatusAsync%' OR message LIKE '%DoFoeStoreStaging%') 
             FACET aparse(message, '%DoFoeStoreStaging : * :%'),  
-            if(length(aparse(message, '%FAULT : * :%')) > 0, aparse(message, '%FAULT : *'), 'No Fault') 
-            SINCE 3 days ago 
+            IF(length(aparse(message, '%FAULT : * :%')) > 0, aparse(message, '%FAULT : *'), 'No Fault') 
+            SINCE '{since_str}' UNTIL '{until_str}' 
             LIMIT MAX
         """
 
