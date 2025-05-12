@@ -4,3 +4,4 @@ role_assumed_arn = "arn:aws:iam::295446674139:role/UK-MKT-DEV-GLUE-ROLE-CASE1258
 terraform_bucket_name = "eu-central1-dev-uk-snowfall-terraform-295446674139"
 connector_profile_name = "UK-SNowFall-ServiceNow-Connector-Prod"
 aws_role_to_assume  = "arn:aws:iam::295446674139:role/UK-MKT-SNowfall-Dev-Deploy-Service-Role"
+meraki_schedule = "cron(0 1 * * ? *)"
