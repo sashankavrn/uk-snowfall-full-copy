@@ -9,20 +9,22 @@ SECRET_NAME = "uk-snowfall"
 REGION_NAME = "eu-central-1"
 S3_BUCKET = os.environ.get("TARGET_BUCKET")
 S3_PREFIX = "newrelic/newrelic_digital_3po_foe_response/"
-SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN")  
+SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN")
 
 # Send SNS Notification on failure
-def send_sns_notification(subject, message):
+def send_sns_notification(message):
     if not SNS_TOPIC_ARN:
         print("[WARNING] SNS_TOPIC_ARN is not set.")
         return
     try:
+        timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+        full_message = f"[{timestamp}] {message}"
         boto3.client("sns").publish(
             TopicArn=SNS_TOPIC_ARN,
-            Subject=subject,
-            Message=message
+            Subject="NEWRELIC-DIGITAL-3PO-FOE-RESPONSE LAMBDA",
+            Message=full_message
         )
-        print(f"[INFO] SNS notification sent: {subject}")
+        print(f"[INFO] SNS notification sent.")
     except Exception as e:
         print(f"[ERROR] Failed to send SNS notification: {e}")
 
@@ -94,16 +96,19 @@ def lambda_handler(event, context):
     print("[INFO] Fetching API credentials...")
     api_key, account_id = get_secret()
     if not api_key or not account_id:
-        msg = "Failed to retrieve API credentials."
-        send_sns_notification("NewRelic Lambda Failure", msg)
-        return {"statusCode": 500, "body": msg}
+        send_sns_notification("Failed to retrieve API credentials.")
+        return {"statusCode": 500, "body": "Failed to retrieve API credentials."}
 
-    today = datetime.utcnow().date()
-    since = datetime(today.year, today.month, today.day)
-    until = since + timedelta(days=1)
-    since_str = since.strftime("%Y-%m-%d 00:00:00")
-    until_str = until.strftime("%Y-%m-%d 00:00:00")
+    # Calculate last full hour in UTC
+    now = datetime.utcnow()
+    this_hour_end = now.replace(minute=0, second=0, microsecond=0)
+    last_hour_start = this_hour_end - timedelta(hours=1)
 
+    since_str = last_hour_start.strftime("%Y-%m-%d %H:%M:%S")
+    until_str = this_hour_end.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[INFO] Querying logs from {since_str} until {until_str}")
+
+    # Build NRQL Query with dynamic SINCE and UNTIL
     query = f"""
         SELECT uniqueCount(aparse(message, '%VALUES%, *,%')) as Count
         FROM Log
@@ -124,22 +129,19 @@ def lambda_handler(event, context):
     print("[INFO] Sending query to New Relic...")
     data = new_relic_query(api_key, account_id, query)
     if not data:
-        msg = "Failed to retrieve log data from New Relic."
-        send_sns_notification("NewRelic Lambda Failure", msg)
-        return {"statusCode": 500, "body": msg}
+        send_sns_notification("Failed to retrieve log data from New Relic.")
+        return {"statusCode": 500, "body": "Failed to retrieve log data from New Relic."}
 
     results = data.get("data", {}).get("actor", {}).get("account", {}).get("nrql", {}).get("results", [])
     if not results:
-        msg = "No log data returned from New Relic."
-        send_sns_notification("NewRelic Lambda Failure - No Data", msg)
-        return {"statusCode": 204, "body": msg}
+        send_sns_notification("No log data returned from New Relic.")
+        return {"statusCode": 204, "body": "No log data returned from New Relic."}
 
     print(f"[INFO] Retrieved {len(results)} entries. Uploading to S3...")
     s3_url = save_to_s3(results)
     if not s3_url:
-        msg = "Data retrieval succeeded, but failed to save to S3."
-        send_sns_notification("NewRelic Lambda Failure - S3 Upload", msg)
-        return {"statusCode": 500, "body": msg}
+        send_sns_notification("Data retrieval succeeded, but failed to save to S3.")
+        return {"statusCode": 500, "body": "Failed to save data to S3."}
 
     return {
         "statusCode": 200,
