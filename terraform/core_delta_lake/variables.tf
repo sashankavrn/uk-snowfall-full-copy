@@ -50,3 +50,5 @@ variable "terraform_bucket_name" {
 variable "connector_profile_name" {
   default = "UK-SnowFall-ServiceNow-Prod"
 }
+
+variable "meraki_schedule" {}
