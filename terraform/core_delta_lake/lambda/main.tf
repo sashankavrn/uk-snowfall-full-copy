@@ -340,8 +340,8 @@ resource "aws_lambda_permission" "allow_landing_newrelic_digital_gma_foe_respons
 
 resource "aws_cloudwatch_event_rule" "newrelic_digital_gma_foe_response_lambda_schedule" {
   name                = "uk-snowfall-newrelic-digital-gma-foe-response-schedule"
-  description         = "Triggers the Lambda function every hour"
-  schedule_expression = "cron(0 * * * ? *)"
+  description         = "Triggers the Lambda function every hour at 5 minutes past the hour"
+  schedule_expression = "cron(5 * * * ? *)"
 }
 
 resource "aws_cloudwatch_event_target" "invoke_newrelic_digital_gma_foe_response_lambda" {
@@ -404,8 +404,8 @@ resource "aws_lambda_permission" "allow_landing_newrelic_digital_3po_foe_respons
 
 resource "aws_cloudwatch_event_rule" "newrelic_digital_3po_foe_response_lambda_schedule" {
   name                = "uk-snowfall-newrelic-digital-3po-foe-response-schedule"
-  description         = "Triggers the Lambda function every day at 1:30 AM UTC"
-  schedule_expression = "cron(30 1 * * ? *)"
+  description         = "Triggers the Lambda function every hour at 5 minutes past the hour"
+  schedule_expression = "cron(5 * * * ? *)"
 }
 
 
