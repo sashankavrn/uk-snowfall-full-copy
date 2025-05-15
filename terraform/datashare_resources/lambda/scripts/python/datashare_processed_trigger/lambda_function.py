@@ -19,8 +19,8 @@ SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN")
 FOLDERS_TO_SYNC = [
     "ods/",
     "meraki/",
-    "newrelic/newrelic_rmp_device_info/"
-    "newrelic/newrelic_digital_gma_foe_response/"
+    "newrelic/newrelic_rmp_device_info/",
+    "newrelic/newrelic_digital_gma_foe_response/",
     "newrelic/newrelic_digital_3po_foe_response/"
 ]
 
