@@ -20,6 +20,8 @@ FOLDERS_TO_SYNC = [
     "ods/",
     "meraki/",
     "newrelic/newrelic_rmp_device_info/"
+    "newrelic/newrelic_digital_gma_foe_response/"
+    "newrelic/newrelic_digital_3po_foe_response/"
 ]
 
 # Threshold (in milliseconds) to stop processing before Lambda timeout
