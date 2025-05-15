@@ -2,14 +2,10 @@ from snowfall_pipeline.common_utilities.snowfall_logger import SnowfallLogger
 from snowfall_pipeline.common_utilities.aws_utilities import AwsUtilities
 from snowfall_pipeline.common_utilities.decorators import transformation_timer
 
-
-import time
-
 from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, LongType, TimestampType
 from delta.tables import *
 from pyspark.sql.utils import AnalysisException
-
 
 from awsglue.dynamicframe import DynamicFrame
 from awsglue.transforms import SelectFromCollection
@@ -399,7 +395,8 @@ class TransformBase:
         self.logger.info('Running the create_partition_date_columns function.')
         
         # Check if the column exists in the DataFrame and is not already of type string
-        if timestamp_column in df.columns and df.schema[timestamp_column].dataType != "string":
+        if timestamp_column in df.columns and df.schema[timestamp_column].dataType != StringType():
+            self.logger.info(f'chaning from {df.schema[timestamp_column].dataType} to string')
             df = df.withColumn(timestamp_column, F.col(timestamp_column).cast("string")) # Convert the column to string type
 
         # Get the first value of the timestamp column
@@ -521,7 +518,7 @@ class TransformBase:
         self.logger.info('Removing duplicate records')
         initial_count = df.count()
 
-        if columns is  None:
+        if columns is None:
             df = df.dropDuplicates()
         else:
             df = df.dropDuplicates(columns)
@@ -910,7 +907,7 @@ class TransformBase:
         self.logger.info('Running the explode_pivot_json_column function')
 
         if not column_name:
-            self.logger.info("The columns list is empty. Skipping processing.")
+            self.logger.info("The column is empty. Skipping processing.")
         else:
             column = column_name
             all_columns = df.columns
@@ -924,7 +921,8 @@ class TransformBase:
             selected_columns = [col for col in all_columns if col != column and col not in excluded_columns]
 
             df = df.groupBy(*selected_columns).pivot(f"{column}_name").agg(F.first(f"{column}_value"))
-            return df
+
+        return df
 
     @transformation_timer
     def replace_value(self, df, params):
