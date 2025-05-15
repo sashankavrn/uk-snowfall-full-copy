@@ -96,5 +96,33 @@ dq_rules = {
         ColumnCount <= 40,
         RowCount > 0,
         IsComplete "restaurant_number"
+    ]""",
+    "newrelic_digital_gma_foe_response": """Rules = [
+        ColumnCount <= 7,
+        RowCount > 0,
+        IsComplete "restaurant_number"
+    ]""",
+    "newrelic_digital_3po_foe_response": """Rules = [
+        ColumnCount <= 8,
+        RowCount > 0,
+        IsComplete "restaurant_number"
+    ]""",
+        "ncr_service_now_service_case": """Rules = [
+        ColumnCount <= 295,
+        RowCount > 0,
+        IsComplete "sys_id",
+        IsComplete "sys_created_on"
+    ]""",
+    "ncr_service_now_incident":"""Rules = [
+        ColumnCount <= 250,
+        RowCount > 0,
+        IsComplete "number",
+        IsComplete "sys_created_on"
+    ]""",
+    "ncr_service_now_knowledge_base":"""Rules = [
+        ColumnCount <= 65,
+        RowCount > 0,
+        IsComplete "master_customer_id",
+        IsComplete "sys_created_on"
     ]"""
 }
