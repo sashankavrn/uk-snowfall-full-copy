@@ -2,11 +2,10 @@ from snowfall_pipeline.common_utilities.snowfall_logger import SnowfallLogger
 from snowfall_pipeline.common_utilities.aws_utilities import AwsUtilities
 from snowfall_pipeline.common_utilities.decorators import transformation_timer
 
-
 from pyspark.sql import functions as F
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, LongType
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType, LongType, TimestampType
 from delta.tables import *
-
+from pyspark.sql.utils import AnalysisException
 
 from awsglue.dynamicframe import DynamicFrame
 from awsglue.transforms import SelectFromCollection
@@ -68,6 +67,8 @@ class TransformBase:
         self.athena_output_path = f"eu-central1-{self.environment}-uk-snowfall-athena-{self.account_number}/"
         self.datasets = self.aws_instance.get_workflow_properties('DATASET')
         self.group = self.aws_instance.get_workflow_properties('GROUP')
+        self.schema_changed = False
+        
 
 
 
@@ -265,6 +266,9 @@ class TransformBase:
 
         elif output_file_type == 'csv':
             df.coalesce(1).write.csv(error_path, mode="overwrite", header=True)
+        
+        elif output_file_type == 'parquet':
+            df.coalesce(1).write.parquet(error_path, mode="overwrite")
 
         else:
             raise Exception("No output filetype was specified.")
@@ -387,6 +391,14 @@ class TransformBase:
             DataFrame: PySpark DataFrame with month and year extracted as partition columns.
 
         """
+
+        self.logger.info('Running the create_partition_date_columns function.')
+        
+        # Check if the column exists in the DataFrame and is not already of type string
+        if timestamp_column in df.columns and df.schema[timestamp_column].dataType != StringType():
+            self.logger.info(f'chaning from {df.schema[timestamp_column].dataType} to string')
+            df = df.withColumn(timestamp_column, F.col(timestamp_column).cast("string")) # Convert the column to string type
+
         # Get the first value of the timestamp column
         first_timestamp_value = df.select(timestamp_column).head()[timestamp_column]
 
@@ -413,7 +425,8 @@ class TransformBase:
         df = df.drop("date_components")
 
         return df
-
+    
+    @transformation_timer
     def read_data_from_s3(self,bucket_name,file_path, file_format='json',appflow_config = None, multiline_json = False):
         """
         Read data from S3 based on the specified file format.
@@ -428,8 +441,9 @@ class TransformBase:
         Returns:
             DataFrame: The DataFrame containing the read data.
         """
-        # Log the file path from where data is being read
-        self.logger.info(f'Reading data in the file path: s3://{bucket_name}/{file_path}/')
+        if file_format != 'delta':
+            # Log the file path from where data is being read
+            self.logger.info(f'Reading data in the file path: s3://{bucket_name}/{file_path}/')
 
         if self.list_of_files is not None:
             self.logger.info(f"Files processed: {self.list_of_files}")
@@ -443,20 +457,40 @@ class TransformBase:
         elif file_format == 'csv':
             source_df = self.spark.read.csv(f"s3://{bucket_name}/{file_path}/", header=True)
 
+        elif file_format == 'parquet':
+            source_df = self.spark.read.parquet(f"s3://{bucket_name}/{file_path}/")
+
         elif file_format == 'delta':
 
-            source_df = self.spark.read.format("delta").load(f"s3://{bucket_name}/{file_path}/")
-            self.logger.info("Successfully read all Delta records.")
-            # Find the maximum date in the 'cdc_timestamp' column
-            max_date = source_df.select(F.max("cdc_timestamp")).collect()[0][0]
+            try:
+                # Log the file path from where data is being read
+                self.logger.info(f'Reading data in the file path: s3://{self.processed_bucket_name}/{file_path}/')
+                source_df = self.spark.read.format("delta").load(f's3://{self.processed_bucket_name}/{file_path}/')
 
-            self.logger.info(f"Max date is {max_date}")
+                
+                self.logger.info(f'Successfully read all Delta records in the file path: s3://{self.processed_bucket_name}/{file_path}/')
 
-            # Filter DataFrame to select rows with the maximum date
-            source_df = source_df.filter(F.col("cdc_timestamp") == max_date)
+                # Find the maximum date in the 'cdc_timestamp' column
+                mx_cdc_timestamp = source_df.select(F.max('cdc_timestamp')).collect()[0][0]
+                
+                self.logger.info(f"Max cdc timestamp is {mx_cdc_timestamp}")
+
+                self.logger.info(f'Reading data in the file path: s3://{bucket_name}/{file_path}/')
+                source_df = self.spark.read.format("delta").load(f's3://{bucket_name}/{file_path}/')
+                self.logger.info(f'Successfully read all Delta records in the file path: s3://{bucket_name}/{file_path}/')
+                # Filter DataFrame to select rows with the maximum date
+                source_df = source_df.filter(F.col("cdc_timestamp") > mx_cdc_timestamp)
+
+            except AnalysisException as e:
+                self.logger.info(f"Failed to read data in the file path: s3://{self.processed_bucket_name}/{file_path}")
+                # Log the file path from where data is being read
+                self.logger.info(f'Reading data in the file path: s3://{bucket_name}/{file_path}/')
+                source_df = self.spark.read.format("delta").load(f"s3://{bucket_name}/{file_path}/")
+                self.logger.info(f'Successfully read all Delta records in the file path: s3://{bucket_name}/{file_path}/')
+
 
         else:
-            raise ValueError("Unsupported file format. Supported formats: 'json', 'csv','delta'.")
+            raise ValueError("Unsupported file format. Supported formats: 'parquet', 'json', 'csv','delta'.")
 
         # Log the number of records in the DataFrame
         self.logger.info(f'Number of records in dataframe: {source_df.count()}')
@@ -471,7 +505,7 @@ class TransformBase:
     
 
     @transformation_timer
-    def dropping_duplicates(self, df):
+    def dropping_duplicates(self, df, columns = None):
         """
         Remove duplicate records from the DataFrame.
 
@@ -483,7 +517,12 @@ class TransformBase:
         """
         self.logger.info('Removing duplicate records')
         initial_count = df.count()
-        df = df.dropDuplicates()
+
+        if columns is None:
+            df = df.dropDuplicates()
+        else:
+            df = df.dropDuplicates(columns)
+        
         new_count = df.count()
         self.logger.info(f"{initial_count - new_count} duplicate records have been removed")
         return df
@@ -854,7 +893,7 @@ class TransformBase:
 
 
     @transformation_timer
-    def explode_pivot_json_column(self,df, columns):
+    def explode_pivot_json_column(self,df, column_name):
         """
         Parse JSON strings in specified columns of a DataFrame and create new columns.
         
@@ -867,10 +906,10 @@ class TransformBase:
         """
         self.logger.info('Running the explode_pivot_json_column function')
 
-        if not columns:
-            self.logger.info("The columns list is empty. Skipping processing.")
+        if not column_name:
+            self.logger.info("The column is empty. Skipping processing.")
         else:
-            column = columns[0]
+            column = column_name
             all_columns = df.columns
             excluded_columns = [f"{column}_name", f"{column}_value"]
 
@@ -882,7 +921,8 @@ class TransformBase:
             selected_columns = [col for col in all_columns if col != column and col not in excluded_columns]
 
             df = df.groupBy(*selected_columns).pivot(f"{column}_name").agg(F.first(f"{column}_value"))
-            return df
+
+        return df
 
     @transformation_timer
     def replace_value(self, df, params):
@@ -941,10 +981,7 @@ class TransformBase:
             column_name = param["column_name"]
             regex_pattern = param["regex"]
             new_column_name = param["new_column_name"]
-            data_type_str = param["data_type"]
-
-            # Convert the string representation of the data type into a type
-            data_type = eval(data_type_str)()
+            data_type = param["data_type"]
 
             # Apply regex extraction and create a new column
             df = df.withColumn(
@@ -955,3 +992,93 @@ class TransformBase:
             )
 
         return df    
+    
+
+    @transformation_timer
+    def change_column_types_data_frame(self, df, column_names_and_types):
+        """
+        Change the data types of specified columns in a DataFrame.
+
+        Args:
+        - df (pyspark.sql.DataFrame): The DataFrame whose column types need to be changed.
+        - column_names_and_types (dict): A dictionary where keys are column names and values are the desired data types.
+
+        Returns:
+        - DataFrame: The DataFrame with updated column types.
+        """
+        self.logger.info('Running the change_column_types_data_frame function.')
+
+        # Mapping of string data types to PySpark data types
+        type_mapping = {
+            "string": StringType(),
+            "integer": IntegerType(),
+            "long": LongType(),
+            "timestamp": TimestampType()
+        }
+        # Iterate over the columns names and data types
+        for column_name, column_type in column_names_and_types.items():
+            if column_name in df.columns: # Check if the column exists in the DataFrame
+                current_type = df.schema[column_name].dataType # Get the current data type of the column from data frame
+                desired_type = type_mapping.get(column_type.lower()) # Get the desired data type from the mapping
+                if desired_type and (current_type != desired_type): # Check if the desired type is valid and different from the current type
+                    try:
+                        # Change the column data type in the DataFrame
+                        df = df.withColumn(column_name, F.col(column_name).cast(desired_type))
+                        # Log the column type change
+                        self.logger.info(f'Changing column: {column_name} from {current_type} to {desired_type}')
+                        self.schema_changed = True  # Set the flag to True if any column data type is changed
+                    except Exception as e:
+                        # Log the error if the type change fails
+                        self.logger.error(f'Error changing column: {column_name} from {current_type} to {desired_type}. Error: {e}')
+                        raise e
+                else:
+                    self.logger.info(f'No change needed for column: {column_name} with current type: {current_type}')
+            else:
+                self.logger.warning(f'Column: {column_name} does not exist in the DataFrame')
+
+        self.logger.info('Finishing the change_column_types_data_frame function.')
+
+        return df
+    
+
+    @transformation_timer
+    def change_column_types_delta_table(self, bucket_name, file_path, column_names_and_types, partition_year, partition_month):
+        """
+        Change the data types of specified columns in a Delta table stored in an S3 bucket.
+
+        Args:
+        - bucket_name (str): The name of the S3 bucket.
+        - file_path (str): The path to the Delta table within the S3 bucket.
+        - column_names_and_types (dict): A dictionary where keys are column names and values are the desired data types.
+
+        Returns:
+        - None
+        """
+        self.logger.info('Running the change_column_types_delta_table function.')
+
+        # Flag to check if any column data type has been changed
+        self.schema_changed = False
+        
+        try:
+            # Read the Delta table from the S3 bucket
+            delta_df = self.spark.read.format("delta").load(f's3://{bucket_name}/{file_path}/')
+        except AnalysisException as e:
+            self.logger.error(f'Unable to read Delta table from s3://{bucket_name}/{file_path}. The table may not exist. Error: {e}')
+            return
+        except Exception as e:
+            self.logger.error(f'Unexpected error reading Delta table from s3://{bucket_name}/{file_path}. Error: {e}')
+            raise e
+
+        delta_df = self.change_column_types_data_frame(delta_df, column_names_and_types)
+        
+        if self.schema_changed:
+            # Write the DataFrame back to Delta Lake
+            delta_df.write.format("delta") \
+                .mode("overwrite") \
+                .partitionBy(partition_year, partition_month) \
+                .option("overwriteSchema", "true") \
+                .save(f's3://{bucket_name}/{file_path}/')
+            self.logger.info('Delta table overwritten with new schema.')
+        else:
+            self.logger.info('Delta table is not overwritten, no column data types has been changed or column is not present in table .')
+        

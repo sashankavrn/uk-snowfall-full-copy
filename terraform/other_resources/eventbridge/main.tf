@@ -456,35 +456,67 @@ resource "aws_cloudwatch_event_target" "newrelic_rmp_device_rule" {
 }
 
 
-# ###################################### New Relic RMP Device Metrics ###############################################
+###################################### New Relic Digital GMA FOE ##############################################
 
-# resource "aws_cloudwatch_event_rule" "newrelic_rmp_device_metrics_event_rule" {
-#   name        = "uk-snowfall-newrelic-rmp-device-metrics-trigger-rule"
-#   description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name} for device metrics"
-#   event_pattern = <<EOF
-# {
-#   "source": ["aws.s3"],
-#   "detail": {
-#     "bucket": {
-#       "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
-#     },
-#     "object": {
-#       "key": [{
-#         "prefix": "newrelic/newrelic_rmp_device_metrics/"
-#       }]
-#     }
-#   },
-#   "detail-type": ["Object Created"]
-# }
-# EOF
-# }
+resource "aws_cloudwatch_event_rule" "newrelic_digital_gma_foe_event_rule" {
+  name        = "uk-snowfall-newrelic-digital-gma-foe-response-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "newrelic/newrelic_digital_gma_foe_response/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
 
-# resource "aws_cloudwatch_event_target" "newrelic_rmp_device_metrics_rule" {
-#   rule     = aws_cloudwatch_event_rule.newrelic_rmp_device_metrics_event_rule.name
-#   arn      = local.workflow_trigger_arns["newrelic_rmp_device_metrics"]
-#   role_arn = var.role_assumed_arn
-# }
+resource "aws_cloudwatch_event_target" "newrelic_digital_gma_foe_response_rule" {
+  rule     = aws_cloudwatch_event_rule.newrelic_digital_gma_foe_event_rule.name
+  arn      = local.workflow_trigger_arns["newrelic_digital_gma_foe_response"]
+  role_arn = var.role_assumed_arn
+}
 
+###################################### New Relic Digital 3PO FOE ##############################################
+
+resource "aws_cloudwatch_event_rule" "newrelic_digital_3po_foe_event_rule" {
+  name        = "uk-snowfall-newrelic-digital-3po-foe-response-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [ {
+        "prefix": "newrelic/newrelic_digital_3po_foe_response/"
+      } ]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "newrelic_digital_3po_foe_response_rule" {
+  rule     = aws_cloudwatch_event_rule.newrelic_digital_3po_foe_event_rule.name
+  arn      = local.workflow_trigger_arns["newrelic_digital_3po_foe_response"]
+  role_arn = var.role_assumed_arn
+}
+
+
+
+###################################### NCR ServiceNow service_case ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_service_case_event_rule" {
   name = "uk-snowfall-ncr-service-now-service-case-trigger-rule"
@@ -513,4 +545,123 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_service_case_rule" {
   role_arn = var.role_assumed_arn
 
 }
+
+###################################### NCR ServiceNow Incident ##############################################
+
+resource "aws_cloudwatch_event_rule" "ncr_service_now_incident_event_rule" {
+  name        = "uk-snowfall-ncr-service-now-incident-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [ {
+        "prefix": "ncr_service_now/incident/"
+      } ]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "ncr_service_now_incident_event_target" {
+  rule     = aws_cloudwatch_event_rule.ncr_service_now_incident_event_rule.name
+  arn      = local.workflow_trigger_arns["ncr_service_now_incident"]
+  role_arn = var.role_assumed_arn
+}
+
+###################################### NCR ServiceNow Change Request ##############################################
+
+resource "aws_cloudwatch_event_rule" "ncr_service_now_change_request_event_rule" {
+  name        = "uk-snowfall-ncr-service-now-change-request-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+      "bucket": {
+          "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+      },
+      "object": {
+          "key": [{
+              "prefix": "ncr_service_now/change_request/"
+          }]
+      }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "ncr_service_now_change_request_event_target" {
+  rule     = aws_cloudwatch_event_rule.ncr_service_now_change_request_event_rule.name
+  arn      = local.workflow_trigger_arns["ncr_service_now_change_request"]
+  role_arn = var.role_assumed_arn
+}
+
+
+###################################### NCR ServiceNow Problem Record ##############################################
+
+resource "aws_cloudwatch_event_rule" "ncr_service_now_problem_record_event_rule" {
+  name        = "uk-snowfall-ncr-service-now-problem-record-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "ncr_service_now/problem_record/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "ncr_service_now_problem_record_event_target" {
+  rule     = aws_cloudwatch_event_rule.ncr_service_now_problem_record_event_rule.name
+  arn      = local.workflow_trigger_arns["ncr_service_now_problem_record"]
+  role_arn = var.role_assumed_arn
+}
+
+###################################### NCR ServiceNow Knowledge Base ##############################################
+
+resource "aws_cloudwatch_event_rule" "ncr_service_now_knowledge_base_event_rule" {
+  name        = "uk-snowfall-ncr-service-now-knowledge-base-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [ {
+        "prefix": "ncr_service_now/knowledge_base/"
+      } ]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "ncr_service_now_knowledge_base_event_target" {
+  rule     = aws_cloudwatch_event_rule.ncr_service_now_knowledge_base_event_rule.name
+  arn      = local.workflow_trigger_arns["ncr_service_now_knowledge_base"]
+  role_arn = var.role_assumed_arn
+}
+
+
 

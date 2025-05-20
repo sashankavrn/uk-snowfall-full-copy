@@ -262,25 +262,38 @@ locals {
       schedule        = "cron(0 1 * * ? *)"
       reporting_date  = ""
     },
+     "newrelic_digital_gma_foe_response" = {
+     name            = "uk-snowfall-newrelic-digital-gma-foe-response"
+     description     = "Workflow for the New Relic Digital GMA FOE Response data"
+     dataset         = "newrelic_digital_gma_foe_response"
+     group           = "preparation"
+     trigger_name    = "uk-snowfall-newrelic-digital-gma-foe-response-trigger"
+     max_concurrent  = 1
+     batch_size      = 100
+     batch_window    = 10
+     trigger_type    = "EVENT"
+     schedule        = null
+     reporting_date  = null
+    },
+      "newrelic_digital_3po_foe_response" = {
+        name            = "uk-snowfall-newrelic-digital-3po-foe-response"
+        description     = "Workflow for the New Relic Digital 3PO FOE Response data"
+        dataset         = "newrelic_digital_3po_foe_response"
+        group           = "preparation"
+        trigger_name    = "uk-snowfall-newrelic-digital-3po-foe-response-trigger"
+        max_concurrent  = 1
+        batch_size      = 100
+        batch_window    = 10
+        trigger_type    = "EVENT"
+        schedule        = null
+        reporting_date  = null
+    },
     "ncr_service_now_service_case" = {
       name            = "uk-snowfall-ncr-service-now-service-case"
       description     = "Workflow for the newrelic rmp device metrics data"
       dataset         = "ncr_service_now_service_case"
       group           = "preparation"
       trigger_name    = "uk-snowfall-ncr-service-now-service-case-trigger"
-      max_concurrent  = 1
-      batch_size      = 100
-      batch_window    = 1
-      trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/15 * * * ? *)"
-      reporting_date  = ""
-    },
-    "ncr_service_now_incident_daily" = {
-      name            = "uk-snowfall-ncr-service-now-incident-daily"
-      description     = "Workflow for the NCR ServiceNow Incident Daily data"
-      dataset         = "ncr_service_now_incident_daily"
-      group           = "preparation"
-      trigger_name    = "uk-snowfall-ncr-service-now-incident-daily-trigger"
       max_concurrent  = 1
       batch_size      = 100
       batch_window    = 1
@@ -313,6 +326,32 @@ locals {
       trigger_type    = "SCHEDULED"
       schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
+    },
+    "ncr_service_now_incident" = {
+      name            = "uk-snowfall-ncr-service-now-incident"
+      description     = "Workflow for the NCR ServiceNow Incident data"
+      dataset         = "ncr_service_now_incident"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-incident-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 * * * ? *)"
+      reporting_date  = ""
+    },
+    "ncr_service_now_knowledge_base" = {
+      name            = "uk-snowfall-ncr-service-now-knowledge-base"
+      description     = "Workflow for the NCR ServiceNow Knowledge Base data"
+      dataset         = "ncr_service_now_knowledge_base"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-knowledge-base-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 * * * ? *)"
+      reporting_date  = ""
     }
   }
 }
@@ -333,7 +372,7 @@ resource "aws_glue_workflow" "glue_workflows" {
   }, each.value.reporting_date != null ? { REPORTING_DATE = each.value.reporting_date } : {})
 
   lifecycle {
-    prevent_destroy = true   # Prevent the workflow from being destroyed
+    prevent_destroy = false   # Prevent the workflow from being destroyed
     ignore_changes = [name, description]  # Ignore changes to these attributes
   }
 }
@@ -363,7 +402,7 @@ resource "aws_glue_trigger" "glue_triggers" {
   }
 
   lifecycle {
-    prevent_destroy = true   # Prevent the trigger from being destroyed
+    prevent_destroy = false   # Prevent the trigger from being destroyed
     ignore_changes = [name, description]  # Ignore changes to these attributes
   }
 }
