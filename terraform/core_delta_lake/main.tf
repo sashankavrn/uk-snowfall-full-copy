@@ -53,6 +53,7 @@ module "lambda_module" {
   account_number     = var.account_number
   artifact_bucket_arn = module.s3_module_main.artifact_bucket_bucket_arn
   meraki_schedule = var.meraki_schedule
+  service_agent_bucket_arn =module.s3_module_main.service_agent_bucket_arn
 }
 
 # Triggering the SNS Module. Will have to change to fix endpoint as email
