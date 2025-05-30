@@ -422,3 +422,47 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_digital_3po_
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.newrelic_digital_3po_foe_response_lambda_schedule.arn
 }
+
+############################################ SERVICE AGENT JWT/UPLOAD S3 LAMBDA #############################################
+
+data "archive_file" "service_agent_upload_s3" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/service-agent-upload-s3/"
+  output_path = "${path.module}/scripts/zips/service-agent-upload-s3.zip"
+}
+
+resource "aws_lambda_function" "uk_snowfall_service_agent_function" {
+  filename         = "${path.module}/scripts/zips/service-agent-upload-s3.zip"
+  function_name    = "uk-snowfall-service-agent-upload-s3-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 500
+  timeout          = 120
+  description      = "Upload data to S3 using JWT authentication"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-upload-s3.zip")
+  tags             = var.resource_tags
+  layers = [
+    "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1", # AWS SDK for Pandas
+    "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:4"
+  ]
+  environment {
+    variables = {
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+      UK_SERVERS = "UK1,UK2"
+    }
+  }
+}
+
+## Adding permissions for lambda upload data 
+resource "aws_lambda_permission" "allow_service_agent_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_service_agent_function.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = aws_s3_bucket.service_agent_bucket.arn
+  depends_on    = [aws_s3_bucket.service_agent_bucket, aws_lambda_function.uk_snowfall_service_agent_function]
+}
+
+
