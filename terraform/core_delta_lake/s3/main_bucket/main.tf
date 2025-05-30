@@ -422,7 +422,7 @@ resource "aws_s3_object" "uploads_folder" {
   server_side_encryption  = "aws:kms"
 }
 
-resource "aws_s3_bucket_notification" "enabling_event_bridge_notification" {
+resource "aws_s3_bucket_notification" "service_agent_enabling_event_bridge_notification" {
   bucket = aws_s3_bucket.service_agent_bucket.bucket
   eventbridge = true
 }
