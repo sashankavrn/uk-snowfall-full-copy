@@ -124,5 +124,9 @@ dq_rules = {
         RowCount > 0,
         IsComplete "master_customer_id",
         IsComplete "sys_created_on"
+    ]""",
+    "store_db_config":"""Rules = [
+        ColumnCount <= 115,
+        RowCount > 0
     ]"""
 }
