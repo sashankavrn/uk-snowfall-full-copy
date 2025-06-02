@@ -13,7 +13,7 @@ output "api_gateway_stage_name" {
   value       = aws_api_gateway_stage.stage.stage_name
 }
 
-output "api_key" {
-  description = "The API key for accessing the API"
-  value       = aws_api_gateway_api_key.upload_api_key.value
-}
+# output "api_key" {
+#   description = "The API key for accessing the API"
+#   value       = aws_api_gateway_api_key.upload_api_key.value
+# }
