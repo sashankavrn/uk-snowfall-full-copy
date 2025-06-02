@@ -279,9 +279,9 @@
             }
         ], 
         "change_column_data_type": {
-            "sys_updated_timestamp": "timestamp",
-            "cdc_timestamp": "timestamp",
-            "configurationUpdatedAt": "timestamp"
+            "sys_updated_timestamp": "string",
+            "cdc_timestamp": "string",
+            "configurationUpdatedAt": "string"
         },         
         "primary_key":"restaurant_number"
 
@@ -306,8 +306,8 @@
             }
         ], 
         "change_column_data_type": {
-            "sys_updated_timestamp": "timestamp",
-            "cdc_timestamp": "timestamp"
+            "sys_updated_timestamp": "string",
+            "cdc_timestamp": "string"
         },
         "replace_values": [
             {
@@ -330,8 +330,8 @@
             }
         ],
         "change_column_data_type": {
-            "sys_updated_timestamp": "timestamp",
-            "cdc_timestamp": "timestamp"
+            "sys_updated_timestamp": "string",
+            "cdc_timestamp": "string"
         }        
     },
     "newrelic_digital_gma_foe_response": {
@@ -487,5 +487,25 @@
             }
         ],
         "primary_key": "master_customer_id"
+    },
+    "store_db_config":{
+        "process_timestamp": [
+            "sys_updated_timestamp"
+        ],
+        "replace_values": [
+            {
+                "column_name": "restaurant_number",
+                "old_value": "None",
+                "new_value": -1
+
+            }
+        ], 
+        "change_column_data_type": {
+            "sys_updated_timestamp": "string",
+            "cdc_timestamp": "string",
+            "configurationUpdatedAt": "string"
+        },         
+        "primary_key":"restaurant_number"
+
     }
 }

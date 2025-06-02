@@ -53,6 +53,7 @@ module "lambda_module" {
   account_number     = var.account_number
   artifact_bucket_arn = module.s3_module_main.artifact_bucket_bucket_arn
   meraki_schedule = var.meraki_schedule
+  service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
 }
 
 # Triggering the SNS Module. Will have to change to fix endpoint as email
@@ -72,6 +73,17 @@ module "appflow_module" {
   account_number          = var.account_number
   connector_profile_name  = var.connector_profile_name
   landing_bucket_name     = module.s3_module_main.landing_bucket_name
+}
+
+
+module "api_module" {
+  source        = "./api"
+  environment             = var.environment
+  resource_tags           = merge(var.resource_tags, { Environment = var.environment })
+  role_assumed_arn        = var.role_assumed_arn
+  account_number          = var.account_number
+  service_agent_func_arn = module.lambda_module.service_agent_arn
+  stage_name = var.stage_name
 }
 
 
