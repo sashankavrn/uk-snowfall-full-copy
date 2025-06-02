@@ -53,3 +53,4 @@ variable "connector_profile_name" {
 
 variable "meraki_schedule" {}
 
+variable "stage_name" {}
