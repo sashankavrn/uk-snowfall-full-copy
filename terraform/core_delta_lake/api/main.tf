@@ -27,10 +27,6 @@ resource "aws_api_gateway_integration" "lambda" {
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
   uri                     = "${var.service_agent_func_arn}/invocations"
-
-  depends_on = [
-    module.lambda_module
-  ]
 }
 
 
