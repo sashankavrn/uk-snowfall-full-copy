@@ -1,6 +1,6 @@
 
 data "aws_lambda_function" "service_agent" {
-  function_name = "uk-snowfall-service-agent-upload-s3-${var.environment}"
+  function_name = "uk-snowfall-service-agent-upload-s3-${var.environment}"
 }
 
 
