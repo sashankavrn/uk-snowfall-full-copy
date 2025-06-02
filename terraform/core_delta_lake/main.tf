@@ -84,6 +84,8 @@ module "api_module" {
   account_number          = var.account_number
   service_agent_func_arn = module.lambda_module.service_agent_arn
   stage_name = var.stage_name
+  
+  depends_on = [module.lambda_module]
 }
 
 
