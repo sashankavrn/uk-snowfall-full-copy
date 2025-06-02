@@ -20,15 +20,19 @@ resource "aws_api_gateway_method" "post" {
   # api_key_required = true
 }
 
-# Lambda integration
 resource "aws_api_gateway_integration" "lambda" {
   rest_api_id             = aws_api_gateway_rest_api.rest_api.id
   resource_id             = aws_api_gateway_resource.upload.id
   http_method             = aws_api_gateway_method.post.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri = var.service_agent_func_arn
+  uri                     = "${var.service_agent_func_arn}/invocations"
+
+  depends_on = [
+    module.lambda_module
+  ]
 }
+
 
 
 # API deployment
