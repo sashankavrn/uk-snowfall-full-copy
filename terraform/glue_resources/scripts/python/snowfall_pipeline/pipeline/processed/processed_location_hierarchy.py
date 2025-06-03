@@ -114,7 +114,25 @@ class ProcessedLocationHierarchy(TransformBase):
             'fs_employee_no': ('fs_employee_no', 'string'),
             'hierarchy_id': ('hierarchy_id', 'integer'),
             'cdc_timestamp':('cdc_timestamp','string')
-        
+
+            # New columns
+            'open_date': ('open_date', 'date'),
+            'close_date': ('close_date', 'date'),
+            'drive_trhu_type': ('drive_trhu_type', 'integer'),
+            'store_type': ('store_type', 'string'),
+            'store_building_type': ('store_building_type', 'string'),
+            'has_free_phone_charge': ('has_free_phone_charge', 'boolean'),
+            'has_interactive_tablets': ('has_interactive_tablets', 'boolean'),
+            'has_kiosk_ordering': ('has_kiosk_ordering', 'boolean'),
+            'table_service': ('table_service', 'boolean'),
+            'mobile_offers': ('mobile_offers', 'boolean'),
+            'mobile_ordering': ('mobile_ordering', 'boolean'),
+            'web_offers': ('web_offers', 'boolean'),
+            'has_free_wifi': ('has_free_wifi', 'boolean'),
+            'mcdelivery': ('mcdelivery', 'boolean'),
+            'loyalty_program': ('loyalty_program', 'boolean'),
+            'mcplant_availability': ('mcplant_availability', 'boolean'),
+            'electric_vehicle_charging': ('electric_vehicle_charging', 'boolean')
         }
         # 2. Changes column names and schema
         df = self.change_column_names_and_schema(df,column_mapping)
