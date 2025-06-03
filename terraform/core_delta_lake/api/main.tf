@@ -63,37 +63,3 @@ resource "aws_lambda_permission" "api_gateway" {
    principal     = "apigateway.amazonaws.com"
    source_arn    = "${aws_api_gateway_rest_api.rest_api.execution_arn}/*/*"
 }
-
-# # API Key
-# resource "aws_api_gateway_api_key" "upload_api_key" {
-#   name        = "UploadAPIKey-${var.stage_name}"
-#   description = "API Key for XML upload"
-#   enabled     = true
-# }
-
-# # Usage Plan with parameters
-# resource "aws_api_gateway_usage_plan" "upload_plan" {
-#   name = "UploadUsagePlan-${var.stage_name}"
-
-#   api_stages {
-#     api_id = aws_api_gateway_rest_api.rest_api.id
-#     stage  = aws_api_gateway_stage.stage.stage_name
-#   }
-
-#   throttle_settings {
-#     rate_limit  = var.rate_limit
-#     burst_limit = var.burst_limit
-#   }
-
-#   quota_settings {
-#     limit  = var.quota_limit
-#     period = var.quota_period
-#   }
-# }
-
-# # Attach API Key to Usage Plan
-# resource "aws_api_gateway_usage_plan_key" "upload_plan_key" {
-#   key_id        = aws_api_gateway_api_key.upload_api_key.id
-#   key_type      = "API_KEY"
-#   usage_plan_id = aws_api_gateway_usage_plan.upload_plan.id
-# }
