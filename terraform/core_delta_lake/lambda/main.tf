@@ -465,4 +465,12 @@ resource "aws_lambda_permission" "allow_service_agent_bucket" {
   depends_on    = [aws_lambda_function.uk_snowfall_service_agent_function]
 }
 
+resource "aws_lambda_permission" "apigw" {
+  statement_id = "AllowAPIgatewayInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_service_agent_function.arn
+  principal = "apigateway.ammazonaws.com"
+  source_arn = var.service_agent_bucket_arn
+  depends_on = [ aws_lambda_function.uk_snowfall_service_agent_function ]
+}
 
