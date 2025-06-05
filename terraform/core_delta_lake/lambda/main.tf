@@ -442,10 +442,7 @@ resource "aws_lambda_function" "uk_snowfall_service_agent_function" {
   description      = "Upload data to S3 using JWT authentication"
   source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-upload-s3.zip")
   tags             = var.resource_tags
-  layers = [
-    "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1", # AWS SDK for Pandas
-    "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:4"
-  ]
+  layers = [  ]
   environment {
     variables = {
       TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
