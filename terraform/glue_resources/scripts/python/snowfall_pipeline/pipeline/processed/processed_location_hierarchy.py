@@ -116,7 +116,7 @@ class ProcessedLocationHierarchy(TransformBase):
             'cdc_timestamp':('cdc_timestamp','string'),
 
             # New columns
-            'open_date': ('open_date', 'date'),
+            'OPEN_DATE': ('OPEN_DATE', 'date'),
             'close_date': ('close_date', 'date'),
             'drive_trhu_type': ('drive_trhu_type', 'integer'),
             'store_type': ('store_type', 'string'),
