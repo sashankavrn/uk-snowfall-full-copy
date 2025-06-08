@@ -437,7 +437,7 @@ resource "aws_lambda_function" "uk_snowfall_service_agent_function" {
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
-  memory_size      = 500
+  memory_size      = 1024
   timeout          = 120
   description      = "Upload data to S3 using JWT authentication"
   source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-upload-s3.zip")
