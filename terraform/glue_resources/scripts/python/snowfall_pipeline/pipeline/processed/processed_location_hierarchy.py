@@ -8,6 +8,7 @@ class ProcessedLocationHierarchy(TransformBase):
         self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
         self.pipeline_config = self.full_configs[self.datasets]
         self.file_path = "ods/location_hierarchy"
+        self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
 
 
     def get_data(self):
