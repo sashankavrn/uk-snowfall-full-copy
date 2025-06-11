@@ -463,3 +463,58 @@ resource "aws_lambda_permission" "allow_service_agent_bucket" {
 }
 
 
+############################################ SERVICE AGENT SERVER EXTRACT & UPLOAD TO S3 LAMBDA #############################################
+
+# Archive the Lambda script for extracting service agent server info
+data "archive_file" "service_agent_server_extract_script" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/service-agent-server-extract/"
+  output_path = "${path.module}/scripts/zips/service-agent-server-extract.zip"
+}
+
+# Lambda Function to extract service agent server info from Athena
+resource "aws_lambda_function" "service_agent_server_extract_function" {
+  filename         = "${path.module}/scripts/zips/service-agent-server-extract.zip"
+  function_name    = "uk-snowfall-service-agent-server-extract-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 300
+  description      = "Extracts service agent server information from Athena and stores it in S3"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-server-extract.zip")
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      ATHENA_DATABASE  = "uk_snowfall_processed"
+      S3_BUCKET_NAME   = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+      WORKGROUP_NAME   = "uk-snowfall-pipeline"
+    }
+  }
+}
+
+# CloudWatch Event Rule to trigger Lambda daily at 1:30 AM UTC
+resource "aws_cloudwatch_event_rule" "service_agent_server_extract_schedule" {
+  name                = "uk-snowfall-service-agent-server-extract-schedule"
+  description         = "Triggers the service agent server extract Lambda daily at 1:30 AM UTC"
+  schedule_expression = "cron(30 1 * * ? *)"
+}
+
+# Add Lambda as the Target of the Event Rule
+resource "aws_cloudwatch_event_target" "invoke_service_agent_server_extract_lambda" {
+  rule      = aws_cloudwatch_event_rule.service_agent_server_extract_schedule.name
+  target_id = "service-agent-server-extract-target"
+  arn       = aws_lambda_function.service_agent_server_extract_function.arn
+}
+
+# Grant EventBridge Permission to Invoke the Lambda
+resource "aws_lambda_permission" "allow_eventbridge_invoke_service_agent_server_extract" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.service_agent_server_extract_function.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.service_agent_server_extract_schedule.arn
+  depends_on = [aws_lambda_function.service_agent_server_extract_function, aws_cloudwatch_event_rule.service_agent_server_extract_schedule]
+
+}
