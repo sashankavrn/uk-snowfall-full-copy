@@ -447,7 +447,6 @@ resource "aws_lambda_function" "uk_snowfall_service_agent_function" {
     variables = {
       TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
       SNS_TOPIC_ARN = var.sns_topic_arn
-      UK_SERVERS = "UK1,UK2,UK023LTOF3CKNWB,UK090LTOC253B7X,UK04074GSC01"
     }
   }
 }
