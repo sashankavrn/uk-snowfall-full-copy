@@ -223,7 +223,7 @@ def lambda_handler(event, context):
             "average(loadAverageFiveMinute), average(loadAverageOneMinute), average(memoryCachedBytes), average(memoryFreeBytes), "
             "average(memoryFreePercent), average(memorySharedBytes), average(memorySlabBytes), average(memoryTotalBytes), "
             "average(memoryUsedBytes), average(memoryUsedPercent), average(swapFreeBytes), average(swapTotalBytes), "
-            "average(swapUsedBytes), latest(systemMemoryBytes) FROM SystemSample SINCE 1 day ago "
+            "average(swapUsedBytes), latest(systemMemoryBytes) FROM SystemSample SINCE 10 minutes ago "
             f"WHERE substring(hostname,0,7) in ({quoted}) "
             "FACET if(displayName IS NULL OR displayName = '', hostname, displayName) as 'hostname' LIMIT MAX"
         )

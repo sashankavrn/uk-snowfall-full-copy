@@ -271,7 +271,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_metrics_function" {
 resource "aws_cloudwatch_event_rule" "newrelic_metrics_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-device-metrics-schedule"
   description         = "Triggers the New Relic device metrics Lambda every 2 minutes"
-  schedule_expression = "rate(2 minutes)"
+  schedule_expression = "rate(10 minutes)"
 }
 
 # Add Lambda as the target of the Event Rule
