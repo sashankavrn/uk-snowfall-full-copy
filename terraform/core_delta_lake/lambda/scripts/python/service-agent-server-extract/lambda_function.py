@@ -7,10 +7,12 @@ import time
 database = os.environ['ATHENA_DATABASE']
 bucket_name = os.environ['S3_BUCKET_NAME']
 workgroup_name = os.environ['WORKGROUP_NAME']
+sns_topic_arn = os.environ.get('SNS_TOPIC_ARN')
 
 # Clients
 athena_client = boto3.client('athena', region_name='eu-central-1')
 s3_client = boto3.client('s3')
+sns_client = boto3.client('sns')
 
 # Logging
 logger = logging.getLogger()
@@ -20,6 +22,20 @@ logger.setLevel(logging.INFO)
 temp_prefix = 'server_list/temp_results/'
 destination_key = 'server_list/List of Restaurant Servers.csv'
 output_location = f's3://{bucket_name}/{temp_prefix}'
+
+def send_sns_message(message, subject="Athena Query Error"):
+    if not sns_topic_arn:
+        logger.warning("SNS_TOPIC_ARN not set. Skipping SNS notification.")
+        return
+    try:
+        response = sns_client.publish(
+            TopicArn=sns_topic_arn,
+            Message=message,
+            Subject=subject
+        )
+        logger.info(f"SNS notification sent: {response}")
+    except Exception as e:
+        logger.error(f"Failed to send SNS notification: {str(e)}")
 
 
 def check_query_status(execution_id):
@@ -147,7 +163,10 @@ def lambda_handler(event, context):
         }
 
     except Exception as e:
-        logger.error(f"An error occurred: {str(e)}")
+        error_message = f"An error occurred: {str(e)}"
+        logger.error(error_message)
+        send_sns_message(error_message)
+        
         return {
             'statusCode': 500,
             'body': f"Error: {str(e)}"

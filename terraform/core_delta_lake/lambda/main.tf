@@ -489,6 +489,7 @@ resource "aws_lambda_function" "service_agent_server_extract_function" {
       ATHENA_DATABASE  = "uk_snowfall_processed"
       S3_BUCKET_NAME   = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
       WORKGROUP_NAME   = "uk-snowfall-pipeline"
+      SNS_TOPIC_ARN    = var.sns_topic_arn
     }
   }
 }
