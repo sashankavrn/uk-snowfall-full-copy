@@ -245,7 +245,7 @@ locals {
       batch_size      = 100
       batch_window    = 10
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/15 * * * ? *)"
+      schedule        = "cron(0/15 1-23 * * ? *)"
       reporting_date  = ""
     },
     // New scheduled workflow that triggers at 1 AM UTC
@@ -259,7 +259,7 @@ locals {
       batch_size      = null
       batch_window    = null
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0 1 * * ? *)"
+      schedule        = "cron(0 0 * * ? *)"
       reporting_date  = ""
     },
      "newrelic_digital_gma_foe_response" = {
