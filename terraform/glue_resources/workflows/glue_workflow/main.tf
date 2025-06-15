@@ -248,7 +248,7 @@ locals {
       schedule        = "cron(0/15 1-23 * * ? *)"
       reporting_date  = ""
     },
-    // New scheduled workflow that triggers at 1 AM UTC
+    // New scheduled workflow that triggers at 12 AM UTC
     "newrelic_rmp_device_metrics_daily" = {
       name            = "uk-snowfall-newrelic-rmp-device_metrics-daily"
       description     = "Workflow for the newrelic rmp device metrics data, triggered daily at 1 AM UTC"
