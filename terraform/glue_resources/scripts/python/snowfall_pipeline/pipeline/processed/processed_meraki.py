@@ -26,7 +26,7 @@ class ProcessedMeraki(TransformBase):
         2. Splits datetime column
         3. Filters passed records
         4. Drops unnecessary columns
-        5. Selecting columns to take to processed layer
+        5. Filter the column mapping to include only existing columns
         6. Change column names and schema.
 
         Parameters:
@@ -42,40 +42,11 @@ class ProcessedMeraki(TransformBase):
         # Step 2: Splits datetime column
         df = self.split_datetime_column(df,self.pipeline_config.get('process_timestamp'))
 
-
         # Step 3: Filters passed records
         df = self.filter_quality_result(df,partition_column_drop=['created_year','created_month'])
 
         # Step 4: Drops unnecessary columns
         df = self.drop_columns_for_processed(df)
-
-        # Step 5: Selecting Columns that I want to take to processed layer
-        df = df.select(
-            'restaurant_number',
-            'name',
-            'serial',
-            'mac',
-            'networkId',
-            'productType',
-            'model',
-            'address',
-            'lat',
-            'lng',
-            'notes',
-            'tags',
-            'wan1Ip',
-            'wan2Ip',
-            'configurationUpdatedAt',
-            'firmware',
-            'url',
-            'Monitoring version',
-            'Running software version',
-            'sys_updated_year',
-            'sys_updated_month',
-            'sys_updated_timestamp_timestamp',
-            'sys_updated_timestamp_dt',
-            'cdc_timestamp'
-        )
 
         column_mapping = {
             'restaurant_number': ('restaurant_number', 'Integer'),
@@ -103,8 +74,16 @@ class ProcessedMeraki(TransformBase):
             'sys_updated_timestamp_dt': ('sys_updated_date', 'date'),
             'cdc_timestamp': ('cdc_timestamp', 'timestamp')
         }
+
+        # step 5. Filter the column mapping to include only existing columns
+        filtered_column_mapping = {
+            old_column_name: (new_column_name, dtype)
+            for old_column_name, (new_column_name, dtype) in column_mapping.items()
+            if old_column_name in df.columns
+        }
+
         # Step 6. Changes column names and schema
-        df = self.change_column_names_and_schema(df,column_mapping)
+        df = self.change_column_names_and_schema(df, filtered_column_mapping)
 
         return df
 

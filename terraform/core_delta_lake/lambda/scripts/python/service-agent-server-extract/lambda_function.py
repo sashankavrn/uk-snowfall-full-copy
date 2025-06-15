@@ -78,31 +78,46 @@ def copy_athena_result_file(bucket, prefix, query_execution_id, destination_key)
 def lambda_handler(event, context):
     try:
         query = """
-        SELECT
-            "store_number",
-            "server_number",
-            "server_name"
-        FROM (
             SELECT DISTINCT
                 "store_number",
-                1 AS "server_number",
-                CASE 
-                    WHEN store_number < 7000 
-                    THEN CONCAT('UK', FORMAT('%05d', "store_number"), 'GSC01')
-                    ELSE CONCAT('IE', FORMAT('%05d', "store_number"), 'GSC01')
-                END AS "server_name"
-            FROM "uk_snowfall_processed"."ods_location_hierarchy"
-            UNION ALL 
-            SELECT DISTINCT
-                "store_number",
-                2 AS "server_number",
-                CASE 
-                    WHEN store_number < 7000 
-                    THEN CONCAT('UK', FORMAT('%05d', "store_number"), 'GSC02')
-                    ELSE CONCAT('IE', FORMAT('%05d', "store_number"), 'GSC02')
-                END AS "server_name"
-            FROM "uk_snowfall_processed"."ods_location_hierarchy"
-        )
+                "server_number",
+                "server_name"
+            FROM (
+                (SELECT DISTINCT
+                --get GSC01 names
+                    "store_number",
+                    1 "server_number",
+                    case when store_number < 7000 
+                        then concat('UK', format('%05d', "store_number"), 'GSC01')
+                        else concat('IE', format('%05d', "store_number"), 'GSC01')
+                    end "server_name"
+                FROM 
+                    "uk_snowfall_processed"."ods_location_hierarchy"
+                )
+                UNION ALL
+                (SELECT DISTINCT
+                --get GSC02 names
+                    "store_number",
+                    2 "server_number",
+                    case when store_number < 7000 
+                        then concat('UK', format('%05d', "store_number"), 'GSC02')
+                        else concat('IE', format('%05d', "store_number"), 'GSC02')
+                    end "server_name"
+                FROM 
+                    "uk_snowfall_processed"."ods_location_hierarchy"
+                )
+                UNION ALL
+                (SELECT DISTINCT
+                --catch any additional servers from New Relic data (including labs)
+                    "restaurant_number" "store_number",
+                    CAST(regexp_extract("device", '[0-9]+') AS INTEGER) "server_number",
+                    "host_name" "server_name"
+                FROM 
+                    "uk_snowfall_processed"."newrelic_rmp_device_info"
+                WHERE 
+                    "device" like 'GSC%'
+                )
+            )
         """
 
         logger.info("Starting Athena query execution...")
