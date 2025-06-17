@@ -7,7 +7,8 @@ class PreparationLocationHierarchy(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
-        self.spark.conf.set("spark.sql.shuffle.partitions", "5")
+
+        self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
         self.pipeline_config = self.full_configs[self.datasets]
         self.dq_rule = dq_rules.get(self.datasets)
@@ -81,7 +82,7 @@ class PreparationLocationHierarchy(TransformBase):
             if not self.aws_instance.athena_table_exists('preparation', 'ods_location_hierarchy'):
                 # Execute Athena query to create the table
                 self.aws_instance.create_athena_delta_table('preparation', 'ods_location_hierarchy', save_output_path, self.athena_output_path)
-            
+
             # Vacuum the table
             self.vacuum_table(save_output_path,48)
 
