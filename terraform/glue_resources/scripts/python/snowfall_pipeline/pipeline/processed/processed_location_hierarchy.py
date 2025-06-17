@@ -8,7 +8,7 @@ class ProcessedLocationHierarchy(TransformBase):
         self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
         self.pipeline_config = self.full_configs[self.datasets]
         self.file_path = "ods/location_hierarchy"
-
+        self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
 
     def get_data(self):
         df = self.read_data_from_s3(self.preparation_bucket_name,self.file_path,'delta')
@@ -113,8 +113,27 @@ class ProcessedLocationHierarchy(TransformBase):
             'fs_eid': ('fs_eid', 'string'),
             'fs_employee_no': ('fs_employee_no', 'string'),
             'hierarchy_id': ('hierarchy_id', 'integer'),
-            'cdc_timestamp':('cdc_timestamp','string')
+            'cdc_timestamp':('cdc_timestamp','string'),
         
+            # New columns
+            'open_date': ('open_date', 'date'),
+            'close_date': ('close_date', 'date'),
+            'drive_trhu_type': ('drive_trhu_type', 'integer'),
+            'store_type': ('store_type', 'string'),
+            'store_building_type': ('store_building_type', 'string'),
+            'has_free_phone_charge': ('has_free_phone_charge', 'boolean'),
+            'has_interactive_tablets': ('has_interactive_tablets', 'boolean'),
+            'has_kiosk_ordering': ('has_kiosk_ordering', 'boolean'),
+            'table_service': ('table_service', 'boolean'),
+            'mobile_offers': ('mobile_offers', 'boolean'),
+            'mobile_ordering': ('mobile_ordering', 'boolean'),
+            'web_offers': ('web_offers', 'boolean'),
+            'has_free_wifi': ('has_free_wifi', 'boolean'),
+            'mcdelivery': ('mcdelivery', 'boolean'),
+            'loyalty_program': ('loyalty_program', 'boolean'),
+            'mcplant_availability': ('mcplant_availability', 'boolean'),
+            'electric_vehicle_charging': ('electric_vehicle_charging', 'boolean')
+
         }
         # 2. Changes column names and schema
         df = self.change_column_names_and_schema(df,column_mapping)
@@ -153,7 +172,11 @@ class ProcessedLocationHierarchy(TransformBase):
             # Merge data to the Delta table
             merge_columns = ['store_number','store_name']
             self.merge_to_delta_table(df,save_output_path,merge_columns)
-
+            
+            if not self.aws_instance.athena_table_exists('processed', 'ods_location_hierarchy'):Add commentMore actions
+                # Execute Athena query to create the table
+                self.aws_instance.create_athena_delta_table('processed', 'ods_location_hierarchy', save_output_path, self.athena_output_path)
+            
             # Vacuum the table
             self.vacuum_table(save_output_path,48)
 
