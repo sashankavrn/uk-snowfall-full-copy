@@ -78,9 +78,9 @@ class PreparationLocationHierarchy(TransformBase):
             merge_columns = ['STORE_NUMBER','STORE_NAME']
             self.merge_to_delta_table(df,save_output_path,merge_columns)
 
-            if not self.aws_instance.athena_table_exists('processed', 'ods_location_hierarchy'):Add commentMore actions
+            if not self.aws_instance.athena_table_exists('preparation', 'ods_location_hierarchy'):Add commentMore actions
                 # Execute Athena query to create the table
-                self.aws_instance.create_athena_delta_table('processed', 'ods_location_hierarchy', save_output_path, self.athena_output_path)
+                self.aws_instance.create_athena_delta_table('preparation', 'ods_location_hierarchy', save_output_path, self.athena_output_path)
 
             # Vacuum the table
             self.vacuum_table(save_output_path,48)
