@@ -10,6 +10,7 @@ class ProcessedLocationHierarchy(TransformBase):
         self.file_path = "ods/location_hierarchy"
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
 
+
     def get_data(self):
         df = self.read_data_from_s3(self.preparation_bucket_name,self.file_path,'delta')
         return df
@@ -168,11 +169,11 @@ class ProcessedLocationHierarchy(TransformBase):
             self.aws_instance.create_athena_delta_table('processed', 'ods_location_hierarchy', save_output_path, self.athena_output_path)
             
         else:
-
+            
             # Merge data to the Delta table
             merge_columns = ['store_number','store_name']
             self.merge_to_delta_table(df,save_output_path,merge_columns)
-            
+   
             if not self.aws_instance.athena_table_exists('processed', 'ods_location_hierarchy'):
                 # Execute Athena query to create the table
                 self.aws_instance.create_athena_delta_table('processed', 'ods_location_hierarchy', save_output_path, self.athena_output_path)

@@ -3,32 +3,37 @@ from snowfall_pipeline.common_utilities.data_quality_rules import dq_rules
 from delta.tables import DeltaTable
 
 
-class PreparationLocationHierarchy(TransformBase):
+
+class PreparationNcrServiceNowIncident(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
-
         self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
         self.pipeline_config = self.full_configs[self.datasets]
         self.dq_rule = dq_rules.get(self.datasets)
-        self.file_path = "ods/location_hierarchy"
+        self.file_path = "ncr_service_now/incident"
         self.list_of_files = self.aws_instance.get_files_in_s3_path(f"{self.raw_bucket_name}/{self.file_path}/")
 
 
     def get_data(self):
-        df = self.read_data_from_s3(self.raw_bucket_name,self.file_path,'csv')
+        df = self.read_data_from_s3(self.raw_bucket_name,self.file_path,'parquet')
         return df
 
 
-    def transform_data(self, df):
+    def transform_data(self, df): 
         """
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Remove duplicate records.
-        2. Perform data quality check.
-        3. Add CDC columns.
+        1. Extract restaurant number from u_site_display_value
+        2. Fill null values in specified column
+        3. Remove duplicate records.
+        4. Remove trailing whitespaces
+        5. Perform data quality check.
+        6. Mask PII Data
+        7. Add CDC columns.
+        8. Add Partition Columns
 
         Parameters:
         - df: Input DataFrame.
@@ -37,17 +42,32 @@ class PreparationLocationHierarchy(TransformBase):
         - DataFrame: Transformed DataFrame.
 
         """
+        # Stpe 1: Extract restaurant number from u_site_display_value
+        #df = self.parse_column_values(df, self.pipeline_config.get('new_column_params'))
 
-        # Step 1: Remove duplicate records
-        df = self.dropping_duplicates(df)
+        # Stpe 2: Fill null values in specified column
+        #df = self.replace_value(df, self.pipeline_config.get('replace_values'))
 
-        # Step 2: Data quality check
-        df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'csv')
+        # Step 3: Remove duplicate records
+        df = self.dropping_duplicates(df, ["number", "sys_updated_on"])
 
-        # Step 3: Add CDC columns
+        # Step 4: Removes trailing whitespaces
+        df = self.remove_trailing_whitespace(df)
+
+        # Step 5: Data quality check
+        df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'parquet')  
+
+        # Step 6: Mask PII Information
+        df = self.redact_pii_columns(df,self.pipeline_config.get('redact_pii_columns'))
+
+        # Step 7: Add CDC columns
         df = self.adding_cdc_columns(df)
 
+        # Step 8: Adding Partiton Columns
+        df = self.create_partition_date_columns(df,'sys_created_on','sys_created')
+
         return df
+
 
 
     def save_data(self, df):
@@ -67,25 +87,25 @@ class PreparationLocationHierarchy(TransformBase):
             
         # Determine whether to create or merge to the Delta table
         if self.athena_trigger:
-            # Create the Delta table
-            df.write.format("delta").mode("overwrite").save(save_output_path)
 
-            # Execute Athena query to create the table
-            self.aws_instance.create_athena_delta_table('preparation', 'ods_location_hierarchy', save_output_path, self.athena_output_path)
+            # Create the Delta table
+            df.write.format("delta").mode("overwrite") \
+            .partitionBy('sys_created_year','sys_created_month') \
+            .save(save_output_path)
             
         else:
 
             # Merge data to the Delta table
-            merge_columns = ['STORE_NUMBER','STORE_NAME']
-            self.merge_to_delta_table(df,save_output_path,merge_columns)
+            merge_columns = ['number','sys_updated_on']
+            self.merge_to_delta_table(df, save_output_path, merge_columns)
 
-            if not self.aws_instance.athena_table_exists('preparation', 'ods_location_hierarchy'):
-                # Execute Athena query to create the table
-                self.aws_instance.create_athena_delta_table('preparation', 'ods_location_hierarchy', save_output_path, self.athena_output_path)
-
+            
             # Vacuum the table
             self.vacuum_table(save_output_path,48)
 
+        if not self.aws_instance.athena_table_exists('preparation', 'ncr_service_now_incident'):
+            # Execute Athena query to create the table
+            self.aws_instance.create_athena_delta_table('preparation', 'ncr_service_now_incident', save_output_path, self.athena_output_path)
         
         # Move files to the Archive folder
         for file_name in self.list_of_files:
@@ -97,6 +117,3 @@ class PreparationLocationHierarchy(TransformBase):
             self.aws_instance.send_sns_message(message)
         
         self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
-
-
-

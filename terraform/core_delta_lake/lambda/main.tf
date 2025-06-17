@@ -271,7 +271,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_metrics_function" {
 resource "aws_cloudwatch_event_rule" "newrelic_metrics_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-device-metrics-schedule"
   description         = "Triggers the New Relic device metrics Lambda every 2 minutes"
-  schedule_expression = "rate(2 minutes)"
+  schedule_expression = "rate(10 minutes)"
 }
 
 # Add Lambda as the target of the Event Rule
@@ -421,4 +421,100 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_digital_3po_
   function_name = aws_lambda_function.newrelic_digital_3po_foe_response_function.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.newrelic_digital_3po_foe_response_lambda_schedule.arn
+}
+
+############################################ SERVICE AGENT JWT/UPLOAD S3 LAMBDA #############################################
+
+data "archive_file" "service_agent_upload_s3" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/service-agent-upload-s3/"
+  output_path = "${path.module}/scripts/zips/service-agent-upload-s3.zip"
+}
+
+resource "aws_lambda_function" "uk_snowfall_service_agent_function" {
+  filename         = "${path.module}/scripts/zips/service-agent-upload-s3.zip"
+  function_name    = "uk-snowfall-service-agent-upload-s3-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 120
+  description      = "Upload data to S3 using JWT authentication"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-upload-s3.zip")
+  tags             = var.resource_tags
+  layers = [  ]
+  environment {
+    variables = {
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+## Adding permissions for lambda upload data 
+resource "aws_lambda_permission" "allow_service_agent_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_service_agent_function.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.service_agent_bucket_arn
+  depends_on    = [aws_lambda_function.uk_snowfall_service_agent_function]
+}
+
+
+############################################ SERVICE AGENT SERVER EXTRACT & UPLOAD TO S3 LAMBDA #############################################
+
+# Archive the Lambda script for extracting service agent server info
+data "archive_file" "service_agent_server_extract_script" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/service-agent-server-extract/"
+  output_path = "${path.module}/scripts/zips/service-agent-server-extract.zip"
+}
+
+# Lambda Function to extract service agent server info from Athena
+resource "aws_lambda_function" "service_agent_server_extract_function" {
+  filename         = "${path.module}/scripts/zips/service-agent-server-extract.zip"
+  function_name    = "uk-snowfall-service-agent-server-extract-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 300
+  description      = "Extracts service agent server information from Athena and stores it in S3"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-server-extract.zip")
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      ATHENA_DATABASE  = "uk_snowfall_processed"
+      S3_BUCKET_NAME   = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+      WORKGROUP_NAME   = "uk-snowfall-pipeline"
+      SNS_TOPIC_ARN    = var.sns_topic_arn
+    }
+  }
+}
+
+# CloudWatch Event Rule to trigger Lambda daily at 1:30 AM UTC
+resource "aws_cloudwatch_event_rule" "service_agent_server_extract_schedule" {
+  name                = "uk-snowfall-service-agent-server-extract-schedule"
+  description         = "Triggers the service agent server extract Lambda daily at 1:30 AM UTC"
+  schedule_expression = "cron(30 1 * * ? *)"
+}
+
+# Add Lambda as the Target of the Event Rule
+resource "aws_cloudwatch_event_target" "invoke_service_agent_server_extract_lambda" {
+  rule      = aws_cloudwatch_event_rule.service_agent_server_extract_schedule.name
+  target_id = "service-agent-server-extract-target"
+  arn       = aws_lambda_function.service_agent_server_extract_function.arn
+}
+
+# Grant EventBridge Permission to Invoke the Lambda
+resource "aws_lambda_permission" "allow_eventbridge_invoke_service_agent_server_extract" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.service_agent_server_extract_function.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.service_agent_server_extract_schedule.arn
+  depends_on = [aws_lambda_function.service_agent_server_extract_function, aws_cloudwatch_event_rule.service_agent_server_extract_schedule]
+
 }

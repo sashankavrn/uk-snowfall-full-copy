@@ -56,3 +56,10 @@ output "temporary_folder_path" {
   value = "s3://${aws_s3_bucket.artifact_bucket.id}/${aws_s3_object.temporary_folder.key}"
 }
 
+# s3_module_main/outputs.tf
+output "service_agent_bucket_arn" {
+  description = "The ARN of the service agent S3 bucket"
+  value       = aws_s3_bucket.service_agent_bucket.arn
+}
+
+

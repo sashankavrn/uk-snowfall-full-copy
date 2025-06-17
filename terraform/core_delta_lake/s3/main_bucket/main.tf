@@ -400,3 +400,54 @@ resource "aws_s3_bucket_lifecycle_configuration" "athena_lifecycle" {
   }
 }
 
+# ####### Creation of Snowfall Service Agent Bucket ################
+resource "aws_s3_bucket" "service_agent_bucket" {
+  bucket = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+  tags = var.resource_tags
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_versioning" "service_agent_versioning" {
+  bucket = aws_s3_bucket.service_agent_bucket.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_object" "uploads_folder" {
+  bucket                  = aws_s3_bucket.service_agent_bucket.id
+  acl                     = "private"
+  key                     = "uploads/"
+  source                  = "/dev/null"
+  server_side_encryption  = "aws:kms"
+}
+
+
+resource "aws_s3_object" "serverlist_folder" {
+  bucket = aws_s3_bucket.service_agent_bucket.id
+  acl= "private"
+  key= "server_list/"
+  source= "/dev/null"
+  server_side_encryption= "aws:kms"
+}
+
+
+resource "aws_s3_bucket_notification" "service_agent_enabling_event_bridge_notification" {
+  bucket = aws_s3_bucket.service_agent_bucket.bucket
+  eventbridge = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "service_agent_lifecycle_rules" {
+  depends_on = [aws_s3_bucket_versioning.service_agent_versioning]
+  bucket = aws_s3_bucket.service_agent_bucket.id
+  rule {
+    id = "Removing objects with delete markers after 30 days"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+    status = "Enabled"
+  }
+}
+
+

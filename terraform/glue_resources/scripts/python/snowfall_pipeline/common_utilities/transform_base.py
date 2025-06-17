@@ -3,7 +3,7 @@ from snowfall_pipeline.common_utilities.aws_utilities import AwsUtilities
 from snowfall_pipeline.common_utilities.decorators import transformation_timer
 
 from pyspark.sql import functions as F
-from pyspark.sql.types import StructType, StructField, StringType, IntegerType, LongType, TimestampType
+from pyspark.sql.types import StructType, StringType, IntegerType, LongType, TimestampType, ArrayType
 from delta.tables import *
 from pyspark.sql.utils import AnalysisException
 
@@ -459,6 +459,9 @@ class TransformBase:
 
         elif file_format == 'parquet':
             source_df = self.spark.read.parquet(f"s3://{bucket_name}/{file_path}/")
+
+        elif file_format == 'xml':
+            source_df = self.spark.read.format("xml").option("rowTag", "Document").load(f"s3://{bucket_name}/{file_path}/")
 
         elif file_format == 'delta':
 
@@ -1082,3 +1085,67 @@ class TransformBase:
         else:
             self.logger.info('Delta table is not overwritten, no column data types has been changed or column is not present in table .')
         
+    def flatten_schema(self, schema, prefix=None):
+        fields = []
+        for field in schema.fields:
+            name = f"{prefix}.{field.name}" if prefix else field.name
+            if isinstance(field.dataType, StructType):
+                fields += self.flatten_schema(field.dataType, prefix=name)
+            else:
+                fields.append(name)
+        return fields
+
+    def explode_df(self, df):
+        for (name, dtype) in df.dtypes:
+            if "array" in dtype:
+                df = df.withColumn(name, F.explode(name))
+        return df
+
+
+    def is_flat(self, df):
+        for (_, dtype) in df.dtypes:
+            if "array" in dtype or "struct" in dtype:
+                return False
+        return True
+
+    def flatten_schema(self, schema, prefix=None):
+        fields = []
+        for field in schema.fields:
+            name = f"{prefix}.{field.name}" if prefix else field.name
+            if isinstance(field.dataType, StructType):
+                fields += self.flatten_schema(field.dataType, prefix=name)
+            else:
+                fields.append(name)
+        return fields
+
+    def flatten_nest_df(self, df):
+        fields = self.flatten_schema(df.schema)
+        new_fields = [item.replace(".", "_").replace(":", "_") for item in fields]
+        df = df.select(fields).toDF(*new_fields)
+
+        print('flatten_nest_df completed')
+
+        return df
+
+    def drop_nested_field(self, df: DataFrame, drop_field_name: str) -> DataFrame:
+        def process(schema, prefix=""):
+            exprs = []
+            for field in schema.fields:
+                field_name = field.name
+                full_name = f"{prefix}.{field_name}" if prefix else field_name
+
+                if field_name == drop_field_name:
+                    continue  # skip this field
+
+                if isinstance(field.dataType, StructType):
+                    nested_expr = process(field.dataType, full_name)
+                    exprs.append(f"struct({', '.join(nested_expr)}) as {field_name}")
+                elif isinstance(field.dataType, ArrayType) and isinstance(field.dataType.elementType, StructType):
+                    nested_expr = process(field.dataType.elementType, "x")
+                    exprs.append(f"transform({full_name}, x -> struct({', '.join(nested_expr)})) as {field_name}")
+                else:
+                    exprs.append(full_name)
+            return exprs
+
+        top_level_exprs = process(df.schema)
+        return df.selectExpr(*top_level_exprs)
