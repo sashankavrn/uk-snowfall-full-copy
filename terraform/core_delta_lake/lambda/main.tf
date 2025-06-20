@@ -521,12 +521,6 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_service_agent_server_
 
 ############################################ SERVICE AGENT SERVER FILES #############################################
 
-
-
-############################################
-##         SERVICE AGENT SERVER FILES     ##
-############################################
-
 ## Archive the service-agent-server-files Python script
 data "archive_file" "service_agent_server_files" {
   type        = "zip"
@@ -557,7 +551,7 @@ resource "aws_lambda_function" "service_agent_server_files" {
 }
 
 ## Adding permissions for lambda
-resource "aws_lambda_permission" "allow_service_agent_bucket" {
+resource "aws_lambda_permission" "allow_service_agent_s3_bucket" {
   statement_id  = "AllowExecutionFromS3Bucket"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.service_agent_server_files.arn
@@ -580,6 +574,6 @@ resource "aws_s3_bucket_notification" "service_agent_server_files_trigger" {
   }
 
   depends_on = [
-    aws_lambda_permission.allow_service_agent_bucket
+    aws_lambda_permission.allow_service_agent_s3_bucket
   ]
 }
