@@ -524,7 +524,7 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_service_agent_server_
 ## Archive the service-agent-server-files Python script
 data "archive_file" "service_agent_server_files" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/service_agent_server_files/"
+  source_dir  = "${path.module}/scripts/python/service-agent-server-files/"
   output_path = "${path.module}/scripts/zips/service_agent_server_files.zip"
 }
 
