@@ -563,9 +563,14 @@ resource "aws_lambda_permission" "allow_service_agent_s3_bucket" {
   ]
 }
 
-## Adding S3 bucket notification for service-agent-server-files Lambda
+
+data "aws_s3_bucket" "service_agent_bucket" {
+  bucket = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+  }
+
 resource "aws_s3_bucket_notification" "service_agent_server_files_trigger" {
-  bucket = var.service_agent_bucket
+  bucket = data.aws_s3_bucket.service_agent_bucket.id
+
 
   lambda_function {
     lambda_function_arn = aws_lambda_function.service_agent_server_files.arn
