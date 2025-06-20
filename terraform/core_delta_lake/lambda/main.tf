@@ -518,3 +518,68 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_service_agent_server_
   depends_on = [aws_lambda_function.service_agent_server_extract_function, aws_cloudwatch_event_rule.service_agent_server_extract_schedule]
 
 }
+
+############################################ SERVICE AGENT SERVER FILES #############################################
+
+
+
+############################################
+##         SERVICE AGENT SERVER FILES     ##
+############################################
+
+## Archive the service-agent-server-files Python script
+data "archive_file" "service_agent_server_files" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/service_agent_server_files/"
+  output_path = "${path.module}/scripts/zips/service_agent_server_files.zip"
+}
+
+## Lambda function - service-agent-server-files
+resource "aws_lambda_function" "service_agent_server_files" {
+  filename         = data.archive_file.service_agent_server_files.output_path
+  function_name    = "uk_snowfall_service_agent_server_files_${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 300
+  description      = "Triggered by S3 to copy files from uploads/ to service-agent-server-files/"
+  source_code_hash = data.archive_file.service_agent_server_files.output_base64sha256
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      SOURCE_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent--${var.account_number}"
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+## Adding permissions for lambda
+resource "aws_lambda_permission" "allow_service_agent_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.service_agent_server_files.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.service_agent_bucket_arn
+  depends_on    = [
+    var.service_agent_bucket_arn,
+    aws_lambda_function.service_agent_server_files
+  ]
+}
+
+## Adding S3 bucket notification for service-agent-server-files Lambda
+resource "aws_s3_bucket_notification" "service_agent_server_files_trigger" {
+  bucket = var.service_agent_bucket
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.service_agent_server_files.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "uploads/"
+  }
+
+  depends_on = [
+    aws_lambda_permission.allow_service_agent_bucket
+  ]
+}

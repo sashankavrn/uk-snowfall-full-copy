@@ -88,6 +88,7 @@ resource "aws_s3_object" "landing_folder" {
       genesys_user_status_history = "genesys/user_status_interval_history/"
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
+      service_agent_server_files = "service_agent_server_files/uploads"
     }
 }
 
@@ -168,6 +169,7 @@ resource "aws_s3_object" "raw_folder" {
       genesys_user_status_history = "genesys/user_status_interval_history/"
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
+      service_agent_server_files = "service_agent_server_files/uploads"
     }
 }
 
@@ -252,6 +254,7 @@ resource "aws_s3_object" "preparation_folder" {
       genesys_user_status_history = "genesys/user_status_interval_history/"
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
+      service_agent_server_files = "service_agent_server_files/uploads"
     }
 }
 
@@ -349,6 +352,7 @@ resource "aws_s3_object" "processed_folder" {
       genesys_user_status_history = "genesys/user_status_interval_history/"
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
+      service_agent_server_files = "service_agent_server_files/uploads"
     }
 }
 

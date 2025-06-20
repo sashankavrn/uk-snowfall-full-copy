@@ -365,6 +365,19 @@ locals {
       trigger_type    = "ON_DEMAND"
       schedule       = null
       reporting_date = null
+    },
+    "service_agent_server_files" = {
+      name            = "uk-snowfall-service-agent-server-files"
+      description     = "Workflow for the newrelic rmp device data"
+      dataset         = "service_agent_server_files"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-service-agent-server-files-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
     }
   }
 }
