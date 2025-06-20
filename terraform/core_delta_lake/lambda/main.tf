@@ -525,7 +525,7 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_service_agent_server_
 data "archive_file" "service_agent_server_files" {
   type        = "zip"
   source_dir  = "${path.module}/scripts/python/service-agent-server-files/"
-  output_path = "${path.module}/scripts/zips/service_agent_server_files.zip"
+  output_path = "${path.module}/scripts/zips/service-agent-server-files.zip"
 }
 
 ## Lambda function - service-agent-server-files
@@ -538,7 +538,7 @@ resource "aws_lambda_function" "service_agent_server_files" {
   memory_size      = 1024
   timeout          = 300
   description      = "Triggered by S3 to copy files from uploads/ to service-agent-server-files/"
-  source_code_hash = data.archive_file.service_agent_server_files.output_base64sha256
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-server-files.zip")
   tags             = var.resource_tags
 
   environment {
