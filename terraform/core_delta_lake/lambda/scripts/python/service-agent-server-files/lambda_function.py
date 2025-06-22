@@ -11,7 +11,6 @@ logger.setLevel(logging.INFO)
 SOURCE_BUCKET = os.environ.get('SOURCE_BUCKET')
 TARGET_BUCKET = os.environ.get('TARGET_BUCKET')
 SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN')
-TARGET_PREFIX = "service-agent-server-files/"
 
 def send_sns_notification(subject, message):
     try:
@@ -25,6 +24,10 @@ def send_sns_notification(subject, message):
         logger.error(f"Failed to send SNS notification: {str(e)}")
 
 def lambda_handler(event, context):
+    if 'Records' not in event:
+        logger.warning(f"No 'Records' key in event. Event was: {event}")
+        return
+
     for record in event['Records']:
         source_bucket = record['s3']['bucket']['name']
         source_key = record['s3']['object']['key']
@@ -33,12 +36,7 @@ def lambda_handler(event, context):
             logger.warning(f"Ignoring event from unexpected bucket: {source_bucket}")
             continue
 
-        if not source_key.startswith("uploads/"):
-            logger.info(f"Skipping non-uploads object: {source_key}")
-            continue
-
-        relative_key = source_key[len("uploads/"):]
-        target_key = f"{TARGET_PREFIX}{relative_key}"
+        target_key = source_key  # Preserve full folder structure
 
         logger.info(f"Preparing to copy from s3://{SOURCE_BUCKET}/{source_key} to s3://{TARGET_BUCKET}/{target_key}")
 
