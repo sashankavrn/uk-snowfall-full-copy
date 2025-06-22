@@ -531,7 +531,7 @@ data "archive_file" "service_agent_server_files" {
 ## Lambda function - service-agent-server-files
 resource "aws_lambda_function" "service_agent_server_files" {
   filename         = data.archive_file.service_agent_server_files.output_path
-  function_name    = "uk-snowfall-service-agent-server-files_${var.environment}"
+  function_name    = "uk-snowfall-service-agent-server-files-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
