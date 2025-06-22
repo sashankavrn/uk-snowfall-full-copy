@@ -169,8 +169,8 @@
             "destinationPath": "happysignals/"
         },
         {
-            "fileName": "service_agent_server_files/uploads",
-            "destinationPath": "service_agent_server_files/uploads"
+            "fileName": "service_agent_server_files/uploads/",
+            "destinationPath": "service_agent_server_files/uploads/"
         }    
     ]
 }
