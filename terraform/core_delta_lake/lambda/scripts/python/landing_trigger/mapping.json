@@ -77,6 +77,10 @@
             "destinationPath": "newrelic/newrelic_digital_3po_foe_response"
         },
         {
+            "fileName": "service_agent_server_files/uploads",
+            "destinationPath": "service_agent_server_files/uploads"
+        },    
+        {
             "fileName": "ncr_service_now/service_case",
             "destinationPath": "ncr_service_now/service_case"
         },
@@ -167,10 +171,6 @@
         {
             "fileName": "happysignals/",
             "destinationPath": "happysignals/"
-        },
-        {
-            "fileName": "service_agent_server_files/uploads/",
-            "destinationPath": "service_agent_server_files/uploads/"
-        }    
+        }
     ]
 }
