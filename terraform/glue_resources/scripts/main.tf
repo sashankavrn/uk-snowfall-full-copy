@@ -38,3 +38,15 @@ resource "aws_s3_object" "athena_views" {
   source = "${path.module}/athena_views/${each.key}"
   etag   = filemd5("${path.module}/athena_views/${each.key}")
 }
+
+########### Uploading Spark XML JAR ######################
+# Uploads the spark-xml JAR file to S3 so it can be used in Glue jobs via the --extra-jars argument.
+# This JAR enables XML file parsing in PySpark.
+
+resource "aws_s3_object" "spark_xml_jar" {
+  bucket = var.artifact_bucket_name
+  key    = "libs_jars/spark-xml_2.12-0.15.0.jar"
+  source = "${path.module}/libs/jars/spark-xml_2.12-0.15.0.jar"
+  etag   = filemd5("${path.module}/libs/jars/spark-xml_2.12-0.15.0.jar")
+}
+

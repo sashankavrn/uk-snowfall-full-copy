@@ -59,6 +59,7 @@ resource "aws_glue_job" "main_runner_script" {
     "--SNS_TOPIC_ARN"                     = data.terraform_remote_state.core_module.outputs.snowfall_topic_arn
     "--TempDir"                           = data.terraform_remote_state.core_module.outputs.temporary_folder_path
     "--extra-py-files"                    = module.scripts_module.output_libraries_path
+    "--extra-jars"                        = module.scripts_module.output_spark_xml_jar_path
     "--ACCOUNT_NUMBER"                    = var.account_number
     "--ENVIRONMENT"                       = var.environment
   }
