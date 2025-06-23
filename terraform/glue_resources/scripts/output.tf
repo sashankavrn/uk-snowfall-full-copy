@@ -6,3 +6,7 @@ output "output_main_runner_script_path"{
 output "output_libraries_path"{
   value = "s3://${var.artifact_bucket_name}/${aws_s3_object.snowfall_pipeline_zip.id}"
 }
+output "output_spark_xml_jar_path" {
+  description = "S3 path to the Spark XML JAR file"
+  value       = "s3://${var.artifact_bucket_name}/${aws_s3_object.spark_xml_jar.id}"
+}
