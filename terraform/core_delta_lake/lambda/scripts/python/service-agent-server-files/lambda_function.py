@@ -36,8 +36,13 @@ def lambda_handler(event, context):
             logger.warning(f"Ignoring event from unexpected bucket: {source_bucket}")
             continue
 
-        # Prepend the target prefix to preserve full structure under uploads/
-        target_key = f"service_agent_server_files/uploads/{source_key}"
+        # Remove leading 'uploads/' if present to avoid duplication
+        if source_key.startswith("uploads/"):
+            relative_key = source_key[len("uploads/"):]
+        else:
+            relative_key = source_key
+
+        target_key = f"service_agent_server_files/uploads/{relative_key}"
 
         logger.info(f"Preparing to copy from s3://{SOURCE_BUCKET}/{source_key} to s3://{TARGET_BUCKET}/{target_key}")
 
