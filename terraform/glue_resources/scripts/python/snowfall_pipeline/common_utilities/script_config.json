@@ -99,6 +99,10 @@
     },
     "location_hierarchy":{
         "primary_key":"STORE_NUMBER",
+        "process_date": [
+            "open_date",
+            "close_date"
+        ],
         "redact_pii_columns":[
             "OO_EMAIL",
             "FS_EMAIL"
@@ -492,12 +496,19 @@
         "process_timestamp": [
             "sys_updated_timestamp"
         ],
+        "new_column_params": [
+            {
+                "column_name": "StoreDB_StoreProfile_StoreDetails_StoreId",
+                "regex": "(\\d{4})$",
+                "new_column_name": "restaurant_number",
+                "data_type": "integer"
+            }
+        ],
         "replace_values": [
             {
                 "column_name": "restaurant_number",
                 "old_value": "None",
                 "new_value": -1
-
             }
         ], 
         "change_column_data_type": {
@@ -505,7 +516,8 @@
             "cdc_timestamp": "string",
             "configurationUpdatedAt": "string"
         },         
-        "primary_key":"restaurant_number"
+        "primary_key": "restaurant_number"
 
     }
 }
+

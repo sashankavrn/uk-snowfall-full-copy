@@ -35,6 +35,9 @@ class ProcessedLocationHierarchy(TransformBase):
         # Step 1: Removes trailing whitespaces
         df = self.remove_trailing_whitespace(df)
 
+        df = self.convert_date_column(df,self.pipeline_config.get('process_date'))
+
+
         column_mapping = {
 
             'store_number': ('store_number', 'integer'),
