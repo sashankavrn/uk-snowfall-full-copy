@@ -427,7 +427,7 @@ class TransformBase:
         return df
     
     @transformation_timer
-    def read_data_from_s3(self,bucket_name,file_path, file_format='json',appflow_config = None, multiline_json = False):
+    def read_data_from_s3(self,bucket_name,file_path, file_format='json',appflow_config = None, multiline_json = False, row_tag = None):
         """
         Read data from S3 based on the specified file format.
 
@@ -461,7 +461,7 @@ class TransformBase:
             source_df = self.spark.read.parquet(f"s3://{bucket_name}/{file_path}/")
 
         elif file_format == 'xml':
-            source_df = self.spark.read.format("xml").option("rowTag", "Document").load(f"s3://{bucket_name}/{file_path}/")
+            source_df = self.spark.read.format("xml").option("rowTag", row_tag).load(f"s3://{bucket_name}/{file_path}/")
 
         elif file_format == 'delta':
 
@@ -1084,16 +1084,6 @@ class TransformBase:
             self.logger.info('Delta table overwritten with new schema.')
         else:
             self.logger.info('Delta table is not overwritten, no column data types has been changed or column is not present in table .')
-        
-    def flatten_schema(self, schema, prefix=None):
-        fields = []
-        for field in schema.fields:
-            name = f"{prefix}.{field.name}" if prefix else field.name
-            if isinstance(field.dataType, StructType):
-                fields += self.flatten_schema(field.dataType, prefix=name)
-            else:
-                fields.append(name)
-        return fields
 
     def explode_df(self, df):
         for (name, dtype) in df.dtypes:
@@ -1149,3 +1139,33 @@ class TransformBase:
 
         top_level_exprs = process(df.schema)
         return df.selectExpr(*top_level_exprs)
+    
+    @transformation_timer
+    def convert_date_column(self, df, input_columns):
+        """
+        Convert specified string columns to DateType using multiple known date formats.
+
+        Args:
+            df (DataFrame): The input Spark DataFrame.
+            input_columns (list): List of column names to be converted to DateType.
+
+        Returns:
+            DataFrame: The processed Spark DataFrame with converted date columns.
+        """
+        self.logger.info('Running the convert_date_column function')
+
+        date_formats = ["dd-MM-yyyy", "dd/MM/yyyy", "yyyy-MM-dd"]
+
+        for col_name in input_columns:
+            # Start with a null column
+            parsed_date = F.lit(None).cast("date")
+
+            # Try each format and coalesce to the first successful parse
+            for fmt in date_formats:
+                current_try = F.to_date(F.col(col_name), fmt)
+                parsed_date = F.coalesce(parsed_date, current_try)
+
+            # Replace the original column with the parsed date
+            df = df.withColumn(col_name, parsed_date)
+
+        return df
