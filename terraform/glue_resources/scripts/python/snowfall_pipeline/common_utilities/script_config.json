@@ -395,6 +395,8 @@
         ],
         "redact_pii_columns": [
             "work_notes",
+            "description",
+            "close_notes",
             "comments",
             "comments_and_work_notes"
         ],
@@ -402,7 +404,7 @@
         "new_column_params": [
             {
                 "column_name": "account_name",
-                "regex": "- (\\d{4}) -",
+                "regex": "^(\\d{4})",
                 "new_column_name": "restaurant_number",
                 "data_type": "integer"
             }
@@ -413,7 +415,11 @@
                 "old_value": "None",
                 "new_value": -1
             }
-        ]  
+        ],
+        "change_column_data_type": {
+            "sys_created_on": "timestamp",
+            "cdc_timestamp": "timestamp"
+        }  
     },
 
     "ncr_service_now_incident": {
@@ -440,7 +446,7 @@
         "new_column_params": [
             {
                 "column_name": "u_site_display_value",
-                "regex": "- (\\d{4}) -",
+                "regex": "^(\\d{4})",
                 "new_column_name": "restaurant_number",
                 "data_type": "integer"
             }
@@ -452,7 +458,11 @@
                 "new_value": -1
             }
         ],
-        "primary_key": "number"
+        "primary_key": "number",
+        "change_column_data_type": {
+            "sys_created_on": "timestamp",
+            "cdc_timestamp": "timestamp"
+        }  
     },
     "ncr_service_now_knowledge_base": {
         "add_seconds": [
