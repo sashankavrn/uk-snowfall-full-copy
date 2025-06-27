@@ -6,6 +6,8 @@ import json
 import csv
 from io import StringIO
 from datetime import datetime
+from pathlib import Path
+import re
 
 s3 = boto3.client('s3')
 secretsmanager = boto3.client('secretsmanager')
@@ -104,8 +106,19 @@ def lambda_handler(event, context):
         else:
             body = body.encode('utf-8')
 
+        # Parse filename and derive folder name
+        file_stem = Path(filename).stem  # Removes the extension
+        # Step 1: Remove patterns like `_123_`, `_123`, `123_`, or just `123`
+        step1 = re.sub(r'(_)?\d+(_)?', lambda m: '_' if m.group(1) and m.group(2) else '', file_stem)
+
+       # Step 2: Remove leading special characters (non-alphabetic)
+        folder_name = re.sub(r'^[^a-zA-Z]+', '', step1)
+
+        # folder_name = re.sub(r'[^a-zA-Z0-9_]', '_', file_stem)  # Replace non-alphanumeric chars with "_"
+
+        # Construct the S3 key with the folder inside machine_name
         timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-        s3_key = f"uploads/{machine_name}/{timestamp}_{filename}"
+        s3_key = f"uploads/{machine_name}/{folder_name}/{timestamp}_{filename}"
 
         s3.put_object(
             Bucket=BUCKET,
