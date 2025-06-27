@@ -114,7 +114,7 @@ dq_rules = {
         IsComplete "sys_created_on"
     ]""",
     "ncr_service_now_incident":"""Rules = [
-        ColumnCount <= 250,
+        ColumnCount <= 270,
         RowCount > 0,
         IsComplete "number",
         IsComplete "sys_created_on"
