@@ -17,6 +17,10 @@ LANDING_BUCKET = os.environ.get('LANDING_BUCKET')
 TARGET_BUCKET = os.environ.get('TARGET_BUCKET')
 SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN')
 
+# Validate environment variables
+if not all([LANDING_BUCKET, TARGET_BUCKET, SNS_TOPIC_ARN]):
+    raise ValueError("Missing one or more required environment variables.")
+
 # Load mapping.json
 def load_key_mapping():
     with open('mapping.json', 'r') as file:
@@ -26,7 +30,6 @@ def load_key_mapping():
 # Send SNS notification on failure
 def send_sns_notification(context, error_message):
     subject = f"Lambda Failure - {context.function_name}"
-
     try:
         response = sns.publish(
             TopicArn=SNS_TOPIC_ARN,
@@ -39,6 +42,7 @@ def send_sns_notification(context, error_message):
 
 # Main Lambda Handler
 def lambda_handler(event, context):
+    request_id = context.aws_request_id
     mappings = load_key_mapping()
 
     try:
@@ -46,29 +50,36 @@ def lambda_handler(event, context):
             prefix = mapping["fileName"].rstrip("/")
             destination = mapping["destinationPath"].rstrip("/")
 
-            logger.info(f"Scanning prefix: {prefix}")
-            response = s3.list_objects_v2(Bucket=LANDING_BUCKET, Prefix=prefix)
-            contents = response.get("Contents", [])
+            logger.info(f"[{request_id}] Scanning prefix: {prefix}")
+            paginator = s3.get_paginator('list_objects_v2')
 
-            data_files = [
-                obj["Key"] for obj in contents
-                if not obj["Key"].endswith("/") and "_PLACEHOLDER" not in obj["Key"]
-            ]
+            for page in paginator.paginate(Bucket=LANDING_BUCKET, Prefix=prefix):
+                contents = page.get("Contents", [])
 
-            if not data_files:
-                logger.info(f"No files found in prefix: {prefix}")
-                continue
+                data_files = [
+                    obj["Key"] for obj in contents
+                    if not obj["Key"].endswith("/")
+                    and "_PLACEHOLDER" not in obj["Key"]
+                    and obj["Key"].startswith(prefix + "/")
+                ]
 
-            for key in data_files:
-                if key.endswith(".parquet"):
-                    logger.info(f"Copying .parquet file: {key}")
-                    base_moving(LANDING_BUCKET, key, TARGET_BUCKET, destination)
-                    s3.delete_object(Bucket=LANDING_BUCKET, Key=key)
-                    logger.info(f"Deleted: {key}")
-                else:
-                    logger.info(f"Skipping non-parquet file: {key}")
+                if not data_files:
+                    logger.info(f"[{request_id}] No files found in prefix: {prefix}")
+                    continue
+
+                for key in data_files:
+                    try:
+                        if key.endswith(".parquet"):
+                            logger.info(f"[{request_id}] Copying .parquet file: {key}")
+                            base_moving(LANDING_BUCKET, key, TARGET_BUCKET, destination)
+                            s3.delete_object(Bucket=LANDING_BUCKET, Key=key)
+                            logger.info(f"[{request_id}] Deleted: {key}")
+                        else:
+                            logger.info(f"[{request_id}] Skipping non-parquet file: {key}")
+                    except Exception as file_error:
+                        logger.error(f"[{request_id}] Error processing file {key}: {str(file_error)}")
 
     except Exception as e:
-        error_msg = f"Error in Lambda execution:\n{str(e)}"
+        error_msg = f"[{request_id}] Error in Lambda execution:\n{str(e)}"
         logger.error(error_msg)
         send_sns_notification(context, error_msg)
