@@ -544,7 +544,7 @@ resource "aws_lambda_function" "service_agent_server_files" {
   environment {
     variables = {
       SOURCE_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
-      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
       SNS_TOPIC_ARN = var.sns_topic_arn
     }
   }
