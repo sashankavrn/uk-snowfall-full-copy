@@ -105,16 +105,16 @@
             "destinationPath": "ncr_service_now/knowledge_base"
         },
         {
+            "fileName": "ncr_service_now/knowledge_use",
+            "destinationPath": "ncr_service_now/knowledge_use"
+        },
+        {
             "fileName": "ncr_service_now/knowledge",
             "destinationPath": "ncr_service_now/knowledge"
         },
         {
             "fileName": "ncr_service_now/knowledge_feedback",
             "destinationPath": "ncr_service_now/knowledge_feedback"
-        },
-        {
-            "fileName": "ncr_service_now/knowledge_use",
-            "destinationPath": "ncr_service_now/knowledge_use"
         },
         {
             "fileName": "genesys/contact_center_settings",
