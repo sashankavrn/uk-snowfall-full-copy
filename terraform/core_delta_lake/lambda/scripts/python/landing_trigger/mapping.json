@@ -85,6 +85,10 @@
             "destinationPath": "ncr_service_now/service_case"
         },
         {
+            "fileName": "ncr_service_now/incident_task",
+            "destinationPath": "ncr_service_now/incident_task"
+        },
+        {
             "fileName": "ncr_service_now/incident",
             "destinationPath": "ncr_service_now/incident"
         },
@@ -97,10 +101,6 @@
             "destinationPath": "ncr_service_now/change_request"
         },
         {
-            "fileName": "ncr_service_now/incident_task",
-            "destinationPath": "ncr_service_now/incident_task"
-        },
-        {
             "fileName": "ncr_service_now/knowledge_base",
             "destinationPath": "ncr_service_now/knowledge_base"
         },
@@ -109,12 +109,12 @@
             "destinationPath": "ncr_service_now/knowledge_use"
         },
         {
-            "fileName": "ncr_service_now/knowledge",
-            "destinationPath": "ncr_service_now/knowledge"
-        },
-        {
             "fileName": "ncr_service_now/knowledge_feedback",
             "destinationPath": "ncr_service_now/knowledge_feedback"
+        },
+        {
+            "fileName": "ncr_service_now/knowledge",
+            "destinationPath": "ncr_service_now/knowledge"
         },
         {
             "fileName": "genesys/contact_center_settings",
