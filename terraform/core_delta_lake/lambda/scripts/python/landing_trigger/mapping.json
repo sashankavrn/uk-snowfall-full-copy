@@ -77,8 +77,8 @@
             "destinationPath": "newrelic/newrelic_digital_3po_foe_response"
         },
         {
-            "fileName": "service_agent_server_files/uploads/",
-            "destinationPath": "service_agent_server_files/uploads/"
+            "fileName": "ncr_service_now/case_case_worknotes",
+            "destinationPath": "ncr_service_now/case_case_worknotes"
         },    
         {
             "fileName": "ncr_service_now/service_case",
