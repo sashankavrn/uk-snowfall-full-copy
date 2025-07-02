@@ -1,0 +1,91 @@
+name: Terraform Multi-Stage Deployment
+
+on:
+  push:
+    branches:
+      - dev-test
+      - 'release-test/**'
+      - main-test
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install boto3
+        run: pip install boto3
+
+      - name: Set Environment Variables
+        id: setenv
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          if [[ "$BRANCH" == "dev" ]]; then
+            echo "ENV=dev" >> $GITHUB_ENV
+            echo "TFVARS=dev.tfvars" >> $GITHUB_ENV
+          elif [[ "$BRANCH" == main ]]; then
+            echo "ENV=prod" >> $GITHUB_ENV
+            echo "TFVARS=prod.tfvars" >> $GITHUB_ENV
+          else
+            echo "ENV=nprod" >> $GITHUB_ENV
+            echo "TFVARS=nprod.tfvars" >> $GITHUB_ENV
+          fi
+
+      - name: Load AWS Role and State Bucket
+        id: load_env
+        run: |
+          VAR_FILE="terraform/${{ env.TFVARS }}"
+          AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
+          STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
+          echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> $GITHUB_ENV
+          echo "STATE_BUCKET=$STATE_BUCKET" >> $GITHUB_ENV
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          role-session-name: GitHubActions
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        with:
+          terraform_version: 1.7.4
+
+      - name: Detect Changed Terraform Folders
+        id: detect
+        run: |
+          CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^terraform/' | grep '.tf' | cut -d/ -f2 | sort -u)
+          echo "changed_folders=$CHANGED" >> $GITHUB_OUTPUT
+
+      - name: Deploy Terraform Modules
+        run: |
+          STAGES=("core_delta_lake" "glue_resources" "other_resources" "datashare_resources")
+          for stage in "${STAGES[@]}"; do
+            if echo "${{ steps.detect.outputs.changed_folders }}" | grep -q "$stage"; then
+              echo "Deploying $stage"
+              cd terraform/$stage
+              terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
+              terraform plan -var-file=../${{ env.TFVARS }} -out=tfplan
+              if [[ "${{ env.ENV }}" == "dev" ]]; then
+                echo "Applying to dev (not really)"
+              else
+                echo "Manual approval required for $stage in ${{ env.ENV }}"
+                exit 1
+              fi
+              cd -
+            fi
+          done
