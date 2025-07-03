@@ -43,7 +43,7 @@ resource "aws_s3_object" "datashare_landing_folder" {
     ncr_knowledge      = "ncr_service_now/knowledge/"
     ncr_knowledge_feedback      = "ncr_service_now/knowledge_feedback/"
     ncr_knowledge_use      = "ncr_service_now/knowledge_use/"
-    ncr_case_worknotes = "ncr_service_now/case_worknotes"
+    ncr_case_worknotes = "ncr_service_now/case_worknotes/"
     genesys_contact_settings  = "genesys/contact_center_settings/"
     genesys_conv_attributes   = "genesys/conversation_attributes/"
     genesys_conversations_det = "genesys/conversations_detail/"
