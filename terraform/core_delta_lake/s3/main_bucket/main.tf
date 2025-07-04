@@ -61,6 +61,8 @@ resource "aws_s3_object" "landing_folder" {
       ods                 = "ods/"
       restaurant_config   = "restaurant_config/"
       cisco_meraki        = "meraki/"
+      cisco_meraki_client_info       = "meraki/client_info"
+      cisco_meraki_device_info       = "meraki/device_info"
       newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
       newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
       newrelic_digital_gma_foe_response = "newrelic/newrelic_digital_gma_foe_response/"
