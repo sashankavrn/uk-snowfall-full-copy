@@ -589,13 +589,13 @@ resource "aws_s3_bucket_notification" "service_agent_server_files_trigger" {
 # Archive the meraki_client_info Python script
 data "archive_file" "meraki_client_info" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/meraki_client_info/"
-  output_path = "${path.module}/scripts/zips/meraki_client_info.zip"
+  source_dir  = "${path.module}/scripts/python/meraki-client-info/"
+  output_path = "${path.module}/scripts/zips/meraki-client-info.zip"
 }
 
 # Lambda Function for fetching Meraki client info
 resource "aws_lambda_function" "uk_snowfall_meraki_client_info_function" {
-  filename         = "${path.module}/scripts/zips/meraki_client_info.zip"
+  filename         = "${path.module}/scripts/zips/meraki-client-info.zip"
   function_name    = "uk-snowfall-meraki-client-info-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
@@ -606,7 +606,7 @@ resource "aws_lambda_function" "uk_snowfall_meraki_client_info_function" {
   }
   timeout          = 900  # 15 minutes
   description      = "Fetch client info from Meraki API and update to landing bucket"
-  source_code_hash = filebase64sha256("${path.module}/scripts/zips/meraki_client_info.zip")
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/meraki-client-info.zip")
   tags             = var.resource_tags
   layers = [
     "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1",
