@@ -311,7 +311,8 @@ class TransformBase:
         
         # Redaction UDF
         def _redact_text(text):
-            phone_regex = r'\b(?:\+?\(?\d{1,3}\)?[-\s]?)?(?:\(?\d{2,4}\)?[-\s]?)?\d{3}[-\s]?\d{3}[-\s]?\d{4}\b|\b(?:\+?\d{1,3})\d{10}\b|\(?\+?\d{1,3}\)?[\s]?\(?\d{2,4}\)?[-\s]?\d{3}[-\s]?\d{4}'
+            #phone_regex = r'\b(?:\+?\(?\d{1,3}\)?[-\s]?)?(?:\(?\d{2,4}\)?[-\s]?)?\d{3}[-\s]?\d{3}[-\s]?\d{4}\b|\b(?:\+?\d{1,3})\d{10}\b|\(?\+?\d{1,3}\)?[\s]?\(?\d{2,4}\)?[-\s]?\d{3}[-\s]?\d{4}'
+            phone_regex = r'(\+?\d{1,3}[\s-]?\(?\d{2,5}\)?[\s-]?\d{3,4}[\s-]?\d{3,4})'
             email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
             regex_mappings = {
                 phone_regex: 'XXXXXX',
