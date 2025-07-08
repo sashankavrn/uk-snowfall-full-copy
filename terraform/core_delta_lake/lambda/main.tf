@@ -600,9 +600,9 @@ resource "aws_lambda_function" "uk_snowfall_meraki_client_info_function" {
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
-  memory_size      = 4000
+  memory_size      = 10240
   ephemeral_storage {
-    size = 2048
+    size = 10240
   }
   timeout          = 900  # 15 minutes
   description      = "Fetch client info from Meraki API and update to landing bucket"
