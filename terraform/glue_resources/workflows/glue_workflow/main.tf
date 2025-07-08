@@ -353,19 +353,6 @@ locals {
       schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
-    "store_db_config" = {
-      name            = "uk-snowfall-store-db-config"
-      description     = "Workflow for managing store DB configuration"
-      dataset         = "store_db_config"
-      group           = "preparation"
-      trigger_name    = "uk-snowfall-store-db-config-trigger"
-      max_concurrent  = 1
-      batch_size      = 100
-      batch_window    = 1
-      trigger_type    = "ON_DEMAND"
-      schedule       = null
-      reporting_date = null
-    },
     "service_agent_server_files" = {
       name            = "uk-snowfall-service-agent-server-files"
       description     = "Workflow for the newrelic rmp device data"
