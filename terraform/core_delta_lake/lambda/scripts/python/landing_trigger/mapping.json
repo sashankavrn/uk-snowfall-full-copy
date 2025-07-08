@@ -61,6 +61,10 @@
             "destinationPath": "meraki"
         },
         {
+            "fileName": "meraki/client_info",
+            "destinationPath": "meraki/client_info"
+        },
+        {
             "fileName": "newrelic/newrelic_rmp_device_info",
             "destinationPath": "newrelic/newrelic_rmp_device_info"
         },

@@ -49,7 +49,7 @@ class PreparationNcrServiceNowServiceCase(TransformBase):
         df = self.replace_value(df, self.pipeline_config.get('replace_values'))
 
         # Step 3: Remove duplicate records
-        df = self.dropping_duplicates(df, ["number", "sys_updated_on"])
+        df = self.dropping_duplicates(df)
 
         # Step 4: Removes trailing whitespaces
         df = self.remove_trailing_whitespace(df)
@@ -69,7 +69,6 @@ class PreparationNcrServiceNowServiceCase(TransformBase):
         df = self.change_column_types_data_frame(df, self.pipeline_config.get('change_column_data_type'))  
 
         return df
-
 
 
     def save_data(self, df):
@@ -97,9 +96,9 @@ class PreparationNcrServiceNowServiceCase(TransformBase):
             
         else:
 
-            # Merge data to the Delta table
-            merge_columns = ['number','sys_updated_on']
-            self.merge_to_delta_table(df,save_output_path,merge_columns)
+            # Append the Delta table
+            df.write.format("delta").mode("append") \
+            .save(save_output_path)
             
             # Vacuum the table
             self.vacuum_table(save_output_path,48)

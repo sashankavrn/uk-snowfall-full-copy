@@ -15,11 +15,6 @@ MERAKI_BASE_URL = "https://api.meraki.com/api/v1"
 PER_PAGE = 1000
 BUCKET_NAME = os.environ.get('TARGET_BUCKET')
 
-# REQUIREMENTS ===============================================================================================
-# Memory: 4000MB
-# Ephemeral storage: 2048MB
-# Timeout: 15min0sec
-#=============================================================================================================
 # CONFIGURATION ==============================================================================================
 maxRuns = 50            # SET MAXIMUM NUMBER OF TIMES THIS FUNCTION CAN INVOKE ITSELF
 networkPerRun = 500     # SET NUMBER OF NETWORKS TO LOOP THROUGH ON EVERY INVOKATION TO RETRIVE CLIENTS
@@ -28,8 +23,8 @@ minimumRemainingTime = 180000   # SET MINIMUM REMAINING TIME (IN MS) TO RESTART 
 # S3 LOCATIONS ===============================================================================================
 TEMP_FILE_LOCATION_BUCKET_NAME = 'uk-snowfall-restaurant-repo-dev'  # S3 BUCKET FOR TEMPORARY DATA
 TEMP_FILE_LOCATION_OBJECT_KEY = 'meraki-client-temp-data/'          # KEY FOR TEMPORARY DATA
-OUTPUT_BUCKET = 'uk-snowfall-restaurant-repo-dev'   # << NEED TO ADJUST LOCATION TO CORRECT S3 BUCKET FOR COMPLETED FILE!!! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-OUTPUT_KEY = 'meraki-client-temp-data/'             # << NEED TO ADJUST KEY FOR COMPLETED FILE!!!                           <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+OUTPUT_BUCKET = os.environ.get('TARGET_BUCKET')   # << NEED TO ADJUST LOCATION TO CORRECT S3 BUCKET FOR COMPLETED FILE!!! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+OUTPUT_KEY = '"meraki/client_info/'             # << NEED TO ADJUST KEY FOR COMPLETED FILE!!!                           <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 #=============================================================================================================
 #=============================================================================================================
 
@@ -112,8 +107,8 @@ def merakiAPInetworkList(authToken, nextToken=None, retries=3):
             return response.json(), nextToken
 
         except requests.exceptions.RequestException as e:
-            if response.status_code == 429:
-                retry_after = int(response.headers.get('Retry-After', 1))
+            if e.response is not None and e.response.status_code == 429:
+                retry_after = int(e.response.headers.get('Retry-After', 1))
                 if retry_after < 10:
                         retry_after = 10 * attempt
                 print(f"[WARNING] Rate limited (Attempt {attempt}). Retry in {retry_after} seconds...")
@@ -156,8 +151,8 @@ def merakiAPIclientList(authToken, nextToken=None, networkID=None, retries=5):
             return response.json(), nextToken
 
         except requests.exceptions.RequestException as e:
-            if response.status_code == 429:
-                retry_after = int(response.headers.get('Retry-After', 1))
+            if e.response is not None and e.response.status_code == 429:
+                retry_after = int(e.response.headers.get('Retry-After', 1))
                 if retry_after < 20:
                         retry_after = 20 * attempt
                 print(f"[WARNING] Rate limited (Attempt {attempt}). Retry in {retry_after} seconds...")
