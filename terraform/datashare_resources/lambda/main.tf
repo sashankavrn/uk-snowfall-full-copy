@@ -38,8 +38,8 @@ resource "aws_lambda_function" "datashare_landing_trigger" {
 # EventBridge Schedule Rule (every 15 minutes)
 resource "aws_cloudwatch_event_rule" "datashare_landing_trigger_schedule" {
   name                = "uk-snowfall-datashare-landing-trigger-schedule-${var.environment}"
-  description         = "Runs datashare landing trigger Lambda every 15 mins"
-  schedule_expression = "rate(15 minutes)"
+  description         = "Runs datashare landing trigger Lambda at 30 minutes past every hour"
+  schedule_expression = "cron(30 * * * ? *)"
 }
 
 # Target Lambda for Event Rule
