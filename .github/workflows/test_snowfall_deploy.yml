@@ -33,10 +33,10 @@ jobs:
         id: setenv
         run: |
           BRANCH="${{ github.ref_name }}"
-          if [[ "$BRANCH" == "dev" ]]; then
+          if [[ "$BRANCH" == "dev-test" ]]; then
             echo "ENV=dev" >> $GITHUB_ENV
             echo "TFVARS=dev.tfvars" >> $GITHUB_ENV
-          elif [[ "$BRANCH" == main ]]; then
+          elif [[ "$BRANCH" == "main-test" ]]; then
             echo "ENV=prod" >> $GITHUB_ENV
             echo "TFVARS=prod.tfvars" >> $GITHUB_ENV
           else
