@@ -42,7 +42,7 @@ module "s3_module_main" {
   lambda_permission       = module.lambda_module.lambda_s3_permission
 }
 
-# Triggering the Lambda Module
+# Triggering the Lambda module
 module "lambda_module" {
   source             = "./lambda"
   environment        = var.environment
