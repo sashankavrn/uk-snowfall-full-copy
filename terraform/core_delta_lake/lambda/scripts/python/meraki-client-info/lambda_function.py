@@ -24,7 +24,7 @@ minimumRemainingTime = 180000   # SET MINIMUM REMAINING TIME (IN MS) TO RESTART 
 TEMP_FILE_LOCATION_BUCKET_NAME = 'uk-snowfall-restaurant-repo-dev'  # S3 BUCKET FOR TEMPORARY DATA
 TEMP_FILE_LOCATION_OBJECT_KEY = 'meraki-client-temp-data/'          # KEY FOR TEMPORARY DATA
 OUTPUT_BUCKET = os.environ.get('TARGET_BUCKET')   # << NEED TO ADJUST LOCATION TO CORRECT S3 BUCKET FOR COMPLETED FILE!!! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-OUTPUT_KEY = '"meraki/client_info/'             # << NEED TO ADJUST KEY FOR COMPLETED FILE!!!                           <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+OUTPUT_KEY = 'meraki/client_info/'             # << NEED TO ADJUST KEY FOR COMPLETED FILE!!!                           <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 #=============================================================================================================
 #=============================================================================================================
 

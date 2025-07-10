@@ -465,4 +465,29 @@ resource "aws_s3_bucket_lifecycle_configuration" "service_agent_lifecycle_rules"
   }
 }
 
+# ####### Creation of Snowfall Service Temp Bucket ################
 
+resource "aws_s3_bucket" "temp_bucket" {
+  bucket = "eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}"
+  tags   = var.resource_tags
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "temp_lifecycle_rules" {
+  bucket = aws_s3_bucket.temp_bucket.id
+
+  rule {
+    id     = "Removing objects with delete markers after 30 days"
+    status = "Enabled"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+  }
+}
+
+resource "aws_s3_object" "temp_folder" {
+  bucket  = aws_s3_bucket.temp_bucket.id
+  key     = "merika/client_info/"
+  content = ""
+}
