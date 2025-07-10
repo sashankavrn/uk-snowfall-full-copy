@@ -488,6 +488,6 @@ resource "aws_s3_bucket_lifecycle_configuration" "temp_lifecycle_rules" {
 
 resource "aws_s3_object" "temp_folder" {
   bucket  = aws_s3_bucket.temp_bucket.id
-  key     = "merika/client_info/"
+  key     = "meraki/client_info/"
   content = ""
 }
