@@ -222,6 +222,32 @@ locals {
       schedule        = null
       reporting_date  = null
     },
+    "meraki_device_info" = {
+      name            = "uk-snowfall-meraki-device-info"
+      description     = "Workflow for the Meraki device info data"
+      dataset         = "meraki"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-meraki-device-info-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
+    },
+    "meraki_client_info" = {
+      name            = "uk-snowfall-meraki-client-info"
+      description     = "Workflow for the Meraki client info data"
+      dataset         = "meraki"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-meraki-client-info-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
+    },
     "newrelic_rmp_device_info" = {
       name            = "uk-snowfall-newrelic-rmp-device_info"
       description     = "Workflow for the newrelic rmp device data"
