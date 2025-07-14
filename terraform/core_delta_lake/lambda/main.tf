@@ -633,8 +633,8 @@ resource "aws_lambda_permission" "allow_landing_meraki_client_info_bucket" {
 # CloudWatch Event Rule to trigger Lambda
 resource "aws_cloudwatch_event_rule" "meraki_client_info_schedule" {
   name                = "uk-snowfall-meraki-client-info-schedule"
-  description         = "Triggers the Meraki client info Lambda function daily at 1 AM UTC"
-  schedule_expression = "cron(0 1 * * ? *)"
+  description         = "Triggers the Meraki client info Lambda function daily at 1 AM UTC-STOPPED FOR NOW "
+  schedule_expression = "cron(0 0 31 2 ? *)"
 }
 
 # Add Lambda as the Target of the Event Rule
