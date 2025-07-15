@@ -518,3 +518,137 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_service_agent_server_
   depends_on = [aws_lambda_function.service_agent_server_extract_function, aws_cloudwatch_event_rule.service_agent_server_extract_schedule]
 
 }
+
+############################################ SERVICE AGENT SERVER FILES #############################################
+
+## Archive the service-agent-server-files Python script
+data "archive_file" "service_agent_server_files" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/service-agent-server-files/"
+  output_path = "${path.module}/scripts/zips/service-agent-server-files.zip"
+}
+
+## Lambda function - service-agent-server-files
+resource "aws_lambda_function" "service_agent_server_files" {
+  filename         = data.archive_file.service_agent_server_files.output_path
+  function_name    = "uk-snowfall-service-agent-server-files-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 300
+  description      = "Triggered by S3 to copy files from uploads/ to service-agent-server-files/"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-server-files.zip")
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      SOURCE_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+## Adding permissions for lambda
+resource "aws_lambda_permission" "allow_service_agent_s3_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.service_agent_server_files.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.service_agent_bucket_arn
+  depends_on    = [
+    var.service_agent_bucket_arn,
+    aws_lambda_function.service_agent_server_files
+  ]
+}
+
+
+data "aws_s3_bucket" "service_agent_bucket" {
+  bucket = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+  }
+
+resource "aws_s3_bucket_notification" "service_agent_server_files_trigger" {
+  bucket = data.aws_s3_bucket.service_agent_bucket.id
+
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.service_agent_server_files.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "uploads/"
+  }
+
+  depends_on = [
+    aws_lambda_permission.allow_service_agent_s3_bucket
+  ]
+}
+
+
+##########################################################################MERAKI-CLIENT-INFO-FETCH###################################################
+
+# Archive the meraki_client_info Python script
+data "archive_file" "meraki_client_info" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/meraki-client-info/"
+  output_path = "${path.module}/scripts/zips/meraki-client-info.zip"
+}
+
+# Lambda Function for fetching Meraki client info
+resource "aws_lambda_function" "uk_snowfall_meraki_client_info_function" {
+  filename         = "${path.module}/scripts/zips/meraki-client-info.zip"
+  function_name    = "uk-snowfall-meraki-client-info-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 10240
+  ephemeral_storage {
+    size = 10240
+  }
+  timeout          = 900  # 15 minutes
+  description      = "Fetch client info from Meraki API and update to landing bucket"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/meraki-client-info.zip")
+  tags             = var.resource_tags
+  layers = [
+    "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1",
+    "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:15"
+  ]
+  environment {
+    variables = {
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+# Lambda permission for S3
+resource "aws_lambda_permission" "allow_landing_meraki_client_info_bucket" {
+  statement_id  = "AllowExecutionFromS3BucketClientInfo"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_meraki_client_info_function.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.landing_bucket_arn
+  depends_on    = [var.landing_bucket_arn, aws_lambda_function.uk_snowfall_meraki_client_info_function]
+}
+
+# CloudWatch Event Rule to trigger Lambda
+resource "aws_cloudwatch_event_rule" "meraki_client_info_schedule" {
+  name                = "uk-snowfall-meraki-client-info-schedule"
+  description         = "Triggers the Meraki client info Lambda function daily at 1 AM UTC-STOPPED FOR NOW "
+  schedule_expression = "cron(0 0 31 2 ? *)"
+}
+
+# Add Lambda as the Target of the Event Rule
+resource "aws_cloudwatch_event_target" "invoke_meraki_client_info_lambda" {
+  rule      = aws_cloudwatch_event_rule.meraki_client_info_schedule.name
+  target_id = "meraki-client-info-target"
+  arn       = aws_lambda_function.uk_snowfall_meraki_client_info_function.arn
+}
+
+# Grant EventBridge Permission to Invoke the Lambda
+resource "aws_lambda_permission" "allow_eventbridge_invoke_meraki_client_info" {
+  statement_id  = "AllowExecutionFromEventBridgeClientInfo"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_meraki_client_info_function.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.meraki_client_info_schedule.arn
+}

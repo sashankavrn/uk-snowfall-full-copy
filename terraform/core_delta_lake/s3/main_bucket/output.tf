@@ -63,3 +63,10 @@ output "service_agent_bucket_arn" {
 }
 
 
+
+output "rendered_policy" {
+   value = data.template_file.bucket_policy.rendered
+}
+
+
+

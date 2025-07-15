@@ -61,6 +61,8 @@ resource "aws_s3_object" "landing_folder" {
       ods                 = "ods/"
       restaurant_config   = "restaurant_config/"
       cisco_meraki        = "meraki/"
+      cisco_meraki_client_info       = "meraki/client_info/"
+      cisco_meraki_device_info       = "meraki/device_info/"
       newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
       newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
       newrelic_digital_gma_foe_response = "newrelic/newrelic_digital_gma_foe_response/"
@@ -88,6 +90,7 @@ resource "aws_s3_object" "landing_folder" {
       genesys_user_status_history = "genesys/user_status_interval_history/"
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
+      ncr_service_now_case_worknotes = "ncr_service_now/case_worknotes/"
     }
 }
 
@@ -141,6 +144,8 @@ resource "aws_s3_object" "raw_folder" {
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
       restaurant_config         = "restaurant_config/"
       cisco_meraki              = "meraki/"
+      cisco_meraki_client_info       = "meraki/client_info/"
+      cisco_meraki_device_info       = "meraki/device_info/"
       newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
       newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
       newrelic_digital_gma_foe_response = "newrelic/newrelic_digital_gma_foe_response/"
@@ -168,6 +173,8 @@ resource "aws_s3_object" "raw_folder" {
       genesys_user_status_history = "genesys/user_status_interval_history/"
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
+      service_agent_server_files = "service_agent_server_files/uploads/"
+       ncr_service_now_case_worknotes = "ncr_service_now/case_worknotes/"
     }
 }
 
@@ -225,6 +232,8 @@ resource "aws_s3_object" "preparation_folder" {
       location_hierarchy        = "ods/location_hierarchy/"
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
       cisco_meraki              = "meraki/"
+      cisco_meraki_client_info       = "meraki/client_info/"
+      cisco_meraki_device_info       = "meraki/device_info/"
       newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
       newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
       newrelic_digital_gma_foe_response = "newrelic/newrelic_digital_gma_foe_response/"
@@ -252,6 +261,8 @@ resource "aws_s3_object" "preparation_folder" {
       genesys_user_status_history = "genesys/user_status_interval_history/"
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
+      service_agent_server_files = "service_agent_server_files/uploads/"
+       ncr_service_now_case_worknotes = "ncr_service_now/case_worknotes/"
     }
 }
 
@@ -322,6 +333,8 @@ resource "aws_s3_object" "processed_folder" {
       location_hierarchy        = "ods/location_hierarchy/"
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
       cisco_meraki              = "meraki/"
+      cisco_meraki_client_info       = "meraki/client_info/"
+      cisco_meraki_device_info       = "meraki/device_info/"
       newrelic_rmp_device = "newrelic/newrelic_rmp_device_info/"
       newrelic_rmp_device_metrics      = "newrelic/newrelic_rmp_device_metrics/"
       newrelic_digital_gma_foe_response = "newrelic/newrelic_digital_gma_foe_response/"
@@ -349,6 +362,8 @@ resource "aws_s3_object" "processed_folder" {
       genesys_user_status_history = "genesys/user_status_interval_history/"
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
+      service_agent_server_files = "service_agent_server_files/uploads/"
+       ncr_service_now_case_worknotes = "ncr_service_now/case_worknotes/"
     }
 }
 
@@ -450,4 +465,29 @@ resource "aws_s3_bucket_lifecycle_configuration" "service_agent_lifecycle_rules"
   }
 }
 
+# ####### Creation of Snowfall Service Temp Bucket ################
 
+resource "aws_s3_bucket" "temp_bucket" {
+  bucket = "eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}"
+  tags   = var.resource_tags
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "temp_lifecycle_rules" {
+  bucket = aws_s3_bucket.temp_bucket.id
+
+  rule {
+    id     = "Removing objects with delete markers after 30 days"
+    status = "Enabled"
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+  }
+}
+
+resource "aws_s3_object" "temp_folder" {
+  bucket  = aws_s3_bucket.temp_bucket.id
+  key     = "meraki/client_info/"
+  content = ""
+}

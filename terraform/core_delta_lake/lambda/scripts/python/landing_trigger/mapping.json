@@ -61,6 +61,14 @@
             "destinationPath": "meraki"
         },
         {
+            "fileName": "meraki/client_info",
+            "destinationPath": "meraki/client_info"
+        },
+        {
+            "fileName": "meraki/device_info",
+            "destinationPath": "meraki/device_info"
+        },
+        {
             "fileName": "newrelic/newrelic_rmp_device_info",
             "destinationPath": "newrelic/newrelic_rmp_device_info"
         },
@@ -77,8 +85,16 @@
             "destinationPath": "newrelic/newrelic_digital_3po_foe_response"
         },
         {
+            "fileName": "ncr_service_now/case_worknotes",
+            "destinationPath": "ncr_service_now/case_worknotes"
+        },    
+        {
             "fileName": "ncr_service_now/service_case",
             "destinationPath": "ncr_service_now/service_case"
+        },
+        {
+            "fileName": "ncr_service_now/incident_task",
+            "destinationPath": "ncr_service_now/incident_task"
         },
         {
             "fileName": "ncr_service_now/incident",
@@ -93,28 +109,68 @@
             "destinationPath": "ncr_service_now/change_request"
         },
         {
-            "fileName": "ncr_service_now/incident_task/",
-            "destinationPath": "ncr_service_now/incident_task/"
+            "fileName": "ncr_service_now/knowledge_base",
+            "destinationPath": "ncr_service_now/knowledge_base"
         },
         {
-            "fileName": "ncr_service_now/knowledge_base/",
-            "destinationPath": "ncr_service_now/knowledge_base/"
+            "fileName": "ncr_service_now/knowledge_use",
+            "destinationPath": "ncr_service_now/knowledge_use"
         },
         {
-            "fileName": "ncr_service_now/knowledge/",
-            "destinationPath": "ncr_service_now/knowledge/"
+            "fileName": "ncr_service_now/knowledge_feedback",
+            "destinationPath": "ncr_service_now/knowledge_feedback"
         },
         {
-            "fileName": "ncr_service_now/knowledge_feedback/",
-            "destinationPath": "ncr_service_now/knowledge_feedback/"
+            "fileName": "ncr_service_now/knowledge",
+            "destinationPath": "ncr_service_now/knowledge"
         },
         {
-            "fileName": "ncr_service_now/knowledge_use/",
-            "destinationPath": "ncr_service_now/knowledge_use/"
+            "fileName": "genesys/contact_center_settings",
+            "destinationPath": "genesys/contact_center_settings"
         },
         {
-            "fileName": "genesys/",
-            "destinationPath": "genesys/"
+            "fileName": "genesys/conversation_attributes",
+            "destinationPath": "genesys/conversation_attributes"
+        },
+        {
+            "fileName": "genesys/conversations_detail",
+            "destinationPath": "genesys/conversations_detail"
+        },
+        {
+            "fileName": "genesys/conversations",
+            "destinationPath": "genesys/conversations"
+        },
+        {
+            "fileName": "genesys/primary_presence",
+            "destinationPath": "genesys/primary_presence"
+        },
+        {
+            "fileName": "genesys/queue_abandons",
+            "destinationPath": "genesys/queue_abandons"
+        },
+        {
+            "fileName": "genesys/queue_configuration",
+            "destinationPath": "genesys/queue_configuration"
+        },
+        {
+            "fileName": "genesys/routing_status",
+            "destinationPath": "genesys/routing_status"
+        },
+        {
+            "fileName": "genesys/queue_interval_history",
+            "destinationPath": "genesys/queue_interval_history"
+        },
+        {
+            "fileName": "genesys/session_summary",
+            "destinationPath": "genesys/session_summary"
+        },
+        {
+            "fileName": "genesys/user_details",
+            "destinationPath": "genesys/user_details"
+        },
+        {
+            "fileName": "genesys/user_status_interval_history",
+            "destinationPath": "genesys/user_status_interval_history"
         },
         {
             "fileName": "gcc/",
@@ -123,6 +179,6 @@
         {
             "fileName": "happysignals/",
             "destinationPath": "happysignals/"
-        }      
+        }
     ]
 }

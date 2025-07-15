@@ -26,7 +26,7 @@ class PreparationNcrServiceNowIncident(TransformBase):
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Extract restaurant number from u_site_display_value
+        1. Extract restaurant number from account_name
         2. Fill null values in specified column
         3. Remove duplicate records.
         4. Remove trailing whitespaces
@@ -42,14 +42,14 @@ class PreparationNcrServiceNowIncident(TransformBase):
         - DataFrame: Transformed DataFrame.
 
         """
-        # Stpe 1: Extract restaurant number from u_site_display_value
-        #df = self.parse_column_values(df, self.pipeline_config.get('new_column_params'))
+        # Stpe 1: Extract restaurant number from account_name
+        df = self.parse_column_values(df, self.pipeline_config.get('new_column_params'))
 
         # Stpe 2: Fill null values in specified column
-        #df = self.replace_value(df, self.pipeline_config.get('replace_values'))
+        df = self.replace_value(df, self.pipeline_config.get('replace_values'))
 
         # Step 3: Remove duplicate records
-        df = self.dropping_duplicates(df, ["number", "sys_updated_on"])
+        df = self.dropping_duplicates(df)
 
         # Step 4: Removes trailing whitespaces
         df = self.remove_trailing_whitespace(df)
@@ -65,6 +65,8 @@ class PreparationNcrServiceNowIncident(TransformBase):
 
         # Step 8: Adding Partiton Columns
         df = self.create_partition_date_columns(df,'sys_created_on','sys_created')
+
+        df = self.change_column_types_data_frame(df, self.pipeline_config.get('change_column_data_type'))  
 
         return df
 
@@ -95,10 +97,9 @@ class PreparationNcrServiceNowIncident(TransformBase):
             
         else:
 
-            # Merge data to the Delta table
-            merge_columns = ['number','sys_updated_on']
-            self.merge_to_delta_table(df, save_output_path, merge_columns)
-
+            # Append the Delta table
+            df.write.format("delta").mode("append") \
+            .save(save_output_path)
             
             # Vacuum the table
             self.vacuum_table(save_output_path,48)

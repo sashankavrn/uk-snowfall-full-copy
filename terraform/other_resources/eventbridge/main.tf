@@ -425,6 +425,66 @@ resource "aws_cloudwatch_event_target" "meraki_rule" {
 
 }
 
+
+###################################### Meraki Device Info ######################################
+
+resource "aws_cloudwatch_event_rule" "meraki_device_info_event_rule" {
+  name        = "uk-snowfall-meraki-device-info-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name} for device_info"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "meraki/device_info/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "meraki_device_info_rule" {
+  rule      = aws_cloudwatch_event_rule.meraki_device_info_event_rule.name
+  arn       = local.workflow_trigger_arns["meraki_device_info"]
+  role_arn  = var.role_assumed_arn
+}
+
+###################################### Meraki Client Info ######################################
+
+resource "aws_cloudwatch_event_rule" "meraki_client_info_event_rule" {
+  name        = "uk-snowfall-meraki-client-info-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name} for client_info"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "meraki/client_info/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "meraki_client_info_rule" {
+  rule      = aws_cloudwatch_event_rule.meraki_client_info_event_rule.name
+  arn       = local.workflow_trigger_arns["meraki_client_info"]
+  role_arn  = var.role_assumed_arn
+}
+
+
 ###################################### New Relic RMP Device #################################################
 
 resource "aws_cloudwatch_event_rule" "newrelic_rmp_device_event_rule" {
@@ -663,5 +723,31 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_knowledge_base_event_tar
   role_arn = var.role_assumed_arn
 }
 
+###################################### service_agent_server_files ##############################################
 
+resource "aws_cloudwatch_event_rule" "service_agent_server_files_event_rule" {
+  name        = "uk-snowfall-service-agent-server-files-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [{
+        "prefix": "service_agent_server_files/uploads/"
+      }]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+resource "aws_cloudwatch_event_target" "service_agent_server_files_rule_event_target" {
+  rule     = aws_cloudwatch_event_rule.service_agent_server_files_event_rule.name
+  arn      = local.workflow_trigger_arns["service_agent_server_files"]
+  role_arn = var.role_assumed_arn
+}
 

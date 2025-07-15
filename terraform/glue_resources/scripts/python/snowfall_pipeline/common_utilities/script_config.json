@@ -99,6 +99,10 @@
     },
     "location_hierarchy":{
         "primary_key":"STORE_NUMBER",
+        "process_date": [
+            "open_date",
+            "close_date"
+        ],
         "redact_pii_columns":[
             "OO_EMAIL",
             "FS_EMAIL"
@@ -391,6 +395,8 @@
         ],
         "redact_pii_columns": [
             "work_notes",
+            "description",
+            "close_notes",
             "comments",
             "comments_and_work_notes"
         ],
@@ -398,7 +404,7 @@
         "new_column_params": [
             {
                 "column_name": "account_name",
-                "regex": "- (\\d{4}) -",
+                "regex": "^(\\d{4})",
                 "new_column_name": "restaurant_number",
                 "data_type": "integer"
             }
@@ -409,7 +415,11 @@
                 "old_value": "None",
                 "new_value": -1
             }
-        ]  
+        ],
+        "change_column_data_type": {
+            "sys_created_on": "timestamp",
+            "cdc_timestamp": "timestamp"
+        }  
     },
 
     "ncr_service_now_incident": {
@@ -436,7 +446,7 @@
         "new_column_params": [
             {
                 "column_name": "u_site_display_value",
-                "regex": "- (\\d{4}) -",
+                "regex": "^(\\d{4})",
                 "new_column_name": "restaurant_number",
                 "data_type": "integer"
             }
@@ -448,7 +458,11 @@
                 "new_value": -1
             }
         ],
-        "primary_key": "number"
+        "primary_key": "number",
+        "change_column_data_type": {
+            "sys_created_on": "timestamp",
+            "cdc_timestamp": "timestamp"
+        }  
     },
     "ncr_service_now_knowledge_base": {
         "add_seconds": [
@@ -492,12 +506,19 @@
         "process_timestamp": [
             "sys_updated_timestamp"
         ],
+        "new_column_params": [
+            {
+                "column_name": "StoreDB_StoreProfile_StoreDetails_StoreId",
+                "regex": "(\\d{4})$",
+                "new_column_name": "restaurant_number",
+                "data_type": "integer"
+            }
+        ],
         "replace_values": [
             {
                 "column_name": "restaurant_number",
                 "old_value": "None",
                 "new_value": -1
-
             }
         ], 
         "change_column_data_type": {
@@ -505,7 +526,8 @@
             "cdc_timestamp": "string",
             "configurationUpdatedAt": "string"
         },         
-        "primary_key":"restaurant_number"
+        "primary_key": "restaurant_number"
 
     }
 }
+

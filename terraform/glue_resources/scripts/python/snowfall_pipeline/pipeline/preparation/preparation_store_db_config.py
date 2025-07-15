@@ -2,38 +2,35 @@ from snowfall_pipeline.common_utilities.transform_base import TransformBase
 from snowfall_pipeline.common_utilities.data_quality_rules import dq_rules
 from delta.tables import DeltaTable
 
-
-
-class PreparationNcrServiceNowServiceCase(TransformBase):
+class PreparationStoreDbConfig(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
-        self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
+        self.spark.conf.set("spark.sql.shuffle.partitions", "1") 
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
+        self.spark.conf.set('spark.sql.caseSensitive', True)
         self.pipeline_config = self.full_configs[self.datasets]
         self.dq_rule = dq_rules.get(self.datasets)
-        self.file_path = "ncr_service_now/service_case"
+        self.file_path = "store_db_config"
         self.list_of_files = self.aws_instance.get_files_in_s3_path(f"{self.raw_bucket_name}/{self.file_path}/")
 
-
     def get_data(self):
-        df = self.read_data_from_s3(self.raw_bucket_name,self.file_path,'parquet')
+        df = self.read_data_from_s3(self.raw_bucket_name,self.file_path,'xml', row_tag = 'Document')
         return df
-
 
     def transform_data(self, df): 
         """
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Extract restaurant number from account_name
-        2. Fill null values in specified column
-        3. Remove duplicate records.
-        4. Remove trailing whitespaces
-        5. Perform data quality check.
-        6. Mask PII Data
-        7. Add CDC columns.
-        8. Add Partition Columns
+        1. Flatten nested DataFrame structure
+        2. Drop unnecessary nested field ("_VALUE")
+        3. Extract restaurant number from 'StoreDB_StoreProfile_StoreDetails_StoreId'
+        4. Fill null values in specified columns
+        5. Remove duplicate records
+        6. Remove trailing whitespaces
+        7. Perform data quality checks
+        8. Add CDC (Change Data Capture) columns
 
         Parameters:
         - df: Input DataFrame.
@@ -42,31 +39,30 @@ class PreparationNcrServiceNowServiceCase(TransformBase):
         - DataFrame: Transformed DataFrame.
 
         """
-        # Stpe 1: Extract restaurant number from account_name
+
+        # Step 1: Flatten nested DataFrame structure
+        df = self.flatten_nest_df(df)
+
+        # Step 2: Drop unnecessary nested field "_VALUE"
+        df = self.drop_nested_field(df, "_VALUE")
+
+        # Step 3: Extract restaurant number from StoreDB_StoreProfile_StoreDetails_StoreId
         df = self.parse_column_values(df, self.pipeline_config.get('new_column_params'))
 
-        # Stpe 2: Fill null values in specified column
+        # Step 4: Fill null values in specified column
         df = self.replace_value(df, self.pipeline_config.get('replace_values'))
 
-        # Step 3: Remove duplicate records
+        # Step 5: Remove duplicate records
         df = self.dropping_duplicates(df)
 
-        # Step 4: Removes trailing whitespaces
+        # Step 6: Remove trailing whitespaces
         df = self.remove_trailing_whitespace(df)
 
-        # Step 5: Data quality check
-        df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'parquet')
+        # Step 7: Perform data quality check
+        df = self.data_quality_check(df, self.dq_rule, self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'xml')  
 
-        # Step 6: Mask PII Information
-        df = self.redact_pii_columns(df,self.pipeline_config.get('redact_pii_columns'))
-
-        # Step 7: Add CDC columns
+        # Step 8: Add CDC (Change Data Capture) columns
         df = self.adding_cdc_columns(df)
-
-        # Step 8: Adding Partiton Columns
-        df = self.create_partition_date_columns(df,'sys_created_on','sys_created')
-
-        df = self.change_column_types_data_frame(df, self.pipeline_config.get('change_column_data_type'))  
 
         return df
 
@@ -91,7 +87,6 @@ class PreparationNcrServiceNowServiceCase(TransformBase):
 
             # Create the Delta table
             df.write.format("delta").mode("overwrite") \
-            .partitionBy('sys_created_year','sys_created_month') \
             .save(save_output_path)
             
         else:
@@ -103,9 +98,9 @@ class PreparationNcrServiceNowServiceCase(TransformBase):
             # Vacuum the table
             self.vacuum_table(save_output_path,48)
 
-        if not self.aws_instance.athena_table_exists('preparation', 'ncr_service_now_service_case'):
+        if not self.aws_instance.athena_table_exists('preparation', 'store_db_config'):
             # Execute Athena query to create the table
-            self.aws_instance.create_athena_delta_table('preparation', 'ncr_service_now_service_case', save_output_path, self.athena_output_path)
+            self.aws_instance.create_athena_delta_table('preparation', 'store_db_config', save_output_path, self.athena_output_path)
         
         # Move files to the Archive folder
         for file_name in self.list_of_files:

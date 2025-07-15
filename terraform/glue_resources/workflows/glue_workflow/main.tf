@@ -222,6 +222,32 @@ locals {
       schedule        = null
       reporting_date  = null
     },
+    "meraki_device_info" = {
+      name            = "uk-snowfall-meraki-device-info"
+      description     = "Workflow for the Meraki device info data"
+      dataset         = "meraki"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-meraki-device-info-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
+    },
+    "meraki_client_info" = {
+      name            = "uk-snowfall-meraki-client-info"
+      description     = "Workflow for the Meraki client info data"
+      dataset         = "meraki"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-meraki-client-info-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
+    },
     "newrelic_rmp_device_info" = {
       name            = "uk-snowfall-newrelic-rmp-device_info"
       description     = "Workflow for the newrelic rmp device data"
@@ -352,6 +378,175 @@ locals {
       trigger_type    = "SCHEDULED"
       schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
+    },
+    "service_agent_server_files" = {
+      name            = "uk-snowfall-service-agent-server-files"
+      description     = "Workflow for the newrelic rmp device data"
+      dataset         = "service_agent_server_files"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-service-agent-server-files-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
+    },
+    "genesys_contact_settings" = {
+      "name" = "uk-snowfall-genesys-contact-settings"
+      "description" = "Workflow for Genesys Contact Center Settings data"
+      "dataset" = "genesys_contact_settings"
+      "group" = "preparation"
+      "trigger_name" = "uk-snowfall-genesys-contact-settings-trigger"
+      "max_concurrent" = 1
+      "batch_size" = 100
+      "batch_window" = 1
+      "trigger_type" = "SCHEDULED"
+      "schedule" = "cron(0/15 * * * ? *)"
+      "reporting_date" = ""
+    },
+    "genesys_conv_attributes" = {
+      "name" = "uk-snowfall-genesys-conv-attributes"
+      "description" = "Workflow for Genesys Conversation Attributes data"
+      "dataset" = "genesys_conv_attributes"
+      "group" = "preparation"
+      "trigger_name" = "uk-snowfall-genesys-conv-attributes-trigger"
+      "max_concurrent" = 1
+      "batch_size" = 100
+      "batch_window" = 1
+      "trigger_type" = "SCHEDULED"
+      "schedule" = "cron(0/15 * * * ? *)"
+      "reporting_date" = ""
+    },
+    "genesys_conversations_det" = {
+      "name" = "uk-snowfall-genesys-conversations-detail"
+      "description" = "Workflow for Genesys Conversations Detail data"
+      "dataset" = "genesys_conversations_det"
+      "group" = "preparation"
+      "trigger_name" = "uk-snowfall-genesys-conversations-detail-trigger"
+      "max_concurrent" = 1
+      "batch_size" = 100
+      "batch_window" = 1
+      "trigger_type" = "SCHEDULED"
+      "schedule" = "cron(0/15 * * * ? *)"
+      "reporting_date" = ""
+    },
+    "genesys_conversations" = {
+      "name" = "uk-snowfall-genesys-conversations"
+      "description" = "Workflow for Genesys Conversations data"
+      "dataset" = "genesys_conversations"
+      "group" = "preparation"
+      "trigger_name" = "uk-snowfall-genesys-conversations-trigger"
+      "max_concurrent" = 1
+      "batch_size" = 100
+      "batch_window" = 1
+      "trigger_type" = "SCHEDULED"
+      "schedule" = "cron(0/15 * * * ? *)"
+      "reporting_date" = ""
+    },
+    "genesys_presence" = {
+      "name" = "uk-snowfall-genesys-presence"
+      "description" = "Workflow for Genesys Primary Presence data"
+      "dataset" = "genesys_presence"
+      "group" = "preparation"
+      "trigger_name" = "uk-snowfall-genesys-presence-trigger"
+      "max_concurrent" = 1
+      "batch_size" = 100
+      "batch_window" = 1
+      "trigger_type" = "SCHEDULED"
+      "schedule" = "cron(0/15 * * * ? *)"
+      "reporting_date" = ""
+    },
+    "genesys_queue_abandons" = {
+      "name" = "uk-snowfall-genesys-queue-abandons"
+      "description" = "Workflow for Genesys Queue Abandons data"
+      "dataset" = "genesys_queue_abandons"
+      "group" = "preparation"
+      "trigger_name" = "uk-snowfall-genesys-queue-abandons-trigger"
+      "max_concurrent" = 1
+      "batch_size" = 100
+      "batch_window" = 1
+      "trigger_type" = "SCHEDULED"
+      "schedule" = "cron(0/15 * * * ? *)"
+      "reporting_date" = ""
+    },
+    "genesys_queue_config" = {
+      "name" = "uk-snowfall-genesys-queue-config"
+      "description" = "Workflow for Genesys Queue Configuration data"
+      "dataset" = "genesys_queue_config"
+      "group" = "preparation"
+      "trigger_name" = "uk-snowfall-genesys-queue-config-trigger"
+      "max_concurrent" = 1
+      "batch_size" = 100
+      "batch_window" = 1
+      "trigger_type" = "SCHEDULED"
+      "schedule" = "cron(0/15 * * * ? *)"
+      "reporting_date" = ""
+    },
+    "genesys_routing_status" = {
+      "name" = "uk-snowfall-genesys-routing-status"
+      "description" = "Workflow for Genesys Routing Status data"
+      "dataset" = "genesys_routing_status"
+      "group" = "preparation"
+      "trigger_name" = "uk-snowfall-genesys-routing-status-trigger"
+      "max_concurrent" = 1
+      "batch_size" = 100
+      "batch_window" = 1
+      "trigger_type" = "SCHEDULED"
+      "schedule" = "cron(0/15 * * * ? *)"
+      "reporting_date" = ""
+    },
+    "genesys_queue_history" = {
+      "name" = "uk-snowfall-genesys-queue-history"
+      "description" = "Workflow for Genesys Queue Interval History data"
+      "dataset" = "genesys_queue_history"
+      "group" = "preparation"
+      "trigger_name" = "uk-snowfall-genesys-queue-history-trigger"
+      "max_concurrent" = 1
+      "batch_size" = 100
+      "batch_window" = 1
+      "trigger_type" = "SCHEDULED"
+      "schedule" = "cron(0/15 * * * ? *)"
+      "reporting_date" = ""
+    },
+    "genesys_session_summary" = {
+      "name" = "uk-snowfall-genesys-session-summary"
+      "description" = "Workflow for Genesys Session Summary data"
+      "dataset" = "genesys_session_summary"
+      "group" = "preparation"
+      "trigger_name" = "uk-snowfall-genesys-session-summary-trigger"
+      "max_concurrent" = 1
+      "batch_size" = 100
+      "batch_window" = 1
+      "trigger_type" = "SCHEDULED"
+      "schedule" = "cron(0/15 * * * ? *)"
+      "reporting_date" = ""
+    },
+    "genesys_user_details" = {
+      "name" = "uk-snowfall-genesys-user-details"
+      "description" = "Workflow for Genesys User Details data"
+      "dataset" = "genesys_user_details"
+      "group" = "preparation"
+      "trigger_name" = "uk-snowfall-genesys-user-details-trigger"
+      "max_concurrent" = 1
+      "batch_size" = 100
+      "batch_window" = 1
+      "trigger_type" = "SCHEDULED"
+      "schedule" = "cron(0/15 * * * ? *)"
+      "reporting_date" = ""
+    },
+    "genesys_user_status_history" = {
+      "name" = "uk-snowfall-genesys-user-status-history"
+      "description" = "Workflow for Genesys User Status Interval History data"
+      "dataset" = "genesys_user_status_history"
+      "group" = "preparation"
+      "trigger_name" = "uk-snowfall-genesys-user-status-history-trigger"
+      "max_concurrent" = 1
+      "batch_size" = 100
+      "batch_window" = 1
+      "trigger_type" = "SCHEDULED"
+      "schedule" = "cron(0/15 * * * ? *)"
+      "reporting_date" = ""
     }
   }
 }
