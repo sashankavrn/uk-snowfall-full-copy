@@ -30,6 +30,11 @@ resource "aws_s3_bucket_lifecycle_configuration" "landing_lifecycle_rules" {
 resource "aws_s3_bucket_policy" "allow_access_from_appflow_and_connect" {
   bucket = aws_s3_bucket.landing_bucket.id
   policy = data.template_file.bucket_policy.rendered
+  lifecycle {
+    ignore_changes = [
+      policy
+    ]
+  }
 }
 
 data "template_file" "bucket_policy" {
