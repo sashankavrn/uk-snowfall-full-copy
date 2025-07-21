@@ -297,7 +297,7 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_metrics" {
 # Archive the newrelic-device-metrics Python script
 data "archive_file" "newrelic_process_info_data" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/newrelic-rmp-device-metrics/"
+  source_dir  = "${path.module}/scripts/python/newrelic-rmp-process-info/"
   output_path = "${path.module}/scripts/zips/newrelic-rmp-process-info.zip"
 }
 
