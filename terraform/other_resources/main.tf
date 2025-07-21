@@ -13,13 +13,13 @@ terraform {
   }
 }
 
-#Picks up from secrets in github
+# Picks up from secrets in github
 provider "aws" {
   region      = var.AWS_REGION
 }
 
 
-# Triggering event bridge module
+# Triggering eventbridge module
 module "event_bridge_module" {
   source        = "./eventbridge"
   environment   = var.environment
