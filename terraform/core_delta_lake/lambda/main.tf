@@ -315,7 +315,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_process_info_function" {
   tags             = var.resource_tags
   layers = [
     "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1",
-    "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:4"
+    "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:15"
   ]
   environment {
     variables = {
