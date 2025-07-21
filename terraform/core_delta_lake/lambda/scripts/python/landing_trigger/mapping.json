@@ -77,6 +77,10 @@
             "destinationPath": "newrelic/newrelic_rmp_device_metrics"
         },
         {
+            "fileName": "newrelic/newrelic_rmp_process_info",
+            "destinationPath": "newrelic/newrelic_rmp_process_info"
+        },
+        {
             "fileName": "newrelic/newrelic_digital_gma_foe_response",
             "destinationPath": "newrelic/newrelic_digital_gma_foe_response"
         },        

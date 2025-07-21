@@ -274,7 +274,19 @@ locals {
       schedule        = "cron(0/15 1-23 * * ? *)"
       reporting_date  = ""
     },
-    // New scheduled workflow that triggers at 12 AM UTC
+    "newrelic_rmp_process_info" = {
+      name            = "uk-snowfall-newrelic-rmp-process_info"
+      description     = "Workflow for the newrelic rmp process info data"
+      dataset         = "newrelic_rmp_process_info"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-newrelic-rmp-process-info-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 1-23 * * ? *)"
+      reporting_date  = ""
+    },
     "newrelic_rmp_device_metrics_daily" = {
       name            = "uk-snowfall-newrelic-rmp-device_metrics-daily"
       description     = "Workflow for the newrelic rmp device metrics data, triggered daily at 1 AM UTC"
@@ -288,31 +300,31 @@ locals {
       schedule        = "cron(0 0 * * ? *)"
       reporting_date  = ""
     },
-     "newrelic_digital_gma_foe_response" = {
-     name            = "uk-snowfall-newrelic-digital-gma-foe-response"
-     description     = "Workflow for the New Relic Digital GMA FOE Response data"
-     dataset         = "newrelic_digital_gma_foe_response"
-     group           = "preparation"
-     trigger_name    = "uk-snowfall-newrelic-digital-gma-foe-response-trigger"
-     max_concurrent  = 1
-     batch_size      = 100
-     batch_window    = 10
-     trigger_type    = "EVENT"
-     schedule        = null
-     reporting_date  = null
+    "newrelic_digital_gma_foe_response" = {
+      name            = "uk-snowfall-newrelic-digital-gma-foe-response"
+      description     = "Workflow for the New Relic Digital GMA FOE Response data"
+      dataset         = "newrelic_digital_gma_foe_response"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-newrelic-digital-gma-foe-response-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
     },
-      "newrelic_digital_3po_foe_response" = {
-        name            = "uk-snowfall-newrelic-digital-3po-foe-response"
-        description     = "Workflow for the New Relic Digital 3PO FOE Response data"
-        dataset         = "newrelic_digital_3po_foe_response"
-        group           = "preparation"
-        trigger_name    = "uk-snowfall-newrelic-digital-3po-foe-response-trigger"
-        max_concurrent  = 1
-        batch_size      = 100
-        batch_window    = 10
-        trigger_type    = "EVENT"
-        schedule        = null
-        reporting_date  = null
+    "newrelic_digital_3po_foe_response" = {
+      name            = "uk-snowfall-newrelic-digital-3po-foe-response"
+      description     = "Workflow for the New Relic Digital 3PO FOE Response data"
+      dataset         = "newrelic_digital_3po_foe_response"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-newrelic-digital-3po-foe-response-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
     },
     "ncr_service_now_service_case" = {
       name            = "uk-snowfall-ncr-service-now-service-case"
