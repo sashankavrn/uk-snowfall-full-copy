@@ -225,7 +225,7 @@ locals {
     "meraki_device_info" = {
       name            = "uk-snowfall-meraki-device-info"
       description     = "Workflow for the Meraki device info data"
-      dataset         = "meraki"
+      dataset         = "meraki_device_info"
       group           = "preparation"
       trigger_name    = "uk-snowfall-meraki-device-info-trigger"
       max_concurrent  = 1
@@ -238,7 +238,7 @@ locals {
     "meraki_client_info" = {
       name            = "uk-snowfall-meraki-client-info"
       description     = "Workflow for the Meraki client info data"
-      dataset         = "meraki"
+      dataset         = "meraki_client_info"
       group           = "preparation"
       trigger_name    = "uk-snowfall-meraki-client-info-trigger"
       max_concurrent  = 1
