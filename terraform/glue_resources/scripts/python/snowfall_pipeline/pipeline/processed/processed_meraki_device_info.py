@@ -3,13 +3,13 @@ from snowfall_pipeline.common_utilities.decorators import transformation_timer
 from delta.tables import DeltaTable
 
 
-class ProcessedMeraki(TransformBase):
+class ProcessedMerakiDeviceInfo(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
         self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
         self.pipeline_config = self.full_configs[self.datasets]
-        self.file_path = "meraki"
+        self.file_path = "meraki/device_info"
 
 
     def get_data(self):
