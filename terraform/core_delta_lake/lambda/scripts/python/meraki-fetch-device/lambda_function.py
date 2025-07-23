@@ -136,7 +136,7 @@ def lambda_handler(event, context):
     current_time = datetime.now()
     filename = f"device_list_{current_time.strftime('%Y-%m-%d_%H-%M-%S')}.json"
     bucket_name = os.environ.get('TARGET_BUCKET')
-    s3_key = f"meraki/{filename}"
+    s3_key = f"meraki/device_info/{filename}"
 
     try:
         s3_client = boto3.client('s3')
