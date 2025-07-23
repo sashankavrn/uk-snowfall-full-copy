@@ -3,7 +3,7 @@ from snowfall_pipeline.common_utilities.data_quality_rules import dq_rules
 from delta.tables import DeltaTable
 
 
-class PreparationMeraki(TransformBase):
+class PreparationMerakiDeviceInfo(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
@@ -11,7 +11,7 @@ class PreparationMeraki(TransformBase):
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
         self.pipeline_config = self.full_configs[self.datasets]
         self.dq_rule = dq_rules.get(self.datasets)
-        self.file_path = "meraki"
+        self.file_path = "meraki/device_info"
         self.list_of_files = self.aws_instance.get_files_in_s3_path(f"{self.raw_bucket_name}/{self.file_path}/")
 
 
