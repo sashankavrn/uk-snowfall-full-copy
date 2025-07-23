@@ -269,7 +269,7 @@
         "appflow_name":"UK-SNowFall-ServiceNow-SysUser"
 
     },
-    "meraki":{
+    "meraki_device_info":{
         "transform_json": "details",
         "process_timestamp": [
             "sys_updated_timestamp"
@@ -381,17 +381,20 @@
         ]        
     },
     "newrelic_rmp_device_metrics_daily": {
-        "retention_days": 60
-      
+        "retention_days": 60      
     },
     "ncr_service_now_service_case": {
         "process_timestamp": [
-            "sys_created_on",
-            "sys_updated_on",
+            "assigned_on",
+            "first_response_time",
+            "resolved_at",
             "closed_at",
+            "sys_created_on",
             "opened_at",
-            "approval_set",
-            "due_date"
+            "sys_updated_on",
+            "eventprocessedutctime",
+            "eventenqueuedutctime",
+            "cdc_timestamp"
         ],
         "redact_pii_columns": [
             "work_notes",
@@ -423,18 +426,23 @@
     },
 
     "ncr_service_now_incident": {
-        "add_seconds": [
-            "business_duration",
-            "calendar_duration"
-        ],
         "process_timestamp": [
-            "sys_updated_on",
-            "sys_created_on",
-            "closed_at",
-            "opened_at",
-            "work_end",
-            "reopened_time",
-            "resolved_at"
+            "opened_at", 
+            "sys_created_on", 
+            "sys_updated_on", 
+            "closed_at", 
+            "expected_start", 
+            "follow_up", 
+            "promoted_on", 
+            "proposed_on", 
+            "reopened_time", 
+            "resolved_at", 
+            "u_awareness_of_customer_impact", 
+            "u_incident_management_invoked", 
+            "u_internal_communication", 
+            "u_on_call_paging_time", 
+            "u_task_assigned_on",
+            "cdc_timestamp"
         ],
         "redact_pii_columns": [
             "work_notes",

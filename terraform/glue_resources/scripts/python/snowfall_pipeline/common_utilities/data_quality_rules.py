@@ -82,7 +82,7 @@ dq_rules = {
         IsComplete "STORE_NUMBER",
         IsComplete "CHANNEL"
     ]""",
-    "meraki": """Rules = [
+    "meraki_device_info": """Rules = [
         ColumnCount <= 23,
         RowCount > 0,
         IsComplete "restaurant_number"
