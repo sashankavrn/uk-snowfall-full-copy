@@ -678,6 +678,7 @@ resource "aws_lambda_function" "uk_snowfall_meraki_client_info_function" {
   environment {
     variables = {
       TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      TEMP_BUCKET = "eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}"
       SNS_TOPIC_ARN = var.sns_topic_arn
     }
   }

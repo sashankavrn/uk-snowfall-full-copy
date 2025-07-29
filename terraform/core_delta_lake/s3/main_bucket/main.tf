@@ -149,6 +149,7 @@ resource "aws_s3_object" "raw_folder" {
       location_trading_hrs      = "ods/trading_hours/"
       location_hierarchy        = "ods/location_hierarchy/"
       location_adj_trading_hrs  = "ods/adj_trading_hours/"
+      ods_user_data             = "ods/user_data/"
       restaurant_config         = "restaurant_config/"
       cisco_meraki              = "meraki/"
       cisco_meraki_client_info       = "meraki/client_info/"
@@ -271,7 +272,7 @@ resource "aws_s3_object" "preparation_folder" {
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
       service_agent_server_files = "service_agent_server_files/uploads/"
-       ncr_service_now_case_worknotes = "ncr_service_now/case_worknotes/"
+      ncr_service_now_case_worknotes = "ncr_service_now/case_worknotes/"
     }
 }
 
