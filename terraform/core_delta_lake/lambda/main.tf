@@ -716,3 +716,68 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_meraki_client_info" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.meraki_client_info_schedule.arn
 }
+
+##########################################################################ODS-USER-DATA-TO-NCR###################################################
+
+# Archive the Lambda source code
+data "archive_file" "ods_user_data_to_datashare" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/ods-user-data-to-datashare/"
+  output_path = "${path.module}/scripts/zips/ods-user-data-to-datashare.zip"
+}
+
+# Lambda function
+resource "aws_lambda_function" "ods_user_data_to_datashare" {
+  filename         = data.archive_file.ods_user_data_to_datashare.output_path
+  function_name    = "uk-snowfall-ods-user-data-to-datashare-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 300
+  description      = "Triggered by S3 to move ods_user_data CSV files to datashare bucket"
+  source_code_hash = filebase64sha256(data.archive_file.ods_user_data_to_datashare.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      SOURCE_BUCKET = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-datashare-processed-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+# Lambda permission to allow S3 to invoke it
+resource "aws_lambda_permission" "allow_ods_user_data_to_datashare_s3" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.ods_user_data_to_datashare.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.raw_bucket_arn
+
+  depends_on = [
+    aws_lambda_function.ods_user_data_to_datashare
+  ]
+}
+
+# Reference to the raw bucket
+data "aws_s3_bucket" "raw_bucket" {
+  bucket = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
+}
+
+# S3 event trigger for Lambda
+resource "aws_s3_bucket_notification" "ods_user_data_to_datashare_trigger" {
+  bucket = data.aws_s3_bucket.raw_bucket.id
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.ods_user_data_to_datashare.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "ods/user_data"
+    filter_suffix       = ".csv"
+  }
+
+  depends_on = [
+    aws_lambda_permission.allow_ods_user_data_to_datashare_s3
+  ]
+}

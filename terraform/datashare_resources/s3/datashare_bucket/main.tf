@@ -89,6 +89,7 @@ resource "aws_s3_object" "datashare_processed_folders" {
     location_adj_trading_hrs  = "ods/adj_trading_hours/"
     cisco_meraki              = "meraki/"
     newrelic                  = "newrelic/"
+    ods_user_data= "ods_user_data"
   }
 }
 
