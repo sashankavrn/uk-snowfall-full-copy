@@ -53,7 +53,7 @@
             "destinationPath": "ods/adj_trading_hours"
         },
         {
-            "fileName": "ods/ODS_SNOWFALL_USER_DATA",
+            "fileName": "ods/ODS_HIERARCY_EMP_SNOWFALL_NCR",
             "destinationPath": "ods/user_data"
         },
         {
