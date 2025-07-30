@@ -1,10 +1,10 @@
 from snowfall_pipeline.common_utilities.transform_base import TransformBase
 from snowfall_pipeline.common_utilities.data_quality_rules import dq_rules
 from delta.tables import DeltaTable
+from pyspark.sql import functions as F
 
 
-
-class PreparationNcrServiceNowIncident(TransformBase):
+class PreparationNewrelicRmpProcessInfo(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
@@ -12,12 +12,12 @@ class PreparationNcrServiceNowIncident(TransformBase):
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
         self.pipeline_config = self.full_configs[self.datasets]
         self.dq_rule = dq_rules.get(self.datasets)
-        self.file_path = "ncr_service_now/incident"
+        self.file_path = "newrelic/newrelic_rmp_process_info"
         self.list_of_files = self.aws_instance.get_files_in_s3_path(f"{self.raw_bucket_name}/{self.file_path}/")
 
 
     def get_data(self):
-        df = self.read_data_from_s3(self.raw_bucket_name,self.file_path,'parquet')
+        df = self.read_data_from_s3(self.raw_bucket_name,self.file_path,'json', multiline_json = True)
         return df
 
 
@@ -26,16 +26,15 @@ class PreparationNcrServiceNowIncident(TransformBase):
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Extract restaurant number from u_site_display_value
-        2. Fill null values in specified column
-        3. Remove duplicate records.
-        4. Remove trailing whitespaces
-        5. Decode HTML entities in specified columns
-        6. Perform data quality check.
-        7. Mask PII Data
+        1. Convert latest_timestamp from milliseconds to readable datetime
+        2. Drop the latest_timestamp column
+        3. Create new columns based on configuration
+        4. Fill null values in specified column
+        5. Remove duplicate records.
+        6. Remove trailing whitespaces
+        7. Perform data quality check.
         8. Add CDC columns.
         9. Add Partition Columns
-        10. Change column data types as per configuration
 
         Parameters:
         - df: Input DataFrame.
@@ -44,37 +43,36 @@ class PreparationNcrServiceNowIncident(TransformBase):
         - DataFrame: Transformed DataFrame.
 
         """
-        # Stpe 1: Extract restaurant number from u_site_display_value
+        
+        # Step 1: Convert latest_timestamp from milliseconds to readable datetime
+        df = df.withColumn("sys_updated_timestamp", F.from_unixtime((F.col("latest_timestamp") / 1000).cast("long")))
+
+        # Step 2: Drop the latest_timestamp column
+        df = df.drop("latest_timestamp")
+
+        # Step 3: Create new columns based on configuration
         df = self.parse_column_values(df, self.pipeline_config.get('new_column_params'))
 
-        # Stpe 2: Fill null values in specified column
+        # Stpe 4: Fill null values in specified column
         df = self.replace_value(df, self.pipeline_config.get('replace_values'))
 
-        # Step 3: Remove duplicate records
+        # Step 5: Remove duplicate records
         df = self.dropping_duplicates(df)
 
-        # Step 4: Removes trailing whitespaces
+        # Step 6: Removes trailing whitespaces
         df = self.remove_trailing_whitespace(df)
-        
-        # Step 5: Decode HTML entities in specified columns
-        df = self.html_entity_decoder(df, self.pipeline_config.get('html_entity_columns'))
 
-        # Step 6: Data quality check
-        df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'parquet')  
-
-        # Step 7: Mask PII Information
-        df = self.redact_pii_columns(df,self.pipeline_config.get('redact_pii_columns'))
+        # Step 7: Data quality check
+        df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'json')  
 
         # Step 8: Add CDC columns
         df = self.adding_cdc_columns(df)
 
-        # Step 9: Adding Partiton Columns
-        df = self.create_partition_date_columns(df,'sys_created_on','sys_created')
-
-        # Step 10: Change column data types as per configuration
-        df = self.change_column_types_data_frame(df, self.pipeline_config.get('change_column_data_type'))  
+        # Step 9: Add Partiton Columns
+        df = self.create_partition_date_columns(df,'sys_updated_timestamp','sys_updated')
 
         return df
+
 
     def save_data(self, df):
         """
@@ -96,7 +94,7 @@ class PreparationNcrServiceNowIncident(TransformBase):
 
             # Create the Delta table
             df.write.format("delta").mode("overwrite") \
-            .partitionBy('sys_created_year','sys_created_month') \
+            .partitionBy('sys_updated_year','sys_updated_month') \
             .save(save_output_path)
             
         else:
@@ -108,13 +106,14 @@ class PreparationNcrServiceNowIncident(TransformBase):
             # Vacuum the table
             self.vacuum_table(save_output_path,48)
 
-        if not self.aws_instance.athena_table_exists('preparation', 'ncr_service_now_incident'):
+        # Check if Athena table needs to be created
+        if not self.aws_instance.athena_table_exists('preparation', 'newrelic_rmp_process_info'):
             # Execute Athena query to create the table
-            self.aws_instance.create_athena_delta_table('preparation', 'ncr_service_now_incident', save_output_path, self.athena_output_path)
+            self.aws_instance.create_athena_delta_table('preparation', 'newrelic_rmp_process_info', save_output_path, self.athena_output_path)
         
-        # Move files to the Archive folder
+        # Delete files
         for file_name in self.list_of_files:
-            self.aws_instance.move_s3_object(self.raw_bucket_name, file_name, f"archive/{file_name}")
+            self.aws_instance.delete_s3_object(self.raw_bucket_name, file_name)
         
         # If error detected from DQ failing then will raise
         if self.sns_trigger:

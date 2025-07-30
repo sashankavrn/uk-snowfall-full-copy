@@ -25,12 +25,13 @@ class PreparationNewrelicRmpDeviceInfo(TransformBase):
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Fill null values in specified column
-        2. Remove duplicate records.
-        3. Remove trailing whitespaces
-        4. Perform data quality check.
-        5. Add CDC columns.
-        6. Add Partition Columns
+        1. Create new columns based on configuration
+        2. Fill null values in specified column
+        3. Remove duplicate records.
+        4. Remove trailing whitespaces
+        5. Perform data quality check.
+        6. Add CDC columns.
+        7. Add Partition Columns
 
         Parameters:
         - df: Input DataFrame.
@@ -39,12 +40,14 @@ class PreparationNewrelicRmpDeviceInfo(TransformBase):
         - DataFrame: Transformed DataFrame.
 
         """
+
+        # Step 1: Create new columns based on configuration
         df = self.parse_column_values(df, self.pipeline_config.get('new_column_params'))
 
-        # Stpe 1: Fill null values in specified column
+        # Stpe 2: Fill null values in specified column
         df = self.replace_value(df, self.pipeline_config.get('replace_values'))
 
-        # Step 2: Remove duplicate records
+        # Step 3: Remove duplicate records
         df = self.dropping_duplicates(df)
 
         # Step 4: Removes trailing whitespaces

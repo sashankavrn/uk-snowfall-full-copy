@@ -15,6 +15,7 @@ import re
 import random
 import string
 from datetime import datetime  
+import html
 
 
 
@@ -311,8 +312,7 @@ class TransformBase:
         
         # Redaction UDF
         def _redact_text(text):
-            #phone_regex = r'\b(?:\+?\(?\d{1,3}\)?[-\s]?)?(?:\(?\d{2,4}\)?[-\s]?)?\d{3}[-\s]?\d{3}[-\s]?\d{4}\b|\b(?:\+?\d{1,3})\d{10}\b|\(?\+?\d{1,3}\)?[\s]?\(?\d{2,4}\)?[-\s]?\d{3}[-\s]?\d{4}'
-            phone_regex = r'(\+?\d{1,3}[\s-]?\(?\d{2,5}\)?[\s-]?\d{3,4}[\s-]?\d{3,4})'
+            phone_regex = r'\b(?:\+?\(?\d{1,3}\)?[-\s]?)?(?:\(?\d{2,4}\)?[-\s]?)?\d{3}[-\s]?\d{3}[-\s]?\d{4}\b|\b(?:\+?\d{1,3})\d{10}\b|\(?\+?\d{1,3}\)?[\s]?\(?\d{2,4}\)?[-\s]?\d{3}[-\s]?\d{4}'
             email_regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
             regex_mappings = {
                 phone_regex: 'XXXXXX',
@@ -1168,5 +1168,29 @@ class TransformBase:
 
             # Replace the original column with the parsed date
             df = df.withColumn(col_name, parsed_date)
+
+        return df
+
+    @transformation_timer
+    def html_entity_decoder(self, df, input_columns):
+        """
+        Decode HTML entities in specified string columns of a Spark DataFrame.
+
+        Args:
+            df (DataFrame): The input Spark DataFrame.
+            input_columns (list): List of column names to decode HTML entities in.
+
+        Returns:
+            DataFrame: The processed Spark DataFrame with decoded columns.
+        """
+        self.logger.info('Running the html_entity_decoder function')
+
+        # Define the UDF inside the function for encapsulation
+        html_decoder_udf = F.udf(
+            lambda x: html.unescape(x) if x else x, StringType()
+        )
+
+        for col_name in input_columns:
+            df = df.withColumn(col_name, html_decoder_udf(F.col(col_name)))
 
         return df
