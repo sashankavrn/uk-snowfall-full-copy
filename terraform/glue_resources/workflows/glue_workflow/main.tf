@@ -559,6 +559,19 @@ locals {
       "trigger_type" = "SCHEDULED"
       "schedule" = "cron(0/15 * * * ? *)"
       "reporting_date" = ""
+    },
+    "restaurant_count_by_day" = {
+      name            = "uk-snowfall-restaurant-count-by-day"
+      description     = "Workflow for the restaurant count by day data, triggered daily at 12 AM UTC"
+      dataset         = "restaurant_count_by_day"
+      group           = "processed"
+      trigger_name    = "uk-snowfall-restaurant-count-by-day-trigger"
+      max_concurrent  = 1
+      batch_size      = null
+      batch_window    = null
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0 0 * * ? *)"
+      reporting_date  = ""
     }
   }
 }
