@@ -14,7 +14,7 @@ TARGET_BUCKET = os.environ.get("TARGET_BUCKET") ##datashare bucket
 SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN")
 
 SOURCE_PREFIX = 'ods/user_data'
-TARGET_PREFIX = 'ods_user_data/'
+TARGET_PREFIX = 'ods_user_data'
 
 def send_sns_notification(subject, message):
     try:
