@@ -3,13 +3,13 @@ from snowfall_pipeline.common_utilities.decorators import transformation_timer
 from delta.tables import DeltaTable
 
 
-class ProcessedMerakiDeviceInfo(TransformBase):
+class ProcessedNewrelicRmpProcessInfo(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
         self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
         self.pipeline_config = self.full_configs[self.datasets]
-        self.file_path = "meraki/device_info"
+        self.file_path = "newrelic/newrelic_rmp_process_info"
 
 
     def get_data(self):
@@ -22,12 +22,10 @@ class ProcessedMerakiDeviceInfo(TransformBase):
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Explode and pivot JSON column
-        2. Splits datetime column
-        3. Filters passed records
-        4. Drops unnecessary columns
-        5. Filter the column mapping to include only existing columns
-        6. Change column names and schema.
+        1. Splits datetime column
+        2. Filters passed records
+        3. Drops unnecessary columns
+        4. Change column names and schema.
 
         Parameters:
         - df (DataFrame): Input DataFrame.
@@ -36,54 +34,33 @@ class ProcessedMerakiDeviceInfo(TransformBase):
         - DataFrame: Transformed DataFrame.
         """
 
-        # Step 1: Explode and pivot JSON column
-        df = self.explode_pivot_json_column(df, self.pipeline_config.get('transform_json'))
-
-        # Step 2: Splits datetime column
+        # Step 1: Splits datetime column
         df = self.split_datetime_column(df,self.pipeline_config.get('process_timestamp'))
 
-        # Step 3: Filters passed records
+        # Step 2: Filters passed records
         df = self.filter_quality_result(df,partition_column_drop=['sys_updated_year','sys_updated_month'])
 
-        # Step 4: Drops unnecessary columns
+        # Step 3: Drops unnecessary columns
         df = self.drop_columns_for_processed(df)
 
         column_mapping = {
             'restaurant_number': ('restaurant_number', 'Integer'),
-            'name': ('device_name', 'string'),
-            'serial': ('serial_number', 'string'),
-            'mac': ('mac_address', 'string'),
-            'networkId': ('network_id', 'string'),
-            'productType': ('product_type', 'string'),
-            'model': ('model', 'string'),
-            'address': ('address', 'string'),
-            'lat': ('latitude', 'double'),
-            'lng': ('longitude', 'double'),
-            'notes': ('notes', 'string'),
-            'tags': ('tags', 'string'),
-            'wan1Ip': ('wan1_ip', 'string'),
-            'wan2Ip': ('wan2_ip', 'string'),
-            'configurationUpdatedAt': ('config_updated_at', 'timestamp'),
-            'firmware': ('firmware_version', 'string'),
-            'url': ('device_url', 'string'),
-            'Monitoring version': ('monitoring_version', 'string'),
-            'Running software version': ('running_software_version', 'string'),
+            'device': ('device', 'string'),
+            'hostname': ('host_name', 'string'),
+            'name': ('service_name', 'string'),
+            'state': ('state', 'string'),
+            'sys_updated_timestamp_timestamp': ('sys_updated_timestamp_utc', 'timestamp'),
+            'sys_updated_timestamp': ('sys_updated_timestamp', 'string'),
+            'sys_updated_timestamp_dt': ('sys_updated_date', 'date'),
             'sys_updated_year': ('sys_updated_year', 'Integer'),
             'sys_updated_month': ('sys_updated_month', 'Integer'),
-            'sys_updated_timestamp_timestamp': ('sys_updated_timestamp', 'timestamp'),
-            'sys_updated_timestamp_dt': ('sys_updated_date', 'date'),
-            'cdc_timestamp': ('cdc_timestamp', 'timestamp')
+            'cdc_timestamp_timestamp': ('cdc_timestamp_utc', 'timestamp'),
+            'cdc_timestamp': ('cdc_timestamp', 'string'),
+            'cdc_timestamp_dt': ('cdc_date', 'date')
         }
 
-        # step 5. Filter the column mapping to include only existing columns
-        filtered_column_mapping = {
-            old_column_name: (new_column_name, dtype)
-            for old_column_name, (new_column_name, dtype) in column_mapping.items()
-            if old_column_name in df.columns
-        }
-
-        # Step 6. Changes column names and schema
-        df = self.change_column_names_and_schema(df, filtered_column_mapping)
+        # Step 4. Changes column names and schema
+        df = self.change_column_names_and_schema(df,column_mapping)
 
         return df
 
@@ -120,9 +97,9 @@ class ProcessedMerakiDeviceInfo(TransformBase):
                 # Vacuum the table
                 self.vacuum_table(save_output_path,48)
 
-            if not self.aws_instance.athena_table_exists('processed', 'meraki_device_info'):
+            if not self.aws_instance.athena_table_exists('processed', 'newrelic_rmp_process_info'):
                 # Execute Athena query to create the table
-                self.aws_instance.create_athena_delta_table('processed', 'meraki_device_info', save_output_path, self.athena_output_path)
+                self.aws_instance.create_athena_delta_table('processed', 'newrelic_rmp_process_info', save_output_path, self.athena_output_path)
 
             # If error detected from DQ failing then will raise
             if self.sns_trigger:

@@ -321,6 +321,38 @@
             }
         ]        
     },
+    "newrelic_rmp_process_info": {
+        "process_timestamp": [
+            "sys_updated_timestamp",
+            "cdc_timestamp"
+        ],
+        "primary_key": "restaurant_number",
+        "new_column_params": [
+            {
+                "column_name": "hostname",
+                "regex": "^[A-Za-z]{2}(\\d+)",
+                "new_column_name": "restaurant_number",
+                "data_type": "integer"
+            },
+            {
+                "column_name": "hostname",
+                "regex": "([A-Za-z]{3}\\d{2})$",
+                "new_column_name": "device",
+                "data_type": "string"
+            }
+        ], 
+        "change_column_data_type": {
+            "latest_timestamp": "string",
+            "cdc_timestamp": "string"
+        },
+        "replace_values": [
+            {
+                "column_name": "restaurant_number",
+                "old_value": "None",
+                "new_value": -1
+            }
+        ]        
+    },
     "newrelic_rmp_device_metrics": {
         "process_timestamp": [
             "sys_updated_timestamp"
@@ -450,6 +482,19 @@
             "close_notes",
             "comments",
             "comments_and_work_notes"
+        ],
+        "html_entity_columns": [
+            "assignment_group_display_value",
+            "assignment_group_id",
+            "business_service_display_value",
+            "close_notes",
+            "comments",
+            "comments_and_work_notes",
+            "location_id",
+            "short_description_display_value",
+            "short_description_id",
+            "u_site_display_value",
+            "u_customer_contact_display_value"
         ],
         "new_column_params": [
             {
