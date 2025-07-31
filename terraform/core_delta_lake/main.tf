@@ -63,6 +63,7 @@ module "sns_module" {
   resource_tags = merge(var.resource_tags, { Environment = var.environment })
 }
 
+/*
 module "appflow_module" {
   source        = "./appflow"
   environment             = var.environment
@@ -74,7 +75,7 @@ module "appflow_module" {
   connector_profile_name  = var.connector_profile_name
   landing_bucket_name     = module.s3_module_main.landing_bucket_name
 }
-
+*/
 
 module "api_module" {
   source        = "./api"
