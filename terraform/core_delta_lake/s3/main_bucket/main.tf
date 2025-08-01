@@ -374,7 +374,8 @@ resource "aws_s3_object" "processed_folder" {
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
       service_agent_server_files = "service_agent_server_files/uploads/"
-       ncr_service_now_case_worknotes = "ncr_service_now/case_worknotes/"
+      ncr_service_now_case_worknotes = "ncr_service_now/case_worknotes/"
+      ods_location_restaurant_count_by_day = "restaurant_count_by_day/"
     }
 }
 
