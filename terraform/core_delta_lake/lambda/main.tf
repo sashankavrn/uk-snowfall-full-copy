@@ -330,7 +330,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_process_info_function" {
 resource "aws_cloudwatch_event_rule" "newrelic_process_info_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-process-info-schedule"
   description         = "Triggers the New Relic process info Lambda every 10 minutes"
-  schedule_expression = "rate(10 minutes)"
+  schedule_expression = "cron(0 0 31 2 ? *)"   #  "rate(10 minutes)"
 }
 
 # Add Lambda as the target of the Event Rule
