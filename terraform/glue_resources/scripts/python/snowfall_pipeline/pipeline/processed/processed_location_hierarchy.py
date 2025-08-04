@@ -174,7 +174,7 @@ class ProcessedLocationHierarchy(TransformBase):
         else:
             
             # Merge data to the Delta table
-            merge_columns = ['store_number','store_name']
+            merge_columns = ['store_number']
             self.merge_to_delta_table(df,save_output_path,merge_columns)
    
             if not self.aws_instance.athena_table_exists('processed', 'ods_location_hierarchy'):
