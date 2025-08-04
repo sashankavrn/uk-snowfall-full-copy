@@ -43,7 +43,7 @@ class ProcessedNcrServiceNowServiceCase(TransformBase):
         df = self.split_datetime_column(df,self.pipeline_config.get('process_timestamp'))
 
         # Step 3: Filters passed records
-        df = self.filter_quality_result(df,partition_column_drop=['created_year','created_month'])
+        df = self.filter_quality_result(df,partition_column_drop=['sys_created_year','sys_created_month'])
 
         # Step 4: Drops unnecessary columns
         df = self.drop_columns_for_processed(df)
@@ -172,35 +172,35 @@ class ProcessedNcrServiceNowServiceCase(TransformBase):
 
             """
             # Define the S3 save path
-            save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
+            # save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
 
-            # Check if Delta table needs to be created
-            if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
-                self.athena_trigger = True
+            # # Check if Delta table needs to be created
+            # if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
+            #     self.athena_trigger = True
                 
-            # Determine whether to create or merge to the Delta table
-            if self.athena_trigger:
-                # Create the Delta table
-                df.write.format("delta").mode("overwrite") \
-                .partitionBy('sys_created_year','sys_created_month') \
-                .save(save_output_path)
+            # # Determine whether to create or merge to the Delta table
+            # if self.athena_trigger:
+            #     # Create the Delta table
+            #     df.write.format("delta").mode("overwrite") \
+            #     .partitionBy('sys_created_year','sys_created_month') \
+            #     .save(save_output_path)
                 
-            else:
-                # Append the Delta table
-                df.write.format("delta").mode("append") \
-                .save(save_output_path)
+            # else:
+            #     # Append the Delta table
+            #     df.write.format("delta").mode("append") \
+            #     .save(save_output_path)
 
-                # Vacuum the table
-                self.vacuum_table(save_output_path,48)
+            #     # Vacuum the table
+            #     self.vacuum_table(save_output_path,48)
 
-            if not self.aws_instance.athena_table_exists('processed', 'ncr_service_now_service_case'):
-                # Execute Athena query to create the table
-                self.aws_instance.create_athena_delta_table('processed', 'ncr_service_now_service_case', save_output_path, self.athena_output_path)
+            # if not self.aws_instance.athena_table_exists('processed', 'ncr_service_now_service_case'):
+            #     # Execute Athena query to create the table
+            #     self.aws_instance.create_athena_delta_table('processed', 'ncr_service_now_service_case', save_output_path, self.athena_output_path)
 
-            # If error detected from DQ failing then will raise
-            if self.sns_trigger:
-                message = "Records in the error folder that have failed transformation"
-                self.aws_instance.send_sns_message(message)
+            # # If error detected from DQ failing then will raise
+            # if self.sns_trigger:
+            #     message = "Records in the error folder that have failed transformation"
+            #     self.aws_instance.send_sns_message(message)
 
             
             self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
