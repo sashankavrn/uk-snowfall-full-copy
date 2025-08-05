@@ -61,10 +61,6 @@
             "destinationPath": "restaurant_config"
         },
         {
-            "fileName": "meraki",
-            "destinationPath": "meraki"
-        },
-        {
             "fileName": "meraki/client_info",
             "destinationPath": "meraki/client_info"
         },
