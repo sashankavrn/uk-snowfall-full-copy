@@ -42,7 +42,7 @@ module "s3_module_main" {
   lambda_permission       = module.lambda_module.lambda_s3_permission
 }
 
-# Triggering the Lambda Module
+# Triggering the Lambda module
 module "lambda_module" {
   source             = "./lambda"
   environment        = var.environment
@@ -57,7 +57,7 @@ module "lambda_module" {
   service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
 }
 
-# Triggering the SNS Module. Will have to change to fix endpoint as email
+# Triggering the SNS Module, will have to change to fix endpoint as email
 module "sns_module" {
   source        = "./sns"
   environment   = var.environment

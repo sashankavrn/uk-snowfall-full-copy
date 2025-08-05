@@ -15,7 +15,7 @@ terraform {
 
 }
 
-#Picks up from secrets in github
+# Picks up from secrets in github
 provider "aws" {
   region      = var.AWS_REGION
 }
@@ -23,7 +23,7 @@ provider "aws" {
 
 
 
-# Triggering the Datashare S3 Module
+# Triggering the datashare S3 Module
 module "datashare_buckets" {
   source                  = "./s3/datashare_bucket"
   environment             = var.environment
