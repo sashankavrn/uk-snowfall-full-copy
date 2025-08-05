@@ -5,7 +5,7 @@ import os
 
 
 client = boto3.client('appflow', region_name='eu-central-1')
-config_file_path = f"{os.getcwd()}/appflow/flow_config.json"
+config_file_path = "flow_config.json"
 
 def delete_flow(flow_name):
     try:
