@@ -53,6 +53,10 @@
             "destinationPath": "ods/adj_trading_hours"
         },
         {
+            "fileName": "ods/ODS_HIERARCY_EMP_SNOWFALL_NCR",
+            "destinationPath": "ods/user_data"
+        },
+        {
             "fileName": "restaurant_config",
             "destinationPath": "restaurant_config"
         },
@@ -75,6 +79,10 @@
         {
             "fileName": "newrelic/newrelic_rmp_device_metrics",
             "destinationPath": "newrelic/newrelic_rmp_device_metrics"
+        },
+        {
+            "fileName": "newrelic/newrelic_rmp_process_info",
+            "destinationPath": "newrelic/newrelic_rmp_process_info"
         },
         {
             "fileName": "newrelic/newrelic_digital_gma_foe_response",

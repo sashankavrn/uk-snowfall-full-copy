@@ -225,7 +225,7 @@ locals {
     "meraki_device_info" = {
       name            = "uk-snowfall-meraki-device-info"
       description     = "Workflow for the Meraki device info data"
-      dataset         = "meraki"
+      dataset         = "meraki_device_info"
       group           = "preparation"
       trigger_name    = "uk-snowfall-meraki-device-info-trigger"
       max_concurrent  = 1
@@ -238,7 +238,7 @@ locals {
     "meraki_client_info" = {
       name            = "uk-snowfall-meraki-client-info"
       description     = "Workflow for the Meraki client info data"
-      dataset         = "meraki"
+      dataset         = "meraki_client_info"
       group           = "preparation"
       trigger_name    = "uk-snowfall-meraki-client-info-trigger"
       max_concurrent  = 1
@@ -274,7 +274,19 @@ locals {
       schedule        = "cron(0/15 1-23 * * ? *)"
       reporting_date  = ""
     },
-    // New scheduled workflow that triggers at 12 AM UTC
+    "newrelic_rmp_process_info" = {
+      name            = "uk-snowfall-newrelic-rmp-process_info"
+      description     = "Workflow for the newrelic rmp process info data"
+      dataset         = "newrelic_rmp_process_info"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-newrelic-rmp-process-info-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/15 1-23 * * ? *)"
+      reporting_date  = ""
+    },
     "newrelic_rmp_device_metrics_daily" = {
       name            = "uk-snowfall-newrelic-rmp-device_metrics-daily"
       description     = "Workflow for the newrelic rmp device metrics data, triggered daily at 1 AM UTC"
@@ -288,31 +300,31 @@ locals {
       schedule        = "cron(0 0 * * ? *)"
       reporting_date  = ""
     },
-     "newrelic_digital_gma_foe_response" = {
-     name            = "uk-snowfall-newrelic-digital-gma-foe-response"
-     description     = "Workflow for the New Relic Digital GMA FOE Response data"
-     dataset         = "newrelic_digital_gma_foe_response"
-     group           = "preparation"
-     trigger_name    = "uk-snowfall-newrelic-digital-gma-foe-response-trigger"
-     max_concurrent  = 1
-     batch_size      = 100
-     batch_window    = 10
-     trigger_type    = "EVENT"
-     schedule        = null
-     reporting_date  = null
+    "newrelic_digital_gma_foe_response" = {
+      name            = "uk-snowfall-newrelic-digital-gma-foe-response"
+      description     = "Workflow for the New Relic Digital GMA FOE Response data"
+      dataset         = "newrelic_digital_gma_foe_response"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-newrelic-digital-gma-foe-response-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
     },
-      "newrelic_digital_3po_foe_response" = {
-        name            = "uk-snowfall-newrelic-digital-3po-foe-response"
-        description     = "Workflow for the New Relic Digital 3PO FOE Response data"
-        dataset         = "newrelic_digital_3po_foe_response"
-        group           = "preparation"
-        trigger_name    = "uk-snowfall-newrelic-digital-3po-foe-response-trigger"
-        max_concurrent  = 1
-        batch_size      = 100
-        batch_window    = 10
-        trigger_type    = "EVENT"
-        schedule        = null
-        reporting_date  = null
+    "newrelic_digital_3po_foe_response" = {
+      name            = "uk-snowfall-newrelic-digital-3po-foe-response"
+      description     = "Workflow for the New Relic Digital 3PO FOE Response data"
+      dataset         = "newrelic_digital_3po_foe_response"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-newrelic-digital-3po-foe-response-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "EVENT"
+      schedule        = null
+      reporting_date  = null
     },
     "ncr_service_now_service_case" = {
       name            = "uk-snowfall-ncr-service-now-service-case"
@@ -324,7 +336,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/15 * * * ? *)"
+      schedule        = "cron(0/45 * * * ? *)"
       reporting_date  = ""
     },
     "ncr_service_now_problem_record" = {
@@ -337,7 +349,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/15 * * * ? *)"
+      schedule        = "cron(0/45 * * * ? *)"
       reporting_date  = ""
     },
     "ncr_service_now_change_request" = {
@@ -350,7 +362,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/15 * * * ? *)"
+      schedule        = "cron(0/45 * * * ? *)"
       reporting_date  = ""
     },
     "ncr_service_now_incident" = {
@@ -363,7 +375,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/15 * * * ? *)"
+      schedule        = "cron(0/45 * * * ? *)"
       reporting_date  = ""
     },
     "ncr_service_now_knowledge_base" = {
@@ -376,7 +388,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/15 * * * ? *)"
+      schedule        = "cron(0/45 * * * ? *)"
       reporting_date  = ""
     },
     "service_agent_server_files" = {
@@ -547,6 +559,19 @@ locals {
       "trigger_type" = "SCHEDULED"
       "schedule" = "cron(0/15 * * * ? *)"
       "reporting_date" = ""
+    },
+    "restaurant_count_by_day" = {
+      name            = "uk-snowfall-restaurant-count-by-day"
+      description     = "Workflow for the restaurant count by day data, triggered daily at 1 AM UTC"
+      dataset         = "restaurant_count_by_day"
+      group           = "processed"
+      trigger_name    = "uk-snowfall-restaurant-count-by-day-trigger"
+      max_concurrent  = 1
+      batch_size      = null
+      batch_window    = null
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0 1 * * ? *)"
+      reporting_date  = ""
     }
   }
 }

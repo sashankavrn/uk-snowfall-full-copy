@@ -40,7 +40,7 @@ class ProcessedNewrelicRmpDeviceMetrics(TransformBase):
         df = self.split_datetime_column(df,self.pipeline_config.get('process_timestamp'))
 
         # Step 3: Filters passed records
-        df = self.filter_quality_result(df,partition_column_drop=['created_year','created_month'])
+        df = self.filter_quality_result(df,partition_column_drop=['sys_updated_year','sys_updated_month'])
 
         # Step 4: Drops unnecessary columns
         df = self.drop_columns_for_processed(df)

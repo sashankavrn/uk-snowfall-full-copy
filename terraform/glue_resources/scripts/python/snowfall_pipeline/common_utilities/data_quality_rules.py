@@ -82,7 +82,7 @@ dq_rules = {
         IsComplete "STORE_NUMBER",
         IsComplete "CHANNEL"
     ]""",
-    "meraki": """Rules = [
+    "meraki_device_info": """Rules = [
         ColumnCount <= 23,
         RowCount > 0,
         IsComplete "restaurant_number"
@@ -102,6 +102,11 @@ dq_rules = {
         RowCount > 0,
         IsComplete "restaurant_number"
     ]""",
+    "newrelic_rmp_process_info": """Rules = [
+        ColumnCount <= 7,
+        RowCount > 0,
+        IsComplete "restaurant_number"
+    ]""",
     "newrelic_digital_3po_foe_response": """Rules = [
         ColumnCount <= 8,
         RowCount > 0,
@@ -114,7 +119,7 @@ dq_rules = {
         IsComplete "sys_created_on"
     ]""",
     "ncr_service_now_incident":"""Rules = [
-        ColumnCount <= 270,
+        ColumnCount <= 295,
         RowCount > 0,
         IsComplete "number",
         IsComplete "sys_created_on"

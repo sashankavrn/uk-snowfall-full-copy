@@ -76,7 +76,7 @@ class PreparationLocationHierarchy(TransformBase):
         else:
 
             # Merge data to the Delta table
-            merge_columns = ['STORE_NUMBER','STORE_NAME']
+            merge_columns = ['STORE_NUMBER']
             self.merge_to_delta_table(df,save_output_path,merge_columns)
 
             if not self.aws_instance.athena_table_exists('preparation', 'ods_location_hierarchy'):

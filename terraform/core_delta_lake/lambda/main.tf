@@ -267,10 +267,10 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_metrics_function" {
 
 
 
-# CloudWatch Event Rule to trigger Lambda every 2 minutes
+# CloudWatch Event Rule to trigger Lambda every 10 minutes
 resource "aws_cloudwatch_event_rule" "newrelic_metrics_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-device-metrics-schedule"
-  description         = "Triggers the New Relic device metrics Lambda every 2 minutes"
+  description         = "Triggers the New Relic device metrics Lambda every 10 minutes"
   schedule_expression = "rate(10 minutes)"
 }
 
@@ -289,6 +289,69 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_metrics" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.newrelic_metrics_lambda_schedule.arn
 }
+
+###########################################################################
+# NEWRELIC-RMP-PROCESS-INFO
+###########################################################################
+
+# Archive the newrelic-device-metrics Python script
+data "archive_file" "newrelic_process_info_data" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/newrelic-rmp-process-info/"
+  output_path = "${path.module}/scripts/zips/newrelic-rmp-process-info.zip"
+}
+
+# Lambda Function for fetching New Relic process info
+resource "aws_lambda_function" "uk_snowfall_newrelic_process_info_function" {
+  filename         = "${path.module}/scripts/zips/newrelic-rmp-process-info.zip"
+  function_name    = "uk-snowfall-newrelic-rmp-process-info-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 4096
+  timeout          = 720
+  description      = "Fetch process info from New Relic API and update to landing bucket"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-rmp-process-info.zip")
+  tags             = var.resource_tags
+  layers = [
+    "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1",
+    "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:15"
+  ]
+  environment {
+    variables = {
+      DATASHARE_BUCKET = "eu-central1-${var.environment}-uk-snowfall-datashare-processed-${var.account_number}"
+      TARGET_BUCKET    = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      SNS_TOPIC_ARN    = var.sns_topic_arn
+    }
+  }
+}
+
+# CloudWatch Event Rule to trigger Lambda every 10 minutes
+resource "aws_cloudwatch_event_rule" "newrelic_process_info_lambda_schedule" {
+  name                = "uk-snowfall-newrelic-rmp-process-info-schedule"
+  description         = "Triggers the New Relic process info Lambda every 10 minutes"
+  schedule_expression = "cron(0 0 31 2 ? *)"   #  "rate(10 minutes)"
+}
+
+# Add Lambda as the target of the Event Rule
+resource "aws_cloudwatch_event_target" "invoke_newrelic_process_info_lambda" {
+  rule      = aws_cloudwatch_event_rule.newrelic_process_info_lambda_schedule.name
+  target_id = "newrelic-rmp-process-info-target"
+  arn       = aws_lambda_function.uk_snowfall_newrelic_process_info_function.arn
+}
+
+# Grant EventBridge permission to invoke the Lambda
+resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_process_info" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_newrelic_process_info_function.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.newrelic_process_info_lambda_schedule.arn
+}
+
+
+
+
 #######################################################################
 # NEWRELIC-DIGITAL-GMA-FOE-RESPONSE LAMBDA
 #######################################################################
@@ -615,6 +678,7 @@ resource "aws_lambda_function" "uk_snowfall_meraki_client_info_function" {
   environment {
     variables = {
       TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      TEMP_BUCKET = "eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}"
       SNS_TOPIC_ARN = var.sns_topic_arn
     }
   }
@@ -651,4 +715,69 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_meraki_client_info" {
   function_name = aws_lambda_function.uk_snowfall_meraki_client_info_function.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.meraki_client_info_schedule.arn
+}
+
+##########################################################################ODS-USER-DATA-TO-NCR###################################################
+
+# Archive the Lambda source code
+data "archive_file" "ods_user_data_to_datashare" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/ods-user-data-to-datashare/"
+  output_path = "${path.module}/scripts/zips/ods-user-data-to-datashare.zip"
+}
+
+# Lambda function
+resource "aws_lambda_function" "ods_user_data_to_datashare" {
+  filename         = data.archive_file.ods_user_data_to_datashare.output_path
+  function_name    = "uk-snowfall-ods-user-data-to-datashare-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 300
+  description      = "Triggered by S3 to move ods_user_data CSV files to datashare bucket"
+  source_code_hash = filebase64sha256(data.archive_file.ods_user_data_to_datashare.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      SOURCE_BUCKET = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-datashare-processed-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+# Lambda permission to allow S3 to invoke it
+resource "aws_lambda_permission" "allow_ods_user_data_to_datashare_s3" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.ods_user_data_to_datashare.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.raw_bucket_arn
+
+  depends_on = [
+    aws_lambda_function.ods_user_data_to_datashare
+  ]
+}
+
+# Reference to the raw bucket
+data "aws_s3_bucket" "raw_bucket" {
+  bucket = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
+}
+
+# S3 event trigger for Lambda
+resource "aws_s3_bucket_notification" "ods_user_data_to_datashare_trigger" {
+  bucket = data.aws_s3_bucket.raw_bucket.id
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.ods_user_data_to_datashare.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "ods/user_data"
+    filter_suffix       = ".csv"
+  }
+
+  depends_on = [
+    aws_lambda_permission.allow_ods_user_data_to_datashare_s3
+  ]
 }

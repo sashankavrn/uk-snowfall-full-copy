@@ -49,6 +49,7 @@ module "lambda_module" {
   resource_tags      = merge(var.resource_tags, { Environment = var.environment })
   role_assumed_arn   = var.role_assumed_arn
   landing_bucket_arn = module.s3_module_main.landing_bucket_arn
+  raw_bucket_arn = module.s3_module_main.raw_bucket_arn
   sns_topic_arn      = module.sns_module.snowfall_topic_arn
   account_number     = var.account_number
   artifact_bucket_arn = module.s3_module_main.artifact_bucket_bucket_arn
@@ -74,7 +75,6 @@ module "appflow_module" {
   connector_profile_name  = var.connector_profile_name
   landing_bucket_name     = module.s3_module_main.landing_bucket_name
 }
-
 
 module "api_module" {
   source        = "./api"
