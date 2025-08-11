@@ -192,15 +192,13 @@ resource "aws_s3_bucket_notification" "enabling_event_bridge_notification" {
   eventbridge = true
   
   lambda_function {
-    lambda_function_arn = aws_lambda_function.ods_user_data_to_datashare.arn
+    lambda_function_arn = var.ods_user_data_lambda_arn
     events              = ["s3:ObjectCreated:*"]
     filter_prefix       = "ods/user_data"
     filter_suffix       = ".csv"
   }
 
-  depends_on = [
-    aws_lambda_permission.allow_ods_user_data_to_datashare_s3
-  ]
+  depends_on = [var.ods_user_data_lambda_permission]
 }
 
 

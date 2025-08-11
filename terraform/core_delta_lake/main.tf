@@ -33,13 +33,15 @@ provider "aws" {
 
 # Triggering the S3 Module
 module "s3_module_main" {
-  source                  = "./s3/main_bucket"
-  environment             = var.environment
-  account_number          = var.account_number
-  resource_tags           = merge(var.resource_tags, { Environment = var.environment,DataClassification = "highly restricted" })
-  role_assumed_arn        = var.role_assumed_arn
-  lambda_landing_func_arn = module.lambda_module.landing_trigger_arn
-  lambda_permission       = module.lambda_module.lambda_s3_permission
+  source                          = "./s3/main_bucket"
+  environment                     = var.environment
+  account_number                  = var.account_number
+  resource_tags                   = merge(var.resource_tags, { Environment = var.environment,DataClassification = "highly restricted" })
+  role_assumed_arn                = var.role_assumed_arn
+  lambda_landing_func_arn         = module.lambda_module.landing_trigger_arn
+  lambda_permission               = module.lambda_module.lambda_s3_permission
+  ods_user_data_lambda_arn        = module.lambda_module.ods_user_data_to_datashare_arn
+  ods_user_data_lambda_permission = module.lambda_module.ods_user_data_to_datashare_permission
 }
 
 # Triggering the Lambda module
