@@ -261,6 +261,19 @@ locals {
       schedule        = "cron(0/15 1-23 * * ? *)"
       reporting_date  = ""
     },
+    "newrelic_rmp_network_info" = {
+      name           = "uk-snowfall-newrelic-rmp-network-info"
+      description    = "Workflow for the newrelic rmp network info data"
+      dataset        = "newrelic_rmp_network_info"
+      group          = "preparation"
+      trigger_name   = "uk-snowfall-newrelic-rmp-network-info-trigger"
+      max_concurrent = 1
+      batch_size     = 100
+      batch_window   = 10
+      trigger_type   = "SCHEDULED"
+      schedule       = "cron(0/15 1-23 * * ? *)"
+      reporting_date = ""
+    },
     "newrelic_rmp_process_info" = {
       name            = "uk-snowfall-newrelic-rmp-process_info"
       description     = "Workflow for the newrelic rmp process info data"

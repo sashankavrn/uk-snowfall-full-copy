@@ -1,4 +1,3 @@
-
 import requests
 import json
 import boto3
@@ -97,6 +96,9 @@ def lambda_handler(event, context):
         error_message = "Failed to retrieve API credentials."
         return {"statusCode": 500, "body": error_message}
 
+    # Capture execution timestamp
+    current_timestamp = datetime.utcnow().isoformat()
+
     # Step 1: Fetch unique hostname prefixes over 1 day
     prefix_query = "SELECT uniques(substring(hostname,0,7), 10000) as 'HostnamePrefix' FROM SystemSample SINCE 1 day ago"
     print("[INFO] Fetching unique hostname prefixes from New Relic...")
@@ -118,7 +120,7 @@ def lambda_handler(event, context):
         return {"statusCode": 500, "body": error_message}
     print(f"[INFO] Retrieved {len(stores)} hostname prefixes.")
 
-    # Step 2: Batch these prefixes and run detailed queries for windows_service_state
+    # Step 2: Batch these prefixes and run detailed queries
     maxPrefixesPerBatch = 100
     queries = []
     index = 0
@@ -126,9 +128,9 @@ def lambda_handler(event, context):
         batch = stores[index : index + maxPrefixesPerBatch]
         quoted = ",".join([f"'{prefix}'" for prefix in batch])
         detailed_query = (
-            "SELECT latest(timestamp) FROM Metric WHERE metricName = 'windows_service_state' "
+            "SELECT latest(timestamp) FROM Metric WHERE metricName = 'windows_running_services' and state = 'running' "
             f"AND substring(hostname,0,7) in ({quoted}) "
-            "FACET hostname, name, state SINCE 10 minutes ago LIMIT MAX"
+            "FACET hostname, name SINCE 15 minutes ago LIMIT MAX"
         )
         queries.append(detailed_query)
         index += maxPrefixesPerBatch
@@ -143,18 +145,18 @@ def lambda_handler(event, context):
 
     print(f"[INFO] Retrieved detailed process states for {len(results)} records.")
 
-    # Step 3: Flatten/process output to only what's needed
+    # Step 3: Flatten/process output
     processed = []
     for item in results:
         facet = item.get('facet', [])
-        if len(facet) != 3:
+        if len(facet) != 2:
             continue
-        hostname, name, state = facet
+        hostname, name = facet
         processed.append({
             "hostname": hostname,
             "name": name,
-            "state": state,
-            "latest_timestamp": item.get('latest.timestamp')
+            "new_relic_timestamp_latest": item.get('latest.timestamp'),
+            "api_exe_timestamp": current_timestamp
         })
 
     # Step 4: Save output to both S3 buckets

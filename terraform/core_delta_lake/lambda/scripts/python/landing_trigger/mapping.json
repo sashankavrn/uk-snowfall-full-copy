@@ -73,6 +73,10 @@
             "destinationPath": "newrelic/newrelic_rmp_device_info"
         },
         {
+            "fileName": "newrelic/newrelic_rmp_network_info",
+            "destinationPath": "newrelic/newrelic_rmp_network_info"
+        },
+        {
             "fileName": "newrelic/newrelic_rmp_device_metrics",
             "destinationPath": "newrelic/newrelic_rmp_device_metrics"
         },
