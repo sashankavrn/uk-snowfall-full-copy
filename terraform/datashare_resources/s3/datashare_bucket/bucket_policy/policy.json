@@ -1,0 +1,28 @@
+{
+  "Version": "2008-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowTech360AccessToNCRPrefix",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::${tech360_account_id}:role/Tech360S3AccessRole-${environment}"
+      },
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-landing-${account_number}",
+        "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-landing-${account_number}/ncr_service_now/*"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceAccount": "${tech360_account_id}"
+        },
+        "StringLike": {
+          "s3:prefix": "ncr_service_now/*"
+        }
+      }
+    }
+  ]
+}

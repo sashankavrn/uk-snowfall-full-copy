@@ -47,3 +47,8 @@ variable "terraform_bucket_name" {
   description = "Bucket Name for where terraform state file is stored"  
 }
 # variable "terraform_bucket_name" {}
+
+variable "tech360_account_id" {
+  description = "Tech360 AWS account ID"
+  type        = string
+}
