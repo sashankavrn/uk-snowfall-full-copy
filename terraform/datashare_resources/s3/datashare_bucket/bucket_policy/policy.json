@@ -2,7 +2,6 @@
   "Version": "2008-10-17",
   "Statement": [
     {
-      "Sid": "AllowTech360AccessToNCRPrefix",
       "Effect": "Allow",
       "Principal": {
         "AWS": "arn:aws:iam::${tech360_account_id}:role/Tech360S3AccessRole-${environment}"
