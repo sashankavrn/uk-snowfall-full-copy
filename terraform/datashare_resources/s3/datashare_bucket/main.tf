@@ -189,11 +189,11 @@ data "template_file" "tech360_bucket_policy" {
   }
 }
 
-resource "aws_s3_bucket_policy" "tech360_access_policy" {
-  bucket = aws_s3_bucket.datashare_tech360_bucket.id
-  policy = data.template_file.tech360_bucket_policy.rendered
+# resource "aws_s3_bucket_policy" "tech360_access_policy" {
+#   bucket = aws_s3_bucket.datashare_tech360_bucket.id
+#   policy = data.template_file.tech360_bucket_policy.rendered
 
-  lifecycle {
-    ignore_changes = [policy]
-  }
-}
+#   lifecycle {
+#     ignore_changes = [policy]
+#   }
+# }
