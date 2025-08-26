@@ -2,24 +2,33 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "AllowListBucketForPrefix",
       "Effect": "Allow",
       "Principal": {
         "AWS": "arn:aws:iam::${tech360_account_id}:role/AWSGlueServiceRole-Tech360"
       },
-      "Action": [
-        "s3:ListBucket",
-        "s3:GetObject"
-      ],
-      "Resource": [
-        "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-tech360-${account_number}",
-        "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-tech360-${account_number}/ncr_service_now/*"
-      ],
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-tech360-${account_number}",
       "Condition": {
         "StringEquals": {
           "aws:SourceAccount": "${tech360_account_id}"
         },
         "StringLike": {
           "s3:prefix": "ncr_service_now/*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowGetObjectForPrefix",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::${tech360_account_id}:role/AWSGlueServiceRole-Tech360"
+      },
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-tech360-${account_number}/ncr_service_now/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:SourceAccount": "${tech360_account_id}"
         }
       }
     }
