@@ -50,16 +50,16 @@ class ProcessedNcrServiceNowServiceCase(TransformBase):
 
         column_mapping = {
             'sys_id': ('sys_id', 'String'),
-            'restaurant_number': ('restaurant_number', 'Integer'),
-            'number': ('number', 'string'),
+            'restaurant_number': ('restaurant_id', 'Integer'),
+            'number': ('case_number', 'string'),
             'case_type': ('case_type', 'string'),
             'account_name': ('account_name', 'String'),
             'asset': ('asset', 'String'),
             'category': ('category', 'String'),
             'active_account_escalation': ('active_account_escalation', 'String'),
             'active_escalation': ('active_escalation', 'String'),
-            'assigned_on_timestamp': ('assigned_on_utc', 'Timestamp'),
-            'assigned_on': ('assigned_on_uk', 'String'),
+            'assigned_on_timestamp': ('assigned_timestamp_utc', 'Timestamp'),
+            'assigned_on': ('assigned_timestamp', 'String'),
             'assigned_on_dt': ('assigned_on_date', 'Date'),
             'u_call_type': ('u_call_type', 'String'),
             'u_caller_email': ('u_caller_email', 'String'),
@@ -70,8 +70,8 @@ class ProcessedNcrServiceNowServiceCase(TransformBase):
             'cause': ('cause', 'String'),
             'contact': ('contact', 'String'),
             'entitlement': ('entitlement', 'String'),
-            'first_response_time_timestamp': ('first_response_time_utc', 'Timestamp'),
-            'first_response_time': ('first_response_time_uk', 'String'),
+            'first_response_time_timestamp': ('first_response_timestampt_utc', 'Timestamp'),
+            'first_response_time': ('first_response_timestamp', 'String'),
             'first_response_time_dt': ('first_response_date', 'Date'),
             'incident': ('incident', 'String'),
             'initiated_as_request': ('initiated_as_request', 'String'),
@@ -83,9 +83,9 @@ class ProcessedNcrServiceNowServiceCase(TransformBase):
             'problem': ('problem', 'String'),
             'product': ('product', 'String'),
             'resolution_code': ('resolution_code', 'String'),
-            'resolved_at_timestamp': ('resolved_at_utc', 'Timestamp'),
-            'resolved_at': ('resolved_at_uk', 'String'),
-            'resolved_at_dt': ('resolved_at_date', 'Date'),
+            'resolved_at_timestamp': ('resolved_timestamp_utc', 'Timestamp'),
+            'resolved_at': ('resolved_timestamp', 'String'),
+            'resolved_at_dt': ('resolved_date', 'Date'),
             'resolved_by': ('resolved_by', 'String'),
             'subcategory': ('subcategory', 'String'),
             'action_status': ('action_status', 'String'),
@@ -94,16 +94,16 @@ class ProcessedNcrServiceNowServiceCase(TransformBase):
             'business_duration': ('business_duration', 'String'),
             'business_service': ('business_service', 'String'),
             'close_notes': ('close_notes', 'String'),
-            'closed_at_timestamp': ('closed_at_utc', 'Timestamp'),
-            'closed_at': ('closed_at_uk', 'String'),
-            'closed_at_dt': ('closed_at_date', 'Date'),
+            'closed_at_timestamp': ('closed_timestamp_utc', 'Timestamp'),
+            'closed_at': ('closed_timestamp', 'String'),
+            'closed_at_dt': ('closed_date', 'Date'),
             'closed_by': ('closed_by', 'String'),
             'comments_and_work_notes': ('comments_and_work_notes', 'String'),
             'contact_type': ('contact_type', 'String'),
             'correlation_id': ('correlation_id', 'String'),
-            'sys_created_on_timestamp': ('sys_created_on_utc', 'Timestamp'),
-            'sys_created_on': ('sys_created_on_uk', 'String'),
-            'sys_created_on_dt': ('sys_created_on_date', 'Date'),
+            'sys_created_on_timestamp': ('sys_created_timestamp_utc', 'Timestamp'),
+            'sys_created_on': ('sys_created_timestamp', 'String'),
+            'sys_created_on_dt': ('sys_created_date', 'Date'),
             'sys_created_by': ('sys_created_by', 'String'),
             'description': ('description', 'String'),
             'knowledge': ('knowledge', 'String'),
@@ -112,18 +112,18 @@ class ProcessedNcrServiceNowServiceCase(TransformBase):
             'impact': ('impact', 'String'),
             'made_sla': ('made_sla', 'String'),
             'needs_attention': ('needs_attention', 'String'),
-            'opened_at_timestamp': ('opened_at_utc', 'Timestamp'),
-            'opened_at': ('opened_at_uk', 'String'),
-            'opened_at_dt': ('opened_at_date', 'Date'),
+            'opened_at_timestamp': ('opened_timestamp_utc', 'Timestamp'),
+            'opened_at': ('opened_timestamp', 'String'),
+            'opened_at_dt': ('opened_date', 'Date'),
             'opened_by': ('opened_by', 'String'),
             'priority': ('priority', 'String'),
             'reassignment_count': ('reassignment_count', 'Int'),
             'service_offering': ('service_offering', 'String'),
             'short_description': ('short_description', 'String'),
             'state': ('state', 'String'),
-            'sys_updated_on_timestamp': ('sys_updated_on_utc', 'Timestamp'),
-            'sys_updated_on': ('sys_updated_on_uk', 'String'),
-            'sys_updated_on_dt': ('sys_updated_on_date', 'Date'),
+            'sys_updated_on_timestamp': ('sys_updated_timestamp_utc', 'Timestamp'),
+            'sys_updated_on': ('sys_updated_timestamp', 'String'),
+            'sys_updated_on_dt': ('sys_updated_date', 'Date'),
             'sys_updated_by': ('sys_updated_by', 'String'),
             'sys_mod_count': ('sys_mod_count', 'Int'),
             'urgency': ('urgency', 'String'),
@@ -136,11 +136,11 @@ class ProcessedNcrServiceNowServiceCase(TransformBase):
             'parent__sys_id': ('parent_sys_id', 'String'),
             'product__name': ('product_name', 'String'),
             'assignment_group__manager': ('assignment_group_manager', 'String'),
-            'eventprocessedutctime_timestamp': ('event_processed_time_utc', 'Timestamp'),
-            'eventprocessedutctime': ('event_processed_time_uk', 'String'),
+            'eventprocessedutctime_timestamp': ('event_processed_timestamp_utc', 'Timestamp'),
+            'eventprocessedutctime': ('event_processed_timestamp', 'String'),
             'eventprocessedutctime_dt': ('event_processed_date', 'Date'),
-            'eventenqueuedutctime_timestamp': ('event_enqueued_time_utc', 'Timestamp'),
-            'eventenqueuedutctime': ('event_enqueued_time_uk', 'String'),
+            'eventenqueuedutctime_timestamp': ('event_enqueued_timestamp_utc', 'Timestamp'),
+            'eventenqueuedutctime': ('event_enqueued_timestamp', 'String'),
             'eventenqueuedutctime_dt': ('event_enqueued_date', 'Date'),
             'category_id': ('category_id', 'String'),
             'resolution_code_id': ('resolution_code_id', 'String'),
@@ -152,7 +152,7 @@ class ProcessedNcrServiceNowServiceCase(TransformBase):
             'urgency_id': ('urgency_id', 'String'),
             'u_issue_type_value': ('u_issue_type_value', 'String'),
             'cdc_timestamp_timestamp': ('cdc_timestamp_utc', 'timestamp'),
-            'cdc_timestamp': ('cdc_timestamp_uk', 'string'),
+            'cdc_timestamp': ('cdc_timestamp', 'string'),
             'cdc_timestamp_dt': ('cdc_date', 'date'),
             'sys_created_year': ('sys_created_year', 'int'),
             'sys_created_month': ('sys_created_month', 'int')
@@ -172,35 +172,35 @@ class ProcessedNcrServiceNowServiceCase(TransformBase):
 
             """
             # Define the S3 save path
-            # save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
+            save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
 
-            # # Check if Delta table needs to be created
-            # if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
-            #     self.athena_trigger = True
+            # Check if Delta table needs to be created
+            if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
+                self.athena_trigger = True
                 
-            # # Determine whether to create or merge to the Delta table
-            # if self.athena_trigger:
-            #     # Create the Delta table
-            #     df.write.format("delta").mode("overwrite") \
-            #     .partitionBy('sys_created_year','sys_created_month') \
-            #     .save(save_output_path)
+            # Determine whether to create or merge to the Delta table
+            if self.athena_trigger:
+                # Create the Delta table
+                df.write.format("delta").mode("overwrite") \
+                .partitionBy('sys_created_year','sys_created_month') \
+                .save(save_output_path)
                 
-            # else:
-            #     # Append the Delta table
-            #     df.write.format("delta").mode("append") \
-            #     .save(save_output_path)
+            else:
+                # Append the Delta table
+                df.write.format("delta").mode("append") \
+                .save(save_output_path)
 
-            #     # Vacuum the table
-            #     self.vacuum_table(save_output_path,48)
+                # Vacuum the table
+                self.vacuum_table(save_output_path,48)
 
-            # if not self.aws_instance.athena_table_exists('processed', 'ncr_service_now_service_case'):
-            #     # Execute Athena query to create the table
-            #     self.aws_instance.create_athena_delta_table('processed', 'ncr_service_now_service_case', save_output_path, self.athena_output_path)
+            if not self.aws_instance.athena_table_exists('processed', 'ncr_service_now_service_case'):
+                # Execute Athena query to create the table
+                self.aws_instance.create_athena_delta_table('processed', 'ncr_service_now_service_case', save_output_path, self.athena_output_path)
 
-            # # If error detected from DQ failing then will raise
-            # if self.sns_trigger:
-            #     message = "Records in the error folder that have failed transformation"
-            #     self.aws_instance.send_sns_message(message)
+            # If error detected from DQ failing then will raise
+            if self.sns_trigger:
+                message = "Records in the error folder that have failed transformation"
+                self.aws_instance.send_sns_message(message)
 
             
             self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')

@@ -2,7 +2,7 @@ from snowfall_pipeline.common_utilities.transform_base import TransformBase
 from snowfall_pipeline.common_utilities.decorators import transformation_timer
 from delta.tables import DeltaTable
 from pyspark.sql import functions as F
-
+from datetime import datetime
 
 class ProcessedNcrServiceNowIncident(TransformBase):
 
@@ -12,11 +12,9 @@ class ProcessedNcrServiceNowIncident(TransformBase):
         self.pipeline_config = self.full_configs[self.datasets]
         self.file_path = "ncr_service_now/incident"
 
-
     def get_data(self):
         df = self.read_data_from_s3(self.preparation_bucket_name,self.file_path,'delta')
         return df
-
 
     def transform_data(self, df):
         """
@@ -41,7 +39,6 @@ class ProcessedNcrServiceNowIncident(TransformBase):
         # Step 1: Adds incident type based on restaurant number
         df = df.withColumn("incident_type", F.when(F.col("restaurant_number") != -1, "Store").otherwise("Corporate"))
 
-
         # Step 2: Extracts Vista dispatch number from work notes
         df = df.withColumn("vista_dispatch_number", F.when(
                 F.col("work_notes").rlike(r"Vista dispatch request number (\d+) received\."),
@@ -49,15 +46,14 @@ class ProcessedNcrServiceNowIncident(TransformBase):
             )
         )
 
-
         # Step 3: Adds 'P' prefix to priority_id to create priority label
-        #df = df.withColumn("priority", F.concat(F.lit("P"), F.col("priority_id")))
+        df = df.withColumn("priority", F.concat(F.lit("P"), F.col("priority_id")))
   
         # Step 4: Splits datetime column
         df = self.split_datetime_column(df,self.pipeline_config.get('process_timestamp'))
 
         # Step 5: Filters passed records
-        df = self.filter_quality_result(df,partition_column_drop=['created_year','created_month'])
+        df = self.filter_quality_result(df,partition_column_drop=['sys_created_year','sys_created_month'])
 
         # Step 6: Drops unnecessary columns
         df = self.drop_columns_for_processed(df)
@@ -225,35 +221,43 @@ class ProcessedNcrServiceNowIncident(TransformBase):
 
             """
             # Define the S3 save path
-            # save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
+            save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
 
-            # # Check if Delta table needs to be created
-            # if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
-            #     self.athena_trigger = True
+            # Check if Delta table needs to be created
+            if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
+                self.athena_trigger = True
                 
-            # # Determine whether to create or merge to the Delta table
-            # if self.athena_trigger:
-            #     # Create the Delta table
-            #     df.write.format("delta").mode("overwrite") \
-            #     .partitionBy('sys_created_year','sys_created_month') \
-            #     .save(save_output_path)
+            # Determine whether to create or merge to the Delta table
+            if self.athena_trigger:
+                # Create the Delta table
+                df.write.format("delta").mode("overwrite") \
+                .partitionBy('sys_created_year','sys_created_month') \
+                .save(save_output_path)
                 
-            # else:
-            #     # Append the Delta table
-            #     df.write.format("delta").mode("append") \
-            #     .save(save_output_path)
+            else:
+                # Append the Delta table
+                df.write.format("delta").mode("append") \
+                .save(save_output_path)
 
-            #     # Vacuum the table
-            #     self.vacuum_table(save_output_path,48)
+                # Vacuum the table
+                self.vacuum_table(save_output_path,48)
 
-            # if not self.aws_instance.athena_table_exists('processed', 'ncr_service_now_incident'):
-            #     # Execute Athena query to create the table
-            #     self.aws_instance.create_athena_delta_table('processed', 'ncr_service_now_incident', save_output_path, self.athena_output_path)
+            if not self.aws_instance.athena_table_exists('processed', 'ncr_service_now_incident'):
+                # Execute Athena query to create the table
+                self.aws_instance.create_athena_delta_table('processed', 'ncr_service_now_incident', save_output_path, self.athena_output_path)
+            
+            # Generate timestamped filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            csv_filename = f"incident_{timestamp}.csv"
+            csv_output_path = f"s3://{self.raw_bucket_name}/c360/incident/{csv_filename}"
 
-            # # If error detected from DQ failing then will raise
-            # if self.sns_trigger:
-            #     message = "Records in the error folder that have failed transformation"
-            #     self.aws_instance.send_sns_message(message)
+            # Save DataFrame as CSV with header
+            df.coalesce(1).write.mode("overwrite").option("header", True).csv(csv_output_path)
+
+            # If error detected from DQ failing then will raise
+            if self.sns_trigger:
+                message = "Records in the error folder that have failed transformation"
+                self.aws_instance.send_sns_message(message)
 
             
             self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
