@@ -169,7 +169,7 @@ resource "aws_s3_object" "datashare_tech360_ncr_folders" {
   server_side_encryption = "aws:kms"
 
   lifecycle {
-    prevent_destroy = true
+    prevent_destroy = false
     ignore_changes  = [source]
   }
 }
