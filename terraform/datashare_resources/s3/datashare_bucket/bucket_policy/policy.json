@@ -11,8 +11,8 @@
         "s3:GetObject"
       ],
       "Resource": [
-        "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-landing-${account_number}",
-        "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-landing-${account_number}/ncr_service_now/*"
+        "arn:aws:s3:::eu-central1-${var.environment}-uk-snowfall-datashare-tech360-${var.account_number}",
+        "arn:aws:s3:::eu-central1-${var.environment}-uk-snowfall-datashare-tech360-${var.account_number}/ncr_service_now/*"
       ],
       "Condition": {
         "StringEquals": {
