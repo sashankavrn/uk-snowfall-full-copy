@@ -156,16 +156,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "tech360_encryptio
 # ########## NCR Folder Creation ##########
 resource "aws_s3_object" "datashare_tech360_ncr_folders" {
   for_each = {
-    change_request       = "ncr_service_now/change_request/"
     incident             = "ncr_service_now/incident/"
-    problem_record       = "ncr_service_now/problem_record/"
-    service_now_case     = "ncr_service_now/service_case/"
-    incident_task        = "ncr_service_now/incident_task/"
-    knowledge_base       = "ncr_service_now/knowledge_base/"
-    knowledge            = "ncr_service_now/knowledge/"
-    knowledge_feedback   = "ncr_service_now/knowledge_feedback/"
-    knowledge_use        = "ncr_service_now/knowledge_use/"
-    case_worknotes       = "ncr_service_now/case_worknotes/"
+    # problem_record       = "ncr_service_now/problem_record/"
+    # service_now_case     = "ncr_service_now/service_case/"
+    # incident_task        = "ncr_service_now/incident_task/"
   }
 
   bucket                 = aws_s3_bucket.datashare_tech360_bucket.id
@@ -189,11 +183,11 @@ data "template_file" "tech360_bucket_policy" {
   }
 }
 
-# resource "aws_s3_bucket_policy" "tech360_access_policy" {
-#   bucket = aws_s3_bucket.datashare_tech360_bucket.id
-#   policy = data.template_file.tech360_bucket_policy.rendered
+resource "aws_s3_bucket_policy" "tech360_access_policy" {
+  bucket = aws_s3_bucket.datashare_tech360_bucket.id
+  policy = data.template_file.tech360_bucket_policy.rendered
 
-#   lifecycle {
-#     ignore_changes = [policy]
-#   }
-# }
+  lifecycle {
+    ignore_changes = [policy]
+  }
+}

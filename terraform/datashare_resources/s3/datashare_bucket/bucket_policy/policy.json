@@ -4,7 +4,7 @@
     {
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::${tech360_account_id}:role/Tech360S3AccessRole-${environment}"
+        "AWS": "arn:aws:iam::${tech360_account_id}:role/AWSGlueServiceRole-Tech360"
       },
       "Action": [
         "s3:ListBucket",
