@@ -188,6 +188,6 @@ resource "aws_s3_bucket_policy" "tech360_access_policy" {
   policy = data.template_file.tech360_bucket_policy.rendered
 
   lifecycle {
-    ignore_changes = [policy]
+    # ignore_changes = [policy]
   }
 }
