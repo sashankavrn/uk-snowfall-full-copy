@@ -851,3 +851,82 @@ data "aws_s3_bucket" "raw_bucket" {
 #     aws_lambda_permission.allow_ods_user_data_to_datashare_s3
 #   ]
 # }
+############################################
+## SNOWFALL PROACTIVE ALERTS
+############################################
+
+## Archive the snowfall-proactive-alerts Python script
+data "archive_file" "snowfall_proactive_alerts" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-alerts/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-alerts.zip"
+}
+
+## Lambda function - snowfall-proactive-alerts
+resource "aws_lambda_function" "snowfall_proactive_alerts" {
+  filename         = data.archive_file.snowfall_proactive_alerts.output_path
+  function_name    = "uk-snowfall-proactive-alerts-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 300
+  description      = "Triggered by S3 or scheduled event to run proactive alerts for Snowfall"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/snowfall-proactive-alerts.zip")
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      RULES_TABLE       = "dev_incident_rules"
+      TICKETS_TABLE     = "dev_service_now_tickets"
+      ATHENA_OUTPUT_S3  = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}"
+      SNS_TOPIC_ARN     = var.sns_topic_arn
+    }
+  }
+}
+
+
+
+## Optional: CloudWatch EventBridge schedule trigger
+resource "aws_cloudwatch_event_rule" "snowfall_proactive_alerts_schedule" {
+  name                = "snowfall-proactive-alerts-schedule-${var.environment}"
+  description         = "Run proactive alerts check every 5 minutes"
+  schedule_expression = "rate(5 minutes)"
+}
+
+resource "aws_cloudwatch_event_target" "snowfall_proactive_alerts_target" {
+  rule      = aws_cloudwatch_event_rule.snowfall_proactive_alerts_schedule.name
+  target_id = "snowfall-proactive-alerts"
+  arn       = aws_lambda_function.snowfall_proactive_alerts.arn
+}
+
+resource "aws_lambda_permission" "allow_eventbridge_to_invoke_snowfall_alerts" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.snowfall_proactive_alerts.arn
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.snowfall_proactive_alerts_schedule.arn
+}
+
+resource "aws_dynamodb_table" "incident_rules" {
+  name         = "uk-snowfall-${var.environment}_incident_rules"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "rule_id"
+
+  attribute {
+    name = "rule_id"
+    type = "S"
+  }
+}
+
+resource "aws_dynamodb_table" "service_now_tickets" {
+  name         = "uk-snowfall-${var.environment}_service_now_tickets"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "ticket_id"
+
+  attribute {
+    name = "ticket_id"
+    type = "S"
+  }
+}
+
