@@ -856,38 +856,36 @@ data "aws_s3_bucket" "raw_bucket" {
 ############################################
 
 ## Archive the snowfall-proactive-alerts Python script
-data "archive_file" "snowfall_proactive_alerts" {
+data "archive_file" "uk_snowfall_proactive_alerts" {
   type        = "zip"
   source_dir  = "${path.module}/scripts/python/snowfall-proactive-alerts/"
   output_path = "${path.module}/scripts/zips/snowfall-proactive-alerts.zip"
 }
 
-## Lambda function - snowfall-proactive-alerts
-resource "aws_lambda_function" "snowfall_proactive_alerts" {
-  filename         = data.archive_file.snowfall_proactive_alerts.output_path
+## Lambda function - uk-snowfall-proactive-alerts
+resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
+  filename         = data.archive_file.uk_snowfall_proactive_alerts.output_path
   function_name    = "uk-snowfall-proactive-alerts-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   memory_size      = 1024
   timeout          = 300
-  description      = "Triggered by S3 or scheduled event to run proactive alerts for Snowfall"
-  source_code_hash = filebase64sha256("${path.module}/scripts/zips/snowfall-proactive-alerts.zip")
+  description      = "Triggered by EventBridge schedule to run proactive alerts for Snowfall"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_alerts.output_path)
   tags             = var.resource_tags
 
   environment {
     variables = {
-      RULES_TABLE       = "dev_incident_rules"
-      TICKETS_TABLE     = "dev_service_now_tickets"
+      RULES_TABLE       = "uk-snowfall-${var.environment}-incident-rules"
+      TICKETS_TABLE     = "uk-snowfall-${var.environment}-service-now-tickets"
       ATHENA_OUTPUT_S3  = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}"
       SNS_TOPIC_ARN     = var.sns_topic_arn
     }
   }
 }
 
-
-
-## Optional: CloudWatch EventBridge schedule trigger
+## CloudWatch EventBridge schedule trigger
 resource "aws_cloudwatch_event_rule" "uk_snowfall_proactive_alerts_schedule" {
   name                = "uk-snowfall-proactive-alerts-schedule-${var.environment}"
   description         = "Run proactive alerts check every 5 minutes"
