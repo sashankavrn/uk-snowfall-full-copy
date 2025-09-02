@@ -908,26 +908,7 @@ resource "aws_lambda_permission" "uk_snowfall_allow_eventbridge_to_invoke_alerts
   source_arn    = aws_cloudwatch_event_rule.uk_snowfall_proactive_alerts_schedule.arn
 }
 
-############################################
-## DynamoDB: Incident Rules Table
-############################################
-resource "aws_dynamodb_table" "uk_snowfall_incident_rules" {
-  name         = "uk-snowfall-${var.environment}-incident-rules"
-  billing_mode = "PAY_PER_REQUEST" # On-demand capacity
-  hash_key     = "rule_id"
 
-  attribute {
-    name = "rule_id"
-    type = "S"
-  }
-
-  tags = merge(
-    var.resource_tags,
-    {
-      Name = "uk-snowfall-${var.environment}-incident-rules"
-    }
-  )
-}
 
 ############################################
 ## DynamoDB: Incident Rules Table
