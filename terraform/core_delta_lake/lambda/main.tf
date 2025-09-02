@@ -888,28 +888,28 @@ resource "aws_lambda_function" "snowfall_proactive_alerts" {
 
 
 ## Optional: CloudWatch EventBridge schedule trigger
-resource "aws_cloudwatch_event_rule" "snowfall_proactive_alerts_schedule" {
-  name                = "snowfall-proactive-alerts-schedule-${var.environment}"
+resource "aws_cloudwatch_event_rule" "uk_snowfall_proactive_alerts_schedule" {
+  name                = "uk-snowfall-proactive-alerts-schedule-${var.environment}"
   description         = "Run proactive alerts check every 5 minutes"
   schedule_expression = "rate(5 minutes)"
 }
 
-resource "aws_cloudwatch_event_target" "snowfall_proactive_alerts_target" {
-  rule      = aws_cloudwatch_event_rule.snowfall_proactive_alerts_schedule.name
-  target_id = "snowfall-proactive-alerts"
-  arn       = aws_lambda_function.snowfall_proactive_alerts.arn
+resource "aws_cloudwatch_event_target" "uk_snowfall_proactive_alerts_target" {
+  rule      = aws_cloudwatch_event_rule.uk_snowfall_proactive_alerts_schedule.name
+  target_id = "uk-snowfall-proactive-alerts"
+  arn       = aws_lambda_function.uk_snowfall_proactive_alerts.arn
 }
 
-resource "aws_lambda_permission" "allow_eventbridge_to_invoke_snowfall_alerts" {
+resource "aws_lambda_permission" "uk_snowfall_allow_eventbridge_to_invoke_alerts" {
   statement_id  = "AllowExecutionFromEventBridge"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.snowfall_proactive_alerts.arn
+  function_name = aws_lambda_function.uk_snowfall_proactive_alerts.arn
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.snowfall_proactive_alerts_schedule.arn
+  source_arn    = aws_cloudwatch_event_rule.uk_snowfall_proactive_alerts_schedule.arn
 }
 
-resource "aws_dynamodb_table" "incident_rules" {
-  name         = "uk-snowfall-${var.environment}_incident_rules"
+resource "aws_dynamodb_table" "uk_snowfall_incident_rules" {
+  name         = "uk-snowfall-${var.environment}-incident-rules"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "rule_id"
 
@@ -919,8 +919,8 @@ resource "aws_dynamodb_table" "incident_rules" {
   }
 }
 
-resource "aws_dynamodb_table" "service_now_tickets" {
-  name         = "uk-snowfall-${var.environment}_service_now_tickets"
+resource "aws_dynamodb_table" "uk_snowfall_service_now_tickets" {
+  name         = "uk-snowfall-${var.environment}-service-now-tickets"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "ticket_id"
 
@@ -929,4 +929,3 @@ resource "aws_dynamodb_table" "service_now_tickets" {
     type = "S"
   }
 }
-
