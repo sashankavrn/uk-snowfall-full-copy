@@ -876,14 +876,16 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
   tags             = var.resource_tags
 
   environment {
-    variables = {
-      RULES_TABLE       = "uk-snowfall-${var.environment}-incident-rules"
-      TICKETS_TABLE     = "uk-snowfall-${var.environment}-service-now-tickets"
-      ATHENA_OUTPUT_S3  = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}"
-      SNS_TOPIC_ARN     = var.sns_topic_arn
-    }
+  variables = {
+    DYNAMO_REGION    = "eu-central-1"
+    RULES_TABLE      = "uk-snowfall-${var.environment}-incident-rules"
+    TICKETS_TABLE    = "uk-snowfall-${var.environment}-service-now-tickets"
+    ATHENA_REGION    = "eu-central-1"
+    ATHENA_OUTPUT_S3 = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
+    SNS_TOPIC_ARN    = var.sns_topic_arn
   }
 }
+
 
 ## CloudWatch EventBridge schedule trigger
 resource "aws_cloudwatch_event_rule" "uk_snowfall_proactive_alerts_schedule" {
