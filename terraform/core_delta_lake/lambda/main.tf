@@ -885,6 +885,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
     SNS_TOPIC_ARN    = var.sns_topic_arn
   }
 }
+}
 
 
 ## CloudWatch EventBridge schedule trigger
