@@ -37,6 +37,10 @@
         "destinationPath": "ncr_service_now/knowledge_use/"
       },
       {
+        "fileName": "ncr_service_now/worknotes/",
+        "destinationPath": "ncr_service_now/worknotes/"
+      },
+      {
         "fileName": "genesys/contact_center_settings/",
         "destinationPath": "genesys/contact_center_settings/"
       },
