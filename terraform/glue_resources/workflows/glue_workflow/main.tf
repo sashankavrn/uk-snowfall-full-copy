@@ -378,6 +378,19 @@ locals {
       schedule        = "cron(0/45 * * * ? *)"
       reporting_date  = ""
     },
+    "ncr_service_now_incident_task" = {
+      name            = "uk-snowfall-ncr-service-now-incident-task"
+      description     = "Workflow for the NCR ServiceNow Incident Task data"
+      dataset         = "ncr_service_now_incident_task"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-incident-task-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/45 * * * ? *)" # offset to avoid overlap with incident
+      reporting_date  = ""
+    },
     "ncr_service_now_knowledge_base" = {
       name            = "uk-snowfall-ncr-service-now-knowledge-base"
       description     = "Workflow for the NCR ServiceNow Knowledge Base data"
@@ -389,6 +402,19 @@ locals {
       batch_window    = 1
       trigger_type    = "SCHEDULED"
       schedule        = "cron(0/45 * * * ? *)"
+      reporting_date  = ""
+    },
+    "ncr_service_now_worknotes" = {
+      name            = "uk-snowfall-ncr-service-now-worknotes"
+      description     = "Workflow for the NCR ServiceNow Worknotes data"
+      dataset         = "ncr_service_now_worknotes"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-worknotes-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/45 * * * ? *)" # offset to avoid overlap with incident & task
       reporting_date  = ""
     },
     "service_agent_server_files" = {

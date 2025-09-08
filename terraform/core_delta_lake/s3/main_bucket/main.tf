@@ -98,7 +98,7 @@ resource "aws_s3_object" "landing_folder" {
       genesys_user_status_history = "genesys/user_status_interval_history/"
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
-      ncr_service_now_case_worknotes = "ncr_service_now/case_worknotes/"
+      ncr_service_now_worknotes = "ncr_service_now/worknotes/"
     }
 }
 
@@ -185,7 +185,7 @@ resource "aws_s3_object" "raw_folder" {
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
       service_agent_server_files = "service_agent_server_files/uploads/"
-       ncr_service_now_case_worknotes = "ncr_service_now/case_worknotes/"
+      ncr_service_now_worknotes = "ncr_service_now/worknotes/"
     }
 }
 
@@ -284,7 +284,7 @@ resource "aws_s3_object" "preparation_folder" {
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
       service_agent_server_files = "service_agent_server_files/uploads/"
-      ncr_service_now_case_worknotes = "ncr_service_now/case_worknotes/"
+      ncr_service_now_worknotes = "ncr_service_now/worknotes/"
     }
 }
 
@@ -387,7 +387,7 @@ resource "aws_s3_object" "processed_folder" {
       google_contact_center   = "gcc/"
       happysignals            = "happysignals/"
       service_agent_server_files = "service_agent_server_files/uploads/"
-      ncr_service_now_case_worknotes = "ncr_service_now/case_worknotes/"
+      ncr_service_now_worknotes = "ncr_service_now/worknotes/"
       ods_location_restaurant_count_by_day = "restaurant_count_by_day/"
     }
 }
