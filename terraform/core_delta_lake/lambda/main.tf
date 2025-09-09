@@ -925,7 +925,7 @@ resource "aws_dynamodb_table" "uk_snowfall_incident_rules" {
     type = "S"
   }
 
-  # tags = var.resource_tags
+  tags = var.resource_tags
 }
 
 ############################################
@@ -941,5 +941,5 @@ resource "aws_dynamodb_table" "uk_snowfall_service_now_tickets" {
     type = "S"
   }
 
-  # tags = var.resource_tags
+  tags = var.resource_tags
 }
