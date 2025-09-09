@@ -928,19 +928,19 @@ resource "aws_dynamodb_table" "uk_snowfall_incident_rules" {
   tags = var.resource_tags
 }
 
-resource "aws_dynamodb_table_item" "incident_rule_1" {
-  table_name = aws_dynamodb_table.uk_snowfall_incident_rules.name
-  hash_key   = "rule_id"
+# resource "aws_dynamodb_table_item" "incident_rule_1" {
+#   table_name = aws_dynamodb_table.uk_snowfall_incident_rules.name
+#   hash_key   = "rule_id"
 
-  item = jsonencode({
-    rule_id              = { S = "1" }
-    active               = { BOOL = true }
-    athena_database      = { S = "infra_metrics" }
-    athena_table         = { S = "cpu_metrics" }
-    comparison           = { S = "gt" }
-    incident_description = { S = "CPU usage above 80%" }
-  })
-}
+#   item = jsonencode({
+#     rule_id              = { S = "1" }
+#     active               = { BOOL = true }
+#     athena_database      = { S = "infra_metrics" }
+#     athena_table         = { S = "cpu_metrics" }
+#     comparison           = { S = "gt" }
+#     incident_description = { S = "CPU usage above 80%" }
+#   })
+# }
 
 
 ############################################
