@@ -1,36 +1,36 @@
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AllowListEntireBucket",
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::${tech360_account_id}:role/AWSGlueServiceRole-Tech360"
-      },
-      "Action": [
-        "s3:ListBucket",
-        "s3:GetBucketLocation"
-      ],
-      "Resource": "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-tech360-${account_number}",
-      "Condition": {
-        "StringEquals": {
-          "aws:SourceAccount": "${tech360_account_id}"
-        }
-      }
-    },
-    {
-      "Sid": "AllowReadAllObjects",
-      "Effect": "Allow",
-      "Principal": {
-        "AWS": "arn:aws:iam::${tech360_account_id}:role/AWSGlueServiceRole-Tech360"
-      },
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-tech360-${account_number}/*",
-      "Condition": {
-        "StringEquals": {
-          "aws:SourceAccount": "${tech360_account_id}"
-        }
-      }
-    }
-  ]
-}
+// {
+//   "Version": "2012-10-17",
+//   "Statement": [
+//     {
+//       "Sid": "AllowListEntireBucket",
+//       "Effect": "Allow",
+//       "Principal": {
+//         "AWS": "arn:aws:iam::${tech360_account_id}:role/AWSGlueServiceRole-Tech360"
+//       },
+//       "Action": [
+//         "s3:ListBucket",
+//         "s3:GetBucketLocation"
+//       ],
+//       "Resource": "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-tech360-${account_number}",
+//       "Condition": {
+//         "StringEquals": {
+//           "aws:SourceAccount": "${tech360_account_id}"
+//         }
+//       }
+//     },
+//     {
+//       "Sid": "AllowReadAllObjects",
+//       "Effect": "Allow",
+//       "Principal": {
+//         "AWS": "arn:aws:iam::${tech360_account_id}:role/AWSGlueServiceRole-Tech360"
+//       },
+//       "Action": "s3:GetObject",
+//       "Resource": "arn:aws:s3:::eu-central1-${environment}-uk-snowfall-datashare-tech360-${account_number}/*",
+//       "Condition": {
+//         "StringEquals": {
+//           "aws:SourceAccount": "${tech360_account_id}"
+//         }
+//       }
+//     }
+//   ]
+// }

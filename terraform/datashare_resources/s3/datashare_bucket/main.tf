@@ -173,21 +173,21 @@ resource "aws_s3_object" "datashare_tech360_ncr_folders" {
     ignore_changes  = [source]
   }
 }
-data "template_file" "tech360_bucket_policy" {
-  template = file("${path.module}/bucket_policy/policy.json")
+# data "template_file" "tech360_bucket_policy" {
+#   template = file("${path.module}/bucket_policy/policy.json")
 
-  vars = {
-    environment          = var.environment
-    account_number       = var.account_number
-    tech360_account_id   = var.tech360_account_id
-  }
-}
+#   vars = {
+#     environment          = var.environment
+#     account_number       = var.account_number
+#     tech360_account_id   = var.tech360_account_id
+#   }
+# }
 
-resource "aws_s3_bucket_policy" "tech360_access_policy" {
-  bucket = aws_s3_bucket.datashare_tech360_bucket.id
-  policy = data.template_file.tech360_bucket_policy.rendered
+# resource "aws_s3_bucket_policy" "tech360_access_policy" {
+#   bucket = aws_s3_bucket.datashare_tech360_bucket.id
+#   policy = data.template_file.tech360_bucket_policy.rendered
 
-  lifecycle {
-    # ignore_changes = [policy]
-  }
-}
+#   lifecycle {
+#     # ignore_changes = [policy]
+#   }
+# }
