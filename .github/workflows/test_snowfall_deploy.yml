@@ -73,7 +73,12 @@ jobs:
         id: detect
         if: github.ref_name == 'dev-test'
         run: |
-          CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^terraform/' | grep '.tf' | awk -F/ '{print $2}' | sort -u)
+          echo "Detecting changed folders..."
+          CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} \
+            | grep '^terraform/' \
+            | grep '.tf' \
+            | awk -F/ '{print $2}' \
+            | sort -u)
           echo "changed_folders=$CHANGED" >> $GITHUB_OUTPUT
 
       - name: Deploy Terraform Modules
@@ -118,4 +123,3 @@ jobs:
               exit 1
               cd -
             done
-          fi
