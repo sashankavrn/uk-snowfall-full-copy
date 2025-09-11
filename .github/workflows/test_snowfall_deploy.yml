@@ -4,8 +4,9 @@ on:
   push:
     branches:
       - dev-test
-      - 'release-test/**'
       - main-test
+    tags:
+      - '*'
 
 jobs:
   deploy:
@@ -20,6 +21,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Ensures full commit history for git diff
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -33,10 +36,11 @@ jobs:
         id: setenv
         run: |
           BRANCH="${{ github.ref_name }}"
+          IS_TAG="${{ startsWith(github.ref, 'refs/tags/') }}"
           if [[ "$BRANCH" == "dev-test" ]]; then
             echo "ENV=dev" >> $GITHUB_ENV
             echo "TFVARS=dev.tfvars" >> $GITHUB_ENV
-          elif [[ "$BRANCH" == "main-test" ]]; then
+          elif [[ "$IS_TAG" == "true" ]]; then
             echo "ENV=prod" >> $GITHUB_ENV
             echo "TFVARS=prod.tfvars" >> $GITHUB_ENV
           else
@@ -67,25 +71,51 @@ jobs:
 
       - name: Detect Changed Terraform Folders
         id: detect
+        if: github.ref_name == 'dev-test'
         run: |
-          CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^terraform/' | grep '.tf' | cut -d/ -f2 | sort -u)
+          CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^terraform/' | grep '.tf' | awk -F/ '{print $2}' | sort -u)
           echo "changed_folders=$CHANGED" >> $GITHUB_OUTPUT
 
       - name: Deploy Terraform Modules
         run: |
           STAGES=("core_delta_lake" "glue_resources" "other_resources" "datashare_resources")
-          for stage in "${STAGES[@]}"; do
-            if echo "${{ steps.detect.outputs.changed_folders }}" | grep -q "$stage"; then
-              echo "Deploying $stage"
+          BRANCH="${{ github.ref_name }}"
+          IS_TAG="${{ startsWith(github.ref, 'refs/tags/') }}"
+
+          if [[ "$BRANCH" == "dev-test" ]]; then
+            echo "Selective deployment for dev-test"
+            for stage in "${STAGES[@]}"; do
+              if echo "${{ steps.detect.outputs.changed_folders }}" | grep -q "$stage"; then
+                echo "Deploying $stage to Dev"
+                cd terraform/$stage
+                terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
+                terraform plan -var-file=../${{ env.TFVARS }} -out=tfplan
+                terraform apply tfplan
+                cd -
+              fi
+            done
+
+          elif [[ "$BRANCH" == "main-test" && "$IS_TAG" == "false" ]]; then
+            echo "Full deployment to Non-Prod"
+            for stage in "${STAGES[@]}"; do
+              echo "Deploying $stage to Non-Prod"
               cd terraform/$stage
               terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
               terraform plan -var-file=../${{ env.TFVARS }} -out=tfplan
-              if [[ "${{ env.ENV }}" == "dev" ]]; then
-                echo "Applying to dev (not really)"
-              else
-                echo "Manual approval required for $stage in ${{ env.ENV }}"
-                exit 1
-              fi
+              echo "Manual approval required for $stage in Non-Prod"
+              exit 1
               cd -
-            fi
-          done
+            done
+
+          elif [[ "$IS_TAG" == "true" ]]; then
+            echo "Tagged release — deploying to Prod"
+            for stage in "${STAGES[@]}"; do
+              echo "Deploying $stage to Prod"
+              cd terraform/$stage
+              terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
+              terraform plan -var-file=../${{ env.TFVARS }} -out=tfplan
+              echo "Manual approval required for $stage in Prod"
+              exit 1
+              cd -
+            done
+          fi
