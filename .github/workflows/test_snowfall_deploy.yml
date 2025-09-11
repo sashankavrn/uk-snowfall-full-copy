@@ -22,7 +22,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Ensures full commit history for git diff
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -33,7 +33,6 @@ jobs:
         run: pip install boto3
 
       - name: Set Environment Variables
-        id: setenv
         run: |
           BRANCH="${{ github.ref_name }}"
           IS_TAG="${{ startsWith(github.ref, 'refs/tags/') }}"
@@ -49,7 +48,6 @@ jobs:
           fi
 
       - name: Load AWS Role and State Bucket
-        id: load_env
         run: |
           VAR_FILE="terraform/${{ env.TFVARS }}"
           AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
@@ -71,7 +69,6 @@ jobs:
 
       - name: Detect Changed Terraform Folders
         id: detect
-        if: github.ref_name == 'dev-test'
         run: |
           echo "Detecting changed folders..."
           CHANGED=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} \
@@ -79,30 +76,33 @@ jobs:
             | grep '.tf' \
             | awk -F/ '{print $2}' \
             | sort -u)
-          echo "changed_folders=$CHANGED" >> $GITHUB_OUTPUT
+          echo "changed_folders<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Deploy Terraform Modules
         run: |
-          STAGES=("core_delta_lake" "glue_resources" "other_resources" "datashare_resources")
           BRANCH="${{ github.ref_name }}"
           IS_TAG="${{ startsWith(github.ref, 'refs/tags/') }}"
+          CHANGED="${{ steps.detect.outputs.changed_folders }}"
+
+          echo "Changed folders:"
+          echo "$CHANGED"
 
           if [[ "$BRANCH" == "dev-test" ]]; then
             echo "Selective deployment for dev-test"
-            for stage in "${STAGES[@]}"; do
-              if echo "${{ steps.detect.outputs.changed_folders }}" | grep -q "$stage"; then
-                echo "Deploying $stage to Dev"
-                cd terraform/$stage
-                terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
-                terraform plan -var-file=../${{ env.TFVARS }} -out=tfplan
-                terraform apply tfplan
-                cd -
-              fi
-            done
+            while IFS= read -r stage; do
+              echo "Deploying $stage to Dev"
+              cd terraform/$stage
+              terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
+              terraform plan -var-file=../${{ env.TFVARS }} -out=tfplan
+
+              cd -
+            done <<< "$CHANGED"
 
           elif [[ "$BRANCH" == "main-test" && "$IS_TAG" == "false" ]]; then
             echo "Full deployment to Non-Prod"
-            for stage in "${STAGES[@]}"; do
+            for stage in core_delta_lake glue_resources other_resources datashare_resources; do
               echo "Deploying $stage to Non-Prod"
               cd terraform/$stage
               terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
@@ -114,7 +114,7 @@ jobs:
 
           elif [[ "$IS_TAG" == "true" ]]; then
             echo "Tagged release — deploying to Prod"
-            for stage in "${STAGES[@]}"; do
+            for stage in core_delta_lake glue_resources other_resources datashare_resources; do
               echo "Deploying $stage to Prod"
               cd terraform/$stage
               terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
@@ -123,3 +123,4 @@ jobs:
               exit 1
               cd -
             done
+          fi
