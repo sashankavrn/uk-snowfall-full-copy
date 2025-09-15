@@ -6,3 +6,4 @@ connector_profile_name = "UK-SnowFall-ServiceNow-Prod"
 aws_role_to_assume = "arn:aws:iam::868442188363:role/UK-MKT-SNowfall-Prod-Deploy-Service-Role"
 meraki_schedule = "cron(0 1 * * ? *)"
 stage_name =  "prod"
+
