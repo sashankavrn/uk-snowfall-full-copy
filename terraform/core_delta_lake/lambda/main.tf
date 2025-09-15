@@ -945,3 +945,49 @@ resource "aws_dynamodb_table" "uk_snowfall_service_now_tickets" {
 
   tags = var.resource_tags
 }
+
+
+############################################
+## SNOWFALL PROACTIVE DYNAMODB RULES
+############################################
+
+## Archive the snowfall-proactive-dynamodb-rules Python script
+data "archive_file" "uk_snowfall_proactive_dynamodb_rules" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-dynamodb-rules/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-dynamodb-rules.zip"
+}
+
+## Lambda function - snowfall-proactive-dynamodb-rules
+resource "aws_lambda_function" "uk_snowfall_proactive_dynamodb_rules" {
+  filename         = data.archive_file.uk_snowfall_proactive_dynamodb_rules.output_path
+  function_name    = "snowfall-proactive-dynamodb-rules-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 512
+  timeout          = 120
+  description      = "Lambda to insert proactive incident rules into DynamoDB for Snowfall"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_dynamodb_rules.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      DYNAMO_REGION = "eu-central-1"
+      RULES_TABLE   = "uk-snowfall-${var.environment}-incident-rules"
+    }
+  }
+}
+
+resource "null_resource" "invoke_lambda_once" {
+  provisioner "local-exec" {
+    command = <<EOT
+      aws lambda invoke \
+        --function-name snowfall-proactive-dynamodb-rules-${var.environment} \
+        --payload '{}' \
+        ${path.module}/lambda_response.json
+    EOT
+  }
+
+  depends_on = [aws_lambda_function.uk_snowfall_proactive_dynamodb_rules]
+}

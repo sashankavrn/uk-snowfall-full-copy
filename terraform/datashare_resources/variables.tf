@@ -48,7 +48,3 @@ variable "terraform_bucket_name" {
 }
 # variable "terraform_bucket_name" {}
 
-variable "tech360_account_id" {
-  description = "Tech360 AWS account ID"
-  type        = string
-}
