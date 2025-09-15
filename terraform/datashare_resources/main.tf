@@ -31,7 +31,6 @@ module "datashare_buckets" {
   resource_tags           = merge(var.resource_tags, { Environment = var.environment, DataClassification = "highly restricted" })
   role_assumed_arn        = var.role_assumed_arn
   datashare_landing_trigger_arn = module.datashare_lambda_module.datashare_landing_trigger_lambda_arn
-  tech360_account_id= var.tech360_account_id
 }
 
 
