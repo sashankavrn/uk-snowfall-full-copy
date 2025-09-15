@@ -961,7 +961,7 @@ data "archive_file" "uk_snowfall_proactive_dynamodb_rules" {
 ## Lambda function - snowfall-proactive-dynamodb-rules
 resource "aws_lambda_function" "uk_snowfall_proactive_dynamodb_rules" {
   filename         = data.archive_file.uk_snowfall_proactive_dynamodb_rules.output_path
-  function_name    = "snowfall-proactive-dynamodb-rules-${var.environment}"
+  function_name    = "uk-snowfall-proactive-dynamodb-rules-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
@@ -983,7 +983,7 @@ resource "null_resource" "invoke_lambda_once" {
   provisioner "local-exec" {
     command = <<EOT
       aws lambda invoke \
-        --function-name snowfall-proactive-dynamodb-rules-${var.environment} \
+        --function-name uk-snowfall-proactive-dynamodb-rules-${var.environment} \
         --payload '{}' \
         ${path.module}/lambda_response.json
     EOT
