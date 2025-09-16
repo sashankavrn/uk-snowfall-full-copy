@@ -336,7 +336,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)"
+      schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
     "ncr_service_now_problem_record" = {
@@ -349,7 +349,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)"
+      schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
     "ncr_service_now_change_request" = {
@@ -362,7 +362,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)"
+      schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
     "ncr_service_now_incident" = {
@@ -375,7 +375,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)"
+      schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
     "ncr_service_now_incident_task" = {
@@ -388,7 +388,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)" # offset to avoid overlap with incident
+      schedule        = "cron(45 * * * ? *)" # offset to avoid overlap with incident
       reporting_date  = ""
     },
     "ncr_service_now_knowledge_base" = {
@@ -401,7 +401,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)"
+      schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
     "ncr_service_now_worknotes" = {
@@ -414,7 +414,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)" # offset to avoid overlap with incident & task
+      schedule        = "cron(45 * * * ? *)" # offset to avoid overlap with incident & task
       reporting_date  = ""
     },
     "service_agent_server_files" = {
