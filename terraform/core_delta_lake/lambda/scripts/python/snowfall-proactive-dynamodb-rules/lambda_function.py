@@ -9,11 +9,12 @@ def lambda_handler(event, context):
     rule_item = {
         'rule_id':              {'S': '1'},
         'active':               {'BOOL': True},
-        'athena_database':      {'S': 'infra_metrics'},
-        'athena_table':         {'S': 'cpu_metrics'},
+        'athena_database':      {'S': 'uk_snowfall_processed'},
+        'athena_table':         {'S': 'newrelic_rmp_device_metrics'},
         'comparison':           {'S': 'gt'},
-        'incident_description': {'S': 'CPU usage above 80%'},
-        'metric':               {'S': 'cpu_usage'},
+        'threshold':              {'S': '95'},
+        'incident_description': {'S': 'Disk usage above 90%'},
+        'metric':               {'S': 'average_disk_used_percent'},
     }
 
     dynamodb.put_item(TableName=table_name, Item=rule_item)

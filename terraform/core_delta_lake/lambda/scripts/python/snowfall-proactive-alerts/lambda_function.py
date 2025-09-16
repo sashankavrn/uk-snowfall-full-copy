@@ -55,7 +55,7 @@ def get_rules():
 
 
 def query_athena(database, table, metric):
-    query = f'SELECT server_id, timestamp, {metric} FROM "{database}"."{table}" ORDER BY timestamp DESC LIMIT 1;'
+    query = f'SELECT host_name, sys_updated_timestamp, {metric} FROM "{database}"."{table}"  where {metric} > 90  LIMIT 10;'
     print(f"Running Athena query: {query}")
 
     response = athena.start_query_execution(
@@ -75,6 +75,7 @@ def query_athena(database, table, metric):
     if state == 'SUCCEEDED':
         results = athena.get_query_results(QueryExecutionId=query_execution_id)
         rows = results['ResultSet']['Rows']
+        print(rows)
         if len(rows) > 1:
             last_row = rows[1]['Data']
             record = {
