@@ -4,7 +4,7 @@ from delta.tables import DeltaTable
 
 
 
-class PreparationNcrServiceNowProblemRecord(TransformBase):
+class PreparationNcrServiceNowIncidentTask(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
@@ -12,7 +12,7 @@ class PreparationNcrServiceNowProblemRecord(TransformBase):
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
         self.pipeline_config = self.full_configs[self.datasets]
         self.dq_rule = dq_rules.get(self.datasets)
-        self.file_path = "ncr_service_now/problem_record"
+        self.file_path = "ncr_service_now/incident_task"
         self.list_of_files = self.aws_instance.get_files_in_s3_path(f"{self.raw_bucket_name}/{self.file_path}/")
 
 
@@ -26,14 +26,16 @@ class PreparationNcrServiceNowProblemRecord(TransformBase):
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Extract restaurant number from account_name
+        1. Extract restaurant number from u_site_display_value
         2. Fill null values in specified column
         3. Remove duplicate records.
         4. Remove trailing whitespaces
-        5. Perform data quality check.
-        6. Mask PII Data
-        7. Add CDC columns.
-        8. Add Partition Columns
+        5. Decode HTML entities in specified columns
+        6. Perform data quality check.
+        7. Mask PII Data
+        8. Add CDC columns.
+        9. Add Partition Columns
+        10. Change column data types as per configuration
 
         Parameters:
         - df: Input DataFrame.
@@ -42,7 +44,8 @@ class PreparationNcrServiceNowProblemRecord(TransformBase):
         - DataFrame: Transformed DataFrame.
 
         """
-        # # Stpe 1: Extract restaurant number from account_name
+                
+        # # Stpe 1: Extract restaurant number from u_site_display_value
         # df = self.parse_column_values(df, self.pipeline_config.get('new_column_params'))
 
         # # Stpe 2: Fill null values in specified column
@@ -53,23 +56,26 @@ class PreparationNcrServiceNowProblemRecord(TransformBase):
 
         # Step 4: Removes trailing whitespaces
         df = self.remove_trailing_whitespace(df)
+        
+        # # Step 5: Decode HTML entities in specified columns
+        # df = self.html_entity_decoder(df, self.pipeline_config.get('html_entity_columns'))
 
-        # Step 5: Data quality check
-        df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'parquet')
+        # Step 6: Data quality check
+        df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'parquet')  
 
-        # Step 6: Mask PII Information
+        # Step 7: Mask PII Information
         df = self.redact_pii_columns(df,self.pipeline_config.get('redact_pii_columns'))
 
-        # Step 7: Add CDC columns
+        # Step 8: Add CDC columns
         df = self.adding_cdc_columns(df)
 
-        # Step 8: Adding Partiton Columns
+        # Step 9: Adding Partiton Columns
         df = self.create_partition_date_columns(df,'sys_created_on','sys_created')
 
+        # Step 10: Change column data types as per configuration
         df = self.change_column_types_data_frame(df, self.pipeline_config.get('change_column_data_type'))  
 
         return df
-
 
     def save_data(self, df):
         """
@@ -103,9 +109,9 @@ class PreparationNcrServiceNowProblemRecord(TransformBase):
             # Vacuum the table
             self.vacuum_table(save_output_path,48)
 
-        if not self.aws_instance.athena_table_exists('preparation', 'ncr_service_now_problem_record'):
+        if not self.aws_instance.athena_table_exists('preparation', 'ncr_service_now_incident_task'):
             # Execute Athena query to create the table
-            self.aws_instance.create_athena_delta_table('preparation', 'ncr_service_now_problem_record', save_output_path, self.athena_output_path)
+            self.aws_instance.create_athena_delta_table('preparation', 'ncr_service_now_incident_task', save_output_path, self.athena_output_path)
         
         # Move files to the Archive folder
         for file_name in self.list_of_files:

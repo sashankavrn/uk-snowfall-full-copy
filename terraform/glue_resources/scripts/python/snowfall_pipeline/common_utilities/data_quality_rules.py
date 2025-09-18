@@ -118,7 +118,7 @@ dq_rules = {
         IsComplete "restaurant_number"
     ]""",
         "ncr_service_now_service_case": """Rules = [
-        ColumnCount <= 295,
+        ColumnCount <= 310,
         RowCount > 0,
         IsComplete "number",
         IsComplete "sys_created_on"
@@ -129,8 +129,14 @@ dq_rules = {
         IsComplete "number",
         IsComplete "sys_created_on"
     ]""",
+    "ncr_service_now_incident_task":"""Rules = [
+        ColumnCount <= 195,
+        RowCount > 0,
+        IsComplete "number",
+        IsComplete "sys_created_on"
+    ]""",
         "ncr_service_now_problem_record": """Rules = [
-        ColumnCount <= 200,
+        ColumnCount <= 210,
         RowCount > 0,
         IsComplete "number",
         IsComplete "sys_created_on"

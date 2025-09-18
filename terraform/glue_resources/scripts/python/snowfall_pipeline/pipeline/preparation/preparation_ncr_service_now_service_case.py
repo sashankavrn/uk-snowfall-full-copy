@@ -34,6 +34,7 @@ class PreparationNcrServiceNowServiceCase(TransformBase):
         6. Mask PII Data
         7. Add CDC columns.
         8. Add Partition Columns
+        9. Change column data types as per configuration
 
         Parameters:
         - df: Input DataFrame.
@@ -66,6 +67,7 @@ class PreparationNcrServiceNowServiceCase(TransformBase):
         # Step 8: Adding Partiton Columns
         df = self.create_partition_date_columns(df,'sys_created_on','sys_created')
 
+        # Step 9: Change column data types as per configuration
         df = self.change_column_types_data_frame(df, self.pipeline_config.get('change_column_data_type'))  
 
         return df

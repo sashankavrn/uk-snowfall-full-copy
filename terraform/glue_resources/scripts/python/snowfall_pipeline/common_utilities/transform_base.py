@@ -1194,3 +1194,29 @@ class TransformBase:
             df = df.withColumn(col_name, html_decoder_udf(F.col(col_name)))
 
         return df
+
+    @transformation_timer
+    def strip_html_tags(self, df, input_columns):
+        """
+        Remove HTML tags from specified string columns of a Spark DataFrame.
+
+        Args:
+            df (DataFrame): The input Spark DataFrame.
+            input_columns (list): List of column names to clean.
+
+        Returns:
+            DataFrame: The processed Spark DataFrame with HTML tags removed.
+        """
+
+        self.logger.info('Running the strip_html_tags function')
+
+        # Regex to remove HTML tags
+        tag_pattern = "<[^>]+>"
+
+        for col_name in input_columns:
+            df = df.withColumn(col_name, F.regexp_replace(F.col(col_name), tag_pattern, ""))
+            
+            # Trim leading/trailing whitespace
+            df = df.withColumn(col_name, F.trim(F.col(col_name)))
+
+        return df
