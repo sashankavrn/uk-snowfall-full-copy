@@ -48,7 +48,7 @@ class PreparationNcrServiceNowChangeRequest(TransformBase):
         # # Stpe 2: Fill null values in specified column
         # df = self.replace_value(df, self.pipeline_config.get('replace_values'))
 
-        df = df.withColumn("cab_date", df["cab_date"].cast("string"))
+        df = df.withColumn("cab_date", df["cab_date"].cast("string")) #Remove this line when the date is fixed
 
         # # Step 3: Remove duplicate records
         df = self.dropping_duplicates(df)
