@@ -290,6 +290,24 @@
         "primary_key":"restaurant_number"
 
     },
+    "meraki_client_info":{
+        "transform_json": "usage",
+        "process_timestamp": [
+            "sys_updated_timestamp"
+        ],
+        "replace_values": [
+            {
+                "column_name": "restaurant_number",
+                "old_value": "None",
+                "new_value": -1
+            }
+        ], 
+        "change_column_data_type": {
+            "sys_updated_timestamp": "string",
+            "cdc_timestamp": "string"
+        },         
+        "primary_key":"restaurant_number"
+    },
     "newrelic_rmp_device_info": {
         "process_timestamp": [
             "sys_updated_timestamp"
@@ -429,11 +447,13 @@
             "cdc_timestamp"
         ],
         "redact_pii_columns": [
-            "work_notes",
             "description",
-            "close_notes",
-            "comments",
-            "comments_and_work_notes"
+            "close_notes"
+        ],
+        "html_entity_columns": [
+            "business_service",
+            "account_name",
+            "case"
         ],
         "primary_key": "number",
         "new_column_params": [
@@ -477,22 +497,14 @@
             "cdc_timestamp"
         ],
         "redact_pii_columns": [
-            "work_notes",
             "description",
-            "close_notes",
-            "comments",
-            "comments_and_work_notes"
+            "close_notes"
         ],
         "html_entity_columns": [
             "assignment_group_display_value",
-            "assignment_group_id",
             "business_service_display_value",
             "close_notes",
-            "comments",
-            "comments_and_work_notes",
-            "location_id",
             "short_description_display_value",
-            "short_description_id",
             "u_site_display_value",
             "u_customer_contact_display_value"
         ],
@@ -517,6 +529,121 @@
             "cdc_timestamp": "timestamp"
         }  
     },
+
+    "ncr_service_now_incident_task": {
+        "process_timestamp": [
+            "closed_at",
+            "due_date",
+            "expected_start",
+            "opened_at",
+            "sys_created_on",
+            "sys_updated_on",
+            "u_task_assigned_on",
+            "u_third_party_sla",
+            "work_end",
+            "work_start",
+            "cdc_timestamp"
+        ],
+        "redact_pii_columns": [
+            "description",
+            "close_notes"
+        ],
+        "primary_key": "number",
+        "change_column_data_type": {
+            "sys_created_on": "timestamp",
+            "cdc_timestamp": "timestamp"
+        }  
+    },
+    "ncr_service_now_problem_record": {
+        "process_timestamp": [
+            "closed_at",
+            "confirmed_at",
+            "due_date",
+            "fix_at",
+            "fix_communicated_at",
+            "opened_at",
+            "reopened_at",
+            "resolved_at",
+            "sys_created_on",
+            "sys_updated_on",
+            "workaround_communicated_at",
+            "cdc_timestamp"
+        ],
+        "redact_pii_columns": [
+            "description",
+            "close_notes"
+        ],
+        "html_tag_columns": [
+            "cause_notes",
+            "u_customer_description",
+            "u_customer_notes",
+            "fix_notes"
+        ],
+        "primary_key": "number",
+        "new_column_params": [
+            {
+                "column_name": "account_name",
+                "regex": "^(\\d{4})",
+                "new_column_name": "restaurant_number",
+                "data_type": "integer"
+            }
+        ],
+        "replace_values": [
+            {
+                "column_name": "restaurant_number",
+                "old_value": "None",
+                "new_value": -1
+            }
+        ],
+        "change_column_data_type": {
+            "sys_created_on": "timestamp",
+            "cdc_timestamp": "timestamp"
+        }  
+    },
+    "ncr_service_now_change_request": {
+        "process_timestamp": [
+            "closed_at",
+            "end_date",
+            "opened_at",
+            "start_date",
+            "sys_created_on",
+            "sys_updated_on",
+            "work_end",
+            "work_start",
+            "cdc_timestamp"
+        ],
+        "redact_pii_columns": [
+            "description"
+        ],
+        "html_entity_columns": [
+            "backout_plan",
+            "category",
+            "category_VALUE",
+            "implementation_plan",
+            "risk_impact_analysis",
+            "siteNumber"
+        ],
+        "primary_key": "number",
+        "new_column_params": [
+            {
+                "column_name": "u_account",
+                "regex": "^(\\d{4})",
+                "new_column_name": "restaurant_id",
+                "data_type": "integer"
+            }
+        ],
+        "replace_values": [
+            {
+                "column_name": "restaurant_id",
+                "old_value": "None",
+                "new_value": -1
+            }
+        ],
+        "change_column_data_type": {
+            "sys_created_on": "timestamp",
+            "cdc_timestamp": "timestamp"
+        }  
+    },
     "ncr_service_now_knowledge_base": {
         "add_seconds": [
             "business_duration",
@@ -532,11 +659,8 @@
             "resolved_at"
         ],
         "redact_pii_columns": [
-            "work_notes",
             "description",
-            "close_notes",
-            "comments",
-            "comments_and_work_notes"
+            "close_notes"
         ],
         "new_column_params": [
             {

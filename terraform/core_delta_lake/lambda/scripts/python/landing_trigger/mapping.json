@@ -73,6 +73,10 @@
             "destinationPath": "newrelic/newrelic_rmp_device_info"
         },
         {
+            "fileName": "newrelic/newrelic_rmp_network_info",
+            "destinationPath": "newrelic/newrelic_rmp_network_info"
+        },
+        {
             "fileName": "newrelic/newrelic_rmp_device_metrics",
             "destinationPath": "newrelic/newrelic_rmp_device_metrics"
         },
@@ -89,8 +93,8 @@
             "destinationPath": "newrelic/newrelic_digital_3po_foe_response"
         },
         {
-            "fileName": "ncr_service_now/case_worknotes",
-            "destinationPath": "ncr_service_now/case_worknotes"
+            "fileName": "ncr_service_now/worknotes",
+            "destinationPath": "ncr_service_now/worknotes"
         },    
         {
             "fileName": "ncr_service_now/service_case",

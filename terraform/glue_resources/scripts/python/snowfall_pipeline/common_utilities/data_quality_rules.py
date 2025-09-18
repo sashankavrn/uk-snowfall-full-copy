@@ -87,6 +87,11 @@ dq_rules = {
         RowCount > 0,
         IsComplete "restaurant_number"
     ]""",
+    "meraki_client_info": """Rules = [
+        ColumnCount <= 40,
+        RowCount > 0,
+        IsComplete "restaurant_number"
+    ]""",
     "newrelic_rmp_device_info": """Rules = [
         ColumnCount <= 12,
         RowCount > 0,
@@ -113,13 +118,31 @@ dq_rules = {
         IsComplete "restaurant_number"
     ]""",
         "ncr_service_now_service_case": """Rules = [
-        ColumnCount <= 295,
+        ColumnCount <= 310,
         RowCount > 0,
-        IsComplete "sys_id",
+        IsComplete "number",
         IsComplete "sys_created_on"
     ]""",
     "ncr_service_now_incident":"""Rules = [
         ColumnCount <= 295,
+        RowCount > 0,
+        IsComplete "number",
+        IsComplete "sys_created_on"
+    ]""",
+    "ncr_service_now_incident_task":"""Rules = [
+        ColumnCount <= 195,
+        RowCount > 0,
+        IsComplete "number",
+        IsComplete "sys_created_on"
+    ]""",
+        "ncr_service_now_problem_record": """Rules = [
+        ColumnCount <= 210,
+        RowCount > 0,
+        IsComplete "number",
+        IsComplete "sys_created_on"
+    ]""",
+        "ncr_service_now_change_request": """Rules = [
+        ColumnCount <= 250,
         RowCount > 0,
         IsComplete "number",
         IsComplete "sys_created_on"

@@ -2,7 +2,7 @@ from snowfall_pipeline.common_utilities.transform_base import TransformBase
 from snowfall_pipeline.common_utilities.decorators import transformation_timer
 from delta.tables import DeltaTable
 from pyspark.sql import functions as F
-
+from datetime import datetime
 
 class ProcessedNcrServiceNowIncident(TransformBase):
 
@@ -12,24 +12,23 @@ class ProcessedNcrServiceNowIncident(TransformBase):
         self.pipeline_config = self.full_configs[self.datasets]
         self.file_path = "ncr_service_now/incident"
 
-
     def get_data(self):
         df = self.read_data_from_s3(self.preparation_bucket_name,self.file_path,'delta')
         return df
-
 
     def transform_data(self, df):
         """
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1: Adds incident type based on restaurant number
-        2: Extracts Vista dispatch number from work notes
-        3: Adds 'P' prefix to priority_id to create priority label
-        4. Splits datetime column
-        5. Filters passed records
-        6. Drops unnecessary columns
-        7. Change column names and schema.
+        1. Decode HTML entities in specified columns
+        2. Adds incident type based on restaurant number
+        3. Extracts Vista dispatch number from work notes
+        4. Adds 'P' prefix to priority_id to create priority label
+        5. Splits datetime column
+        6. Filters passed records
+        7. Drops unnecessary columns
+        8. Change column names and schema.
 
         Parameters:
         - df (DataFrame): Input DataFrame.
@@ -38,28 +37,29 @@ class ProcessedNcrServiceNowIncident(TransformBase):
         - DataFrame: Transformed DataFrame.
         """
         
-        # Step 1: Adds incident type based on restaurant number
+        # Step 1: Decode HTML entities in specified columns
+        df = self.html_entity_decoder(df, self.pipeline_config.get('html_entity_columns'))
+
+        # Step 2: Adds incident type based on restaurant number
         df = df.withColumn("incident_type", F.when(F.col("restaurant_number") != -1, "Store").otherwise("Corporate"))
 
-
-        # Step 2: Extracts Vista dispatch number from work notes
+        # Step 3: Extracts Vista dispatch number from work notes
         df = df.withColumn("vista_dispatch_number", F.when(
                 F.col("work_notes").rlike(r"Vista dispatch request number (\d+) received\."),
                 F.regexp_extract("work_notes", r"Vista dispatch request number (\d+) received\.", 1)
             )
         )
 
-
-        # Step 3: Adds 'P' prefix to priority_id to create priority label
-        #df = df.withColumn("priority", F.concat(F.lit("P"), F.col("priority_id")))
+        # Step 4: Adds 'P' prefix to priority_id to create priority label
+        df = df.withColumn("priority", F.concat(F.lit("P"), F.col("priority_id")))
   
-        # Step 4: Splits datetime column
+        # Step 5: Splits datetime column
         df = self.split_datetime_column(df,self.pipeline_config.get('process_timestamp'))
 
-        # Step 5: Filters passed records
-        df = self.filter_quality_result(df,partition_column_drop=['created_year','created_month'])
+        # Step 6: Filters passed records
+        df = self.filter_quality_result(df,partition_column_drop=['sys_created_year','sys_created_month'])
 
-        # Step 6: Drops unnecessary columns
+        # Step 7: Drops unnecessary columns
         df = self.drop_columns_for_processed(df)
 
         column_mapping = {
@@ -79,15 +79,12 @@ class ProcessedNcrServiceNowIncident(TransformBase):
             'sys_updated_on_dt': ('sys_updated_date', 'date'),
             'description': ('description', 'string'),
             'short_description_display_value': ('short_description', 'string'),
-            'comments': ('comments', 'string'),
-            'work_notes': ('work_notes', 'string'),
-            'comments_and_work_notes': ('comments_and_work_notes', 'string'),
             'close_notes': ('close_notes', 'string'),
-            'incident_state_display_value': ('state', 'string'),
+            'incident_state_display_value': ('incident_state', 'string'),
             'business_impact': ('business_impact', 'string'),
-            'severity_display_value': ('severity_display_value', 'string'),
+            'severity_display_value': ('severity', 'string'),
             'active': ('active_flag', 'boolean'),
-            'state_display_value': ('state_display_value', 'string'),
+            'state_display_value': ('state', 'string'),
             'assigned_to_display_value': ('assigned_to', 'string'),
             'assigned_to_id': ('assigned_to_id', 'string'),
             'assignment_group_display_value': ('assignment_group', 'string'),
@@ -97,12 +94,12 @@ class ProcessedNcrServiceNowIncident(TransformBase):
             'business_service_id': ('business_service_id', 'string'),
             'business_stc': ('business_duration_seconds', 'string'),
             'calendar_duration': ('calendar_duration', 'double'),
-            'calendar_stc': ('calendar_stc', 'string'),
+            'calendar_stc': ('calendar_duration_seconds', 'string'),
             'caller_id_display_value': ('caller_id', 'string'),
             'caller_id_id': ('caller_id_id', 'string'),
             'category_display_value': ('category', 'string'),
             'category_id': ('category_id', 'string'),
-            'child_incidents': ('child_incidents_count', 'string'),
+            'child_incidents': ('child_incidents_count', 'integer'),
             'close_code_display_value': ('close_code', 'string'),
             'close_code_id': ('close_code_id', 'string'),
             'closed_at_timestamp': ('closed_timestamp_utc', 'timestamp'),
@@ -110,9 +107,9 @@ class ProcessedNcrServiceNowIncident(TransformBase):
             'closed_at_dt': ('closed_date', 'date'),
             'closed_by_display_value': ('closed_by', 'string'),
             'closed_by_id': ('closed_by_id', 'string'),
-            'cmdb_ci_business_app_display_value': ('cmdb_ci_business_app_display_value', 'string'),
+            'cmdb_ci_business_app_display_value': ('cmdb_ci_business_app', 'string'),
             'cmdb_ci_business_app_id': ('cmdb_ci_business_app_id', 'string'),
-            'cmdb_ci_display_value': ('cmdb_ci_display_value', 'string'),
+            'cmdb_ci_display_value': ('cmdb_ci', 'string'),
             'cmdb_ci_id': ('cmdb_ci_id', 'string'),
             'contact_type_display_value': ('contact_type', 'string'),
             'contact_type_id': ('contact_type_id', 'string'),
@@ -128,13 +125,13 @@ class ProcessedNcrServiceNowIncident(TransformBase):
             'hold_reason_display_value': ('hold_reason', 'string'),
             'hold_reason_id': ('hold_reason_id', 'string'),
             'priority': ('priority', 'string'),
-            'incident_state_id': ('incident_state_id', 'string'),
-            'knowledge': ('knowledge', 'string'),
+            'incident_state_id': ('incident_state_id', 'integer'),
+            'knowledge': ('knowledge', 'boolean'),
             'lessons_learned': ('lessons_learned', 'string'),
-            'made_sla': ('made_sla', 'string'),
-            'major_incident_state_display_value': ('major_incident_state_display_value', 'string'),
+            'made_sla': ('made_sla', 'boolean'),
+            'major_incident_state_display_value': ('major_incident_state', 'string'),
             'major_incident_state_id': ('major_incident_state_id', 'string'),
-            'needs_attention': ('needs_attention', 'string'),
+            'needs_attention': ('needs_attention', 'boolean'),
             'opened_by_display_value': ('opened_by', 'string'),
             'opened_by_id': ('opened_by_id', 'string'),
             'parent_display_value': ('parent_display_value', 'string'),
@@ -149,8 +146,8 @@ class ProcessedNcrServiceNowIncident(TransformBase):
             'proposed_on_timestamp': ('proposed_timestamp_utc', 'timestamp'),
             'proposed_on': ('proposed_timestamp', 'string'),
             'proposed_on_dt': ('proposed_date', 'date'),
-            'reassignment_count': ('reassignment_count', 'int'),
-            'reopen_count': ('reopen_count', 'int'),
+            'reassignment_count': ('reassignment_count', 'Integer'),
+            'reopen_count': ('reopen_count', 'Integer'),
             'reopened_by_display_value': ('reopened_by', 'string'),
             'reopened_by_id': ('reopened_by_id', 'string'),
             'reopened_time_timestamp': ('reopened_timestamp_utc', 'timestamp'),
@@ -163,22 +160,20 @@ class ProcessedNcrServiceNowIncident(TransformBase):
             'resolved_by_id': ('resolved_by_id', 'string'),
             'service_offering_display_value': ('service_offering', 'string'),
             'service_offering_id': ('service_offering_id', 'string'),
-            'severity_id': ('severity_id', 'string'),
-            'short_description_id': ('short_description_id', 'string'),
-            'state_id': ('state_id', 'string'),
+            'severity_id': ('severity_id', 'integer'),
             'subcategory_display_value': ('subcategory', 'string'),
             'subcategory_id': ('subcategory_id', 'string'),
             'sys_created_by': ('sys_created_by', 'string'),
-            'sys_mod_count': ('sys_mod_count', 'int'),
+            'sys_mod_count': ('sys_mod_count', 'Integer'),
             'sys_updated_by': ('sys_updated_by', 'string'),
             'task_effective_number': ('task_effective_number', 'string'),
-            'u_asset_display_value': ('u_asset_display_value', 'string'),
+            'u_asset_display_value': ('u_asset', 'string'),
             'u_asset_id': ('u_asset_id', 'string'),
             'u_assigned_to_qlid': ('u_assigned_to_qlid', 'string'),
             'u_awareness_of_customer_impact_timestamp': ('u_awareness_of_customer_impact_timestamp_utc', 'timestamp'),
             'u_awareness_of_customer_impact': ('u_awareness_of_customer_impact_timestamp', 'string'),
             'u_awareness_of_customer_impact_dt': ('u_awareness_of_customer_impact_date', 'date'),
-            'u_cause_code_display_value': ('u_cause_code_display_value', 'string'),
+            'u_cause_code_display_value': ('u_cause_code', 'string'),
             'u_cause_code_id': ('u_cause_code_id', 'string'),
             'u_incident_management_invoked_timestamp': ('u_incident_management_invoked_timestamp_utc', 'timestamp'),
             'u_incident_management_invoked': ('u_incident_management_invoked_timestamp', 'string'),
@@ -189,29 +184,29 @@ class ProcessedNcrServiceNowIncident(TransformBase):
             'u_on_call_paging_time_timestamp': ('u_on_call_paging_timestamp_utc', 'timestamp'),
             'u_on_call_paging_time': ('u_on_call_paging_timestamp', 'string'),
             'u_on_call_paging_time_dt': ('u_on_call_paging_date', 'date'),
-            'u_product_name_display_value': ('u_product_name_display_value', 'string'),
+            'u_product_name_display_value': ('u_product_name', 'string'),
             'u_product_name_id': ('u_product_name_id', 'string'),
-            'u_record_source_display_value': ('u_record_source_display_value', 'string'),
+            'u_record_source_display_value': ('u_record_source', 'string'),
             'u_record_source_id': ('u_record_source_id', 'string'),
             'u_rpt_response_duration': ('u_rpt_response_duration', 'double'),
-            'u_site_display_value': ('u_site_display_value', 'string'),
+            'u_site_display_value': ('u_site', 'string'),
             'u_site_id': ('u_site_id', 'string'),
             'u_task_assigned_on_timestamp': ('u_task_assigned_timestamp_utc', 'timestamp'),
             'u_task_assigned_on': ('u_task_assigned_timestamp', 'string'),
             'u_task_assigned_on_dt': ('u_task_assigned_date', 'date'),
             'u_was_a_monitoring_alerts_received': ('u_was_a_monitoring_alerts_received', 'string'),
-            'u_customer_contact_display_value': ('u_customer_contact_display_value', 'string'),
+            'u_customer_contact_display_value': ('u_customer_contact', 'string'),
             'u_customer_contact_id': ('u_customer_contact_id', 'string'),
             'u_kb_article_used_for_resolution_display_value': ('u_related_kb_article', 'string'),
             'u_kb_article_used_for_resolution_id': ('u_kb_article_used_for_resolution_id', 'string'),
             'cdc_timestamp_timestamp': ('cdc_timestamp_utc', 'timestamp'),
             'cdc_timestamp': ('cdc_timestamp', 'string'),
             'cdc_timestamp_dt': ('cdc_date', 'date'),
-            'sys_created_year': ('sys_created_year', 'int'),
-            'sys_created_month': ('sys_created_month', 'int')
+            'sys_created_year': ('sys_created_year', 'Integer'),
+            'sys_created_month': ('sys_created_month', 'Integer')
         }
 
-        # Step 7. Changes column names and schema
+        # Step 8: Changes column names and schema
         df = self.change_column_names_and_schema(df, column_mapping)
 
         return df
@@ -225,35 +220,35 @@ class ProcessedNcrServiceNowIncident(TransformBase):
 
             """
             # Define the S3 save path
-            # save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
+            save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
 
-            # # Check if Delta table needs to be created
-            # if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
-            #     self.athena_trigger = True
+            # Check if Delta table needs to be created
+            if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
+                self.athena_trigger = True
                 
-            # # Determine whether to create or merge to the Delta table
-            # if self.athena_trigger:
-            #     # Create the Delta table
-            #     df.write.format("delta").mode("overwrite") \
-            #     .partitionBy('sys_created_year','sys_created_month') \
-            #     .save(save_output_path)
+            # Determine whether to create or merge to the Delta table
+            if self.athena_trigger:
+                # Create the Delta table
+                df.write.format("delta").mode("overwrite") \
+                .partitionBy('sys_created_year','sys_created_month') \
+                .save(save_output_path)
                 
-            # else:
-            #     # Append the Delta table
-            #     df.write.format("delta").mode("append") \
-            #     .save(save_output_path)
+            else:
+                # Append the Delta table
+                df.write.format("delta").mode("append") \
+                .save(save_output_path)
 
-            #     # Vacuum the table
-            #     self.vacuum_table(save_output_path,48)
+                # Vacuum the table
+                self.vacuum_table(save_output_path,48)
 
-            # if not self.aws_instance.athena_table_exists('processed', 'ncr_service_now_incident'):
-            #     # Execute Athena query to create the table
-            #     self.aws_instance.create_athena_delta_table('processed', 'ncr_service_now_incident', save_output_path, self.athena_output_path)
+            if not self.aws_instance.athena_table_exists('processed', 'ncr_service_now_incident'):
+                # Execute Athena query to create the table
+                self.aws_instance.create_athena_delta_table('processed', 'ncr_service_now_incident', save_output_path, self.athena_output_path)
 
-            # # If error detected from DQ failing then will raise
-            # if self.sns_trigger:
-            #     message = "Records in the error folder that have failed transformation"
-            #     self.aws_instance.send_sns_message(message)
+            # If error detected from DQ failing then will raise
+            if self.sns_trigger:
+                message = "Records in the error folder that have failed transformation"
+                self.aws_instance.send_sns_message(message)
 
             
             self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')

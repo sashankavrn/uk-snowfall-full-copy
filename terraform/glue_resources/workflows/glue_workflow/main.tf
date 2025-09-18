@@ -261,6 +261,19 @@ locals {
       schedule        = "cron(0/15 1-23 * * ? *)"
       reporting_date  = ""
     },
+    "newrelic_rmp_network_info" = {
+      name           = "uk-snowfall-newrelic-rmp-network-info"
+      description    = "Workflow for the newrelic rmp network info data"
+      dataset        = "newrelic_rmp_network_info"
+      group          = "preparation"
+      trigger_name   = "uk-snowfall-newrelic-rmp-network-info-trigger"
+      max_concurrent = 1
+      batch_size     = 100
+      batch_window   = 10
+      trigger_type   = "SCHEDULED"
+      schedule       = "cron(0/15 1-23 * * ? *)"
+      reporting_date = ""
+    },
     "newrelic_rmp_process_info" = {
       name            = "uk-snowfall-newrelic-rmp-process_info"
       description     = "Workflow for the newrelic rmp process info data"
@@ -323,7 +336,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)"
+      schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
     "ncr_service_now_problem_record" = {
@@ -336,7 +349,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)"
+      schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
     "ncr_service_now_change_request" = {
@@ -349,7 +362,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)"
+      schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
     "ncr_service_now_incident" = {
@@ -362,7 +375,20 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)"
+      schedule        = "cron(45 * * * ? *)"
+      reporting_date  = ""
+    },
+    "ncr_service_now_incident_task" = {
+      name            = "uk-snowfall-ncr-service-now-incident-task"
+      description     = "Workflow for the NCR ServiceNow Incident Task data"
+      dataset         = "ncr_service_now_incident_task"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-incident-task-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(45 * * * ? *)" # offset to avoid overlap with incident
       reporting_date  = ""
     },
     "ncr_service_now_knowledge_base" = {
@@ -375,7 +401,20 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)"
+      schedule        = "cron(45 * * * ? *)"
+      reporting_date  = ""
+    },
+    "ncr_service_now_worknotes" = {
+      name            = "uk-snowfall-ncr-service-now-worknotes"
+      description     = "Workflow for the NCR ServiceNow Worknotes data"
+      dataset         = "ncr_service_now_worknotes"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-worknotes-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(45 * * * ? *)" # offset to avoid overlap with incident & task
       reporting_date  = ""
     },
     "service_agent_server_files" = {

@@ -43,7 +43,7 @@ resource "aws_s3_object" "datashare_landing_folder" {
     ncr_knowledge      = "ncr_service_now/knowledge/"
     ncr_knowledge_feedback      = "ncr_service_now/knowledge_feedback/"
     ncr_knowledge_use      = "ncr_service_now/knowledge_use/"
-    ncr_case_worknotes = "ncr_service_now/case_worknotes/"
+    ncr_case_worknotes = "ncr_service_now/worknotes/"
     genesys_contact_settings  = "genesys/contact_center_settings/"
     genesys_conv_attributes   = "genesys/conversation_attributes/"
     genesys_conversations_det = "genesys/conversations_detail/"
@@ -89,7 +89,7 @@ resource "aws_s3_object" "datashare_processed_folders" {
     location_adj_trading_hrs  = "ods/adj_trading_hours/"
     cisco_meraki              = "meraki/"
     newrelic                  = "newrelic/"
-    ods_user_data= "ods_user_data/"
+    ods_user_data             = "ods_user_data/"
   }
 }
 
@@ -113,3 +113,63 @@ resource "aws_s3_bucket_lifecycle_configuration" "datashare_processed_lifecycle_
   }
 }
 
+# ########## Datashare Tech360 Bucket ##########
+resource "aws_s3_bucket" "datashare_tech360_bucket" {
+  bucket        = "eu-central1-${var.environment}-uk-snowfall-datashare-tech360-${var.account_number}"
+  force_destroy = true
+  tags          = var.resource_tags
+}
+
+# ########## Bucket Versioning ##########
+resource "aws_s3_bucket_versioning" "datashare_tech360_versioning" {
+  bucket = aws_s3_bucket.datashare_tech360_bucket.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# ########## Lifecycle Rule ##########
+resource "aws_s3_bucket_lifecycle_configuration" "datashare_tech360_lifecycle" {
+  depends_on = [aws_s3_bucket_versioning.datashare_tech360_versioning]
+  bucket     = aws_s3_bucket.datashare_tech360_bucket.id
+
+  rule {
+    id     = "Expire noncurrent versions after 30 days"
+    status = "Enabled"
+    noncurrent_version_expiration {
+      noncurrent_days = 30
+    }
+  }
+}
+
+# ########## Bucket-Wide Encryption Enforcement (Default KMS Key) ##########
+resource "aws_s3_bucket_server_side_encryption_configuration" "tech360_encryption" {
+  bucket = aws_s3_bucket.datashare_tech360_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "aws:kms"
+    }
+  }
+}
+
+# ########## NCR Folder Creation ##########
+resource "aws_s3_object" "datashare_tech360_ncr_folders" {
+  for_each = {
+    incident             = "ncr_service_now/incident/"
+    # problem_record       = "ncr_service_now/problem_record/"
+    # service_now_case     = "ncr_service_now/service_case/"
+    # incident_task        = "ncr_service_now/incident_task/"
+  }
+
+  bucket                 = aws_s3_bucket.datashare_tech360_bucket.id
+  key                    = each.value
+  source                 = "/dev/null"
+  acl                    = "private"
+  server_side_encryption = "aws:kms"
+
+  lifecycle {
+    prevent_destroy = false
+    ignore_changes  = [source]
+  }
+}

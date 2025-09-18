@@ -30,12 +30,11 @@ class PreparationNcrServiceNowIncident(TransformBase):
         2. Fill null values in specified column
         3. Remove duplicate records.
         4. Remove trailing whitespaces
-        5. Decode HTML entities in specified columns
-        6. Perform data quality check.
-        7. Mask PII Data
-        8. Add CDC columns.
-        9. Add Partition Columns
-        10. Change column data types as per configuration
+        5. Perform data quality check.
+        6. Mask PII Data
+        7. Add CDC columns.
+        8. Add Partition Columns
+        9. Change column data types as per configuration
 
         Parameters:
         - df: Input DataFrame.
@@ -55,23 +54,20 @@ class PreparationNcrServiceNowIncident(TransformBase):
 
         # Step 4: Removes trailing whitespaces
         df = self.remove_trailing_whitespace(df)
-        
-        # Step 5: Decode HTML entities in specified columns
-        df = self.html_entity_decoder(df, self.pipeline_config.get('html_entity_columns'))
 
-        # Step 6: Data quality check
+        # Step 5: Data quality check
         df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'parquet')  
 
-        # Step 7: Mask PII Information
+        # Step 6: Mask PII Information
         df = self.redact_pii_columns(df,self.pipeline_config.get('redact_pii_columns'))
 
-        # Step 8: Add CDC columns
+        # Step 7: Add CDC columns
         df = self.adding_cdc_columns(df)
 
-        # Step 9: Adding Partiton Columns
+        # Step 8: Adding Partiton Columns
         df = self.create_partition_date_columns(df,'sys_created_on','sys_created')
 
-        # Step 10: Change column data types as per configuration
+        # Step 9: Change column data types as per configuration
         df = self.change_column_types_data_frame(df, self.pipeline_config.get('change_column_data_type'))  
 
         return df

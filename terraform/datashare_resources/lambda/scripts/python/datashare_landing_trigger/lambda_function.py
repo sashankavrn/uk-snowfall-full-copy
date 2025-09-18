@@ -13,13 +13,21 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # Environment Variables
-LANDING_BUCKET = os.environ.get('LANDING_BUCKET')
-TARGET_BUCKET = os.environ.get('TARGET_BUCKET')
-SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN')
+LANDING_BUCKET = os.environ.get('LANDING_BUCKET')               # Source bucket
+TARGET_BUCKET = os.environ.get('TARGET_BUCKET')                 # Main destination
+TECH360_TARGET_BUCKET = os.environ.get('TECH360_TARGET_BUCKET') # Tech360 destination
+SNS_TOPIC_ARN = os.environ.get('SNS_TOPIC_ARN')                 # Notification topic
 
 # Validate environment variables
-if not all([LANDING_BUCKET, TARGET_BUCKET, SNS_TOPIC_ARN]):
+if not all([LANDING_BUCKET, TARGET_BUCKET, TECH360_TARGET_BUCKET, SNS_TOPIC_ARN]):
     raise ValueError("Missing one or more required environment variables.")
+
+# Prefixes to copy to TECH360 bucket only
+TECH360_PREFIXES = {
+    "ncr_service_now/incident/",
+    "ncr_service_now/problem_record/",
+    "ncr_service_now/service_case/"
+}
 
 # Load mapping.json
 def load_key_mapping():
@@ -70,8 +78,16 @@ def lambda_handler(event, context):
                 for key in data_files:
                     try:
                         if key.endswith(".parquet"):
-                            logger.info(f"[{request_id}] Copying .parquet file: {key}")
+                            # Always copy to TARGET_BUCKET
+                            logger.info(f"[{request_id}] Copying to TARGET_BUCKET: {key}")
                             base_moving(LANDING_BUCKET, key, TARGET_BUCKET, destination)
+
+                            # Conditionally copy to TECH360_TARGET_BUCKET
+                            if prefix + "/" in TECH360_PREFIXES:
+                                logger.info(f"[{request_id}] Copying to TECH360_TARGET_BUCKET: {key}")
+                                base_moving(LANDING_BUCKET, key, TECH360_TARGET_BUCKET, destination)
+
+                            # Delete original
                             s3.delete_object(Bucket=LANDING_BUCKET, Key=key)
                             logger.info(f"[{request_id}] Deleted: {key}")
                         else:

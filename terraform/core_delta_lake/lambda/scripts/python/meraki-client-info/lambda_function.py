@@ -49,7 +49,7 @@ def get_secret():
         return None
 
 def notify_failure(message):
-    return                                                   # remove when in AWS enviroment <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    return                                                   
     """Send SNS notification for a failure event."""
     topic_arn = os.environ.get('SNS_TOPIC_ARN')
     if not topic_arn:
