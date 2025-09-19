@@ -26,14 +26,13 @@ class PreparationNcrServiceNowProblemRecord(TransformBase):
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Extract restaurant number from account_name
-        2. Fill null values in specified column
-        3. Remove duplicate records.
-        4. Remove trailing whitespaces
-        5. Perform data quality check.
-        6. Mask PII Data
-        7. Add CDC columns.
-        8. Add Partition Columns
+        1. Remove duplicate records.
+        2. Remove trailing whitespaces
+        3. Perform data quality check.
+        4. Mask PII Data
+        5. Add CDC columns.
+        6. Add Partition Columns
+        7. Change column data types as per configuration
 
         Parameters:
         - df: Input DataFrame.
@@ -42,30 +41,25 @@ class PreparationNcrServiceNowProblemRecord(TransformBase):
         - DataFrame: Transformed DataFrame.
 
         """
-        # # Stpe 1: Extract restaurant number from account_name
-        # df = self.parse_column_values(df, self.pipeline_config.get('new_column_params'))
-
-        # # Stpe 2: Fill null values in specified column
-        # df = self.replace_value(df, self.pipeline_config.get('replace_values'))
-
-        # Step 3: Remove duplicate records
+        # Step 1: Remove duplicate records
         df = self.dropping_duplicates(df)
 
-        # Step 4: Removes trailing whitespaces
+        # Step 2: Removes trailing whitespaces
         df = self.remove_trailing_whitespace(df)
 
-        # Step 5: Data quality check
+        # Step 3: Data quality check
         df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'parquet')
 
-        # Step 6: Mask PII Information
+        # Step 4: Mask PII Information
         df = self.redact_pii_columns(df,self.pipeline_config.get('redact_pii_columns'))
 
-        # Step 7: Add CDC columns
+        # Step 5: Add CDC columns
         df = self.adding_cdc_columns(df)
 
-        # Step 8: Adding Partiton Columns
+        # Step 6: Adding Partiton Columns
         df = self.create_partition_date_columns(df,'sys_created_on','sys_created')
 
+        # Step 7: Change column data types as per configuration
         df = self.change_column_types_data_frame(df, self.pipeline_config.get('change_column_data_type'))  
 
         return df

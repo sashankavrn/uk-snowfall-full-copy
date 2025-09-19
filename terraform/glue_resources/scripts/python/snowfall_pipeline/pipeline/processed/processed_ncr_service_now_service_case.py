@@ -64,7 +64,7 @@ class ProcessedNcrServiceNowServiceCase(TransformBase):
             'active_escalation': ('active_escalation', 'String'),
             'assigned_on_timestamp': ('assigned_timestamp_utc', 'Timestamp'),
             'assigned_on': ('assigned_timestamp', 'String'),
-            'assigned_on_dt': ('assigned_on_date', 'Date'),
+            'assigned_on_dt': ('assigned_date', 'Date'),
             'u_call_type': ('u_call_type', 'String'),
             'u_caller_email': ('u_caller_email', 'String'),
             'case': ('case', 'String'),
