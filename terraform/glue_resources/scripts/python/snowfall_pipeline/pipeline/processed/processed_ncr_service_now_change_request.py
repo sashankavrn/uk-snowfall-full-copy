@@ -23,14 +23,15 @@ class ProcessedNcrServiceNowChangeRequest(TransformBase):
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Split the 'u_account' column by commas and create a new row for each value
-        2. Extracts Vista dispatch number from work notes
-        3. Fill null values in specified column
-        4. Add change request type based on restaurant number
-        5. Splits datetime column
-        6. Filters passed records
-        7. Drops unnecessary columns
-        8. Change column names and schema.
+        1. Decode HTML entities
+        2. Split the 'u_account' column by commas and create a new row for each value
+        3.  Extract restaurant number from u_account
+        4. Fill null values in specified column
+        5. Add change request type based on restaurant number
+        6. Splits datetime column
+        7. Filters passed records
+        8. Drops unnecessary columns
+        9. Change column names and schema.
 
         Parameters:
         - df (DataFrame): Input DataFrame.
@@ -38,25 +39,29 @@ class ProcessedNcrServiceNowChangeRequest(TransformBase):
         Returns:
         - DataFrame: Transformed DataFrame.
         """
-        # Step 1: Split the 'u_account' column by commas and create a new row for each value
+
+        # Step 1: Decode HTML entities in specified columns
+        df = self.html_entity_decoder(df, self.pipeline_config.get('html_entity_columns'))
+
+        # Step 2: Split the 'u_account' column by commas and create a new row for each value
         df = df.withColumn("u_account", F.explode_outer(F.split("u_account", ",\s*")))
 
-        # Stpe 2: Extract restaurant number from u_account
+        # Stpe 3: Extract restaurant number from u_account
         df = self.parse_column_values(df, self.pipeline_config.get('new_column_params'))
 
-        # # Stpe 3: Fill null values in specified column
+        # Stpe 4: Fill null values in specified column
         df = self.replace_value(df, self.pipeline_config.get('replace_values'))
 
-        # Step 4: Adds change request type based on restaurant number
+        # Step 5: Adds change request type based on restaurant number
         df = df.withColumn("change_request_type", F.when(F.col("restaurant_id") != -1, "Store").otherwise("Corporate"))
 
-        # Step 5: Splits datetime column
+        # Step 6: Splits datetime column
         df = self.split_datetime_column(df,self.pipeline_config.get('process_timestamp'))
 
-        # Step 6: Filters passed records
+        # Step 7: Filters passed records
         df = self.filter_quality_result(df,partition_column_drop=['sys_created_year','sys_created_month'])
 
-        # Step 7: Drops unnecessary columns
+        # Step 8: Drops unnecessary columns
         df = self.drop_columns_for_processed(df)
 
         column_mapping = {
@@ -137,7 +142,7 @@ class ProcessedNcrServiceNowChangeRequest(TransformBase):
             'sys_created_month': ('sys_created_month', 'integer')
         }
 
-        # Step 8: Changes column names and schema
+        # Step 9: Changes column names and schema
         df = self.change_column_names_and_schema(df, column_mapping)
 
         return df

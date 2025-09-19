@@ -577,24 +577,10 @@
             "cause_notes",
             "u_customer_description",
             "u_customer_notes",
-            "fix_notes"
+            "fix_notes",
+            "workaround"
         ],
         "primary_key": "number",
-        "new_column_params": [
-            {
-                "column_name": "account_name",
-                "regex": "^(\\d{4})",
-                "new_column_name": "restaurant_number",
-                "data_type": "integer"
-            }
-        ],
-        "replace_values": [
-            {
-                "column_name": "restaurant_number",
-                "old_value": "None",
-                "new_value": -1
-            }
-        ],
         "change_column_data_type": {
             "sys_created_on": "timestamp",
             "cdc_timestamp": "timestamp"
@@ -618,10 +604,8 @@
         "html_entity_columns": [
             "backout_plan",
             "category",
-            "category_VALUE",
             "implementation_plan",
-            "risk_impact_analysis",
-            "siteNumber"
+            "risk_impact_analysis"
         ],
         "primary_key": "number",
         "new_column_params": [
