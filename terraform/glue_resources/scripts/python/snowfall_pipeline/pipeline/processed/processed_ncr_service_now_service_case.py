@@ -74,7 +74,7 @@ class ProcessedNcrServiceNowServiceCase(TransformBase):
             'cause': ('cause', 'String'),
             'contact': ('contact', 'String'),
             'entitlement': ('entitlement', 'String'),
-            'first_response_time_timestamp': ('first_response_timestampt_utc', 'Timestamp'),
+            'first_response_time_timestamp': ('first_response_timestamp_utc', 'Timestamp'),
             'first_response_time': ('first_response_timestamp', 'String'),
             'first_response_time_dt': ('first_response_date', 'Date'),
             'incident': ('incident', 'String'),
