@@ -117,8 +117,8 @@ jobs:
             for stage in core_delta_lake glue_resources other_resources datashare_resources; do
               echo "Deploying $stage to Prod"
               cd terraform/$stage
-              terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
-              terraform plan -var-file=../${{ env.TFVARS }} -out=tfplan
+#              terraform init -backend-config="bucket=${{ env.STATE_BUCKET }}"
+#              terraform plan -var-file=../${{ env.TFVARS }} -out=tfplan
               echo "Manual approval required for $stage in Prod"
               exit 1
               cd -
