@@ -3,7 +3,6 @@ import json
 import boto3
 import os
 from datetime import datetime
-import re
 
 # AWS Secrets Manager Details
 SECRET_NAME = "uk-snowfall"
@@ -75,33 +74,12 @@ def new_relic_query(api_key, account_id, nrql):
 def process_data(raw_data):
     """
     Process raw network data from New Relic into a structured list.
-    Each entry gets:
-      - restaurant_number: integer from hostname chars 2–6
-      - device: last 5 chars of hostname
+    Removed logic extracting restaurant_number and device from hostname.
     """
     processed = []
     for entry in raw_data:
-        hostname          = entry.get("hostname")
-        restaurant_number = None
-        device            = None
-
-        if hostname and len(hostname) >= 7:
-            # extract 5-digit restaurant number
-            sub = hostname[2:7]
-            m   = re.search(r'\d+', sub) or re.search(r'\d+', hostname)
-            if m:
-                try:
-                    restaurant_number = int(m.group())
-                except Exception as e:
-                    print(f"[WARNING] Failed to parse restaurant_number from {hostname}: {e}")
-            # extract device code
-            if len(hostname) >= 5:
-                device = hostname[-5:]
-
         processed.append({
-            "hostname":                          hostname,
-            "restaurant_number":                 restaurant_number,
-            "device":                            device,
+            "hostname":                          entry.get("hostname"),
             "latest_hardwareAddress":            entry.get("latest.hardwareAddress"),
             "latest_interfaceName":              entry.get("latest.interfaceName"),
             "latest_ipV4Address":                entry.get("latest.ipV4Address"),

@@ -912,38 +912,38 @@ resource "aws_lambda_permission" "uk_snowfall_allow_eventbridge_to_invoke_alerts
 
 
 
-############################################
-## DynamoDB: Incident Rules Table
-############################################
-resource "aws_dynamodb_table" "uk_snowfall_incident_rules" {
-  name         = "uk-snowfall-${var.environment}-incident-rules"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "rule_id"
+# ############################################
+# ## DynamoDB: Incident Rules Table
+# ############################################
+# resource "aws_dynamodb_table" "uk_snowfall_incident_rules" {
+#   name         = "uk-snowfall-${var.environment}-incident-rules"
+#   billing_mode = "PAY_PER_REQUEST"
+#   hash_key     = "rule_id"
 
-  attribute {
-    name = "rule_id"
-    type = "S"
-  }
+#   attribute {
+#     name = "rule_id"
+#     type = "S"
+#   }
 
-  tags = var.resource_tags
-}
+#   tags = var.resource_tags
+# }
 
 
 
-############################################
-## DynamoDB: ServiceNow Tickets Table
-############################################
-resource "aws_dynamodb_table" "uk_snowfall_service_now_tickets" {
-  name         = "uk-snowfall-${var.environment}-service-now-tickets"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "ticket_id"
+# ############################################
+# ## DynamoDB: ServiceNow Tickets Table
+# ############################################
+# resource "aws_dynamodb_table" "uk_snowfall_service_now_tickets" {
+#   name         = "uk-snowfall-${var.environment}-service-now-tickets"
+#   billing_mode = "PAY_PER_REQUEST"
+#   hash_key     = "ticket_id"
 
-  attribute {
-    name = "ticket_id"
-    type = "S"
-  }
-  tags = var.resource_tags
-}
+#   attribute {
+#     name = "ticket_id"
+#     type = "S"
+#   }
+#   tags = var.resource_tags
+# }
 
 
 ############################################
