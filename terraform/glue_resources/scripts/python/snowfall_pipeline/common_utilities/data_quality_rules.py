@@ -112,6 +112,11 @@ dq_rules = {
         RowCount > 0,
         IsComplete "restaurant_number"
     ]""",
+    "newrelic_rmp_network_info": """Rules = [
+        ColumnCount <= 17,
+        RowCount > 0,
+        IsComplete "restaurant_number"
+    ]""",
     "newrelic_digital_3po_foe_response": """Rules = [
         ColumnCount <= 8,
         RowCount > 0,

@@ -341,6 +341,40 @@
     },
     "newrelic_rmp_process_info": {
         "process_timestamp": [
+            "new_relic_timestamp_latest",
+            "api_exe_timestamp",
+            "cdc_timestamp"
+        ],
+        "primary_key": "restaurant_number",
+        "retention_days": 60,
+        "new_column_params": [
+            {
+                "column_name": "hostname",
+                "regex": "^[A-Za-z]{2}(\\d+)",
+                "new_column_name": "restaurant_number",
+                "data_type": "integer"
+            },
+            {
+                "column_name": "hostname",
+                "regex": "([A-Za-z]{3}\\d{2})$",
+                "new_column_name": "device",
+                "data_type": "string"
+            }
+        ], 
+        "change_column_data_type": {
+            "latest_timestamp": "string",
+            "cdc_timestamp": "string"
+        },
+        "replace_values": [
+            {
+                "column_name": "restaurant_number",
+                "old_value": "None",
+                "new_value": -1
+            }
+        ]        
+    },
+    "newrelic_rmp_network_info": {
+        "process_timestamp": [
             "sys_updated_timestamp",
             "cdc_timestamp"
         ],
