@@ -31,9 +31,8 @@ def lambda_handler(event, context):
         print(f"Checking rule {rule['rule_id']}...")
 
         athena_result = query_athena(
-            rule['athena_database'],
-            rule['athena_table'],
-            rule['metric']
+            rule['query'],
+            rule['database'],
         )
 
         if athena_result and evaluate_rule(rule, athena_result):
@@ -54,8 +53,8 @@ def get_rules():
     return response.get('Items', [])
 
 
-def query_athena(database, table, metric):
-    query = f'SELECT host_name, sys_updated_timestamp, {metric} FROM "{database}"."{table}"  where {metric} > 90  LIMIT 10;'
+def query_athena(athena_query, database):
+    query = f'{athena_query}'
     print(f"Running Athena query: {query}")
 
     response = athena.start_query_execution(
@@ -79,27 +78,15 @@ def query_athena(database, table, metric):
         if len(rows) > 1:
             last_row = rows[1]['Data']
             record = {
-                'server_id': last_row[0]['VarCharValue'],
-                'timestamp': last_row[1]['VarCharValue'],
-                metric: float(last_row[2]['VarCharValue'])
+                'restaurant_number': last_row[0]['VarCharValue'],
+                'message': last_row[1]['VarCharValue']
             }
             return record
     return None
 
 
 def evaluate_rule(rule, record):
-    metric = rule['metric']
-    threshold = float(rule['threshold'])
-    comparison = rule['comparison']
-
-    value = record.get(metric, 0)
-    print(f"Evaluating {metric}: {value} {comparison} {threshold}")
-
-    if comparison == "gt":
-        return value > threshold
-    elif comparison == "lt":
-        return value < threshold
-    return False
+    return record
 
 
 def ticket_exists(rule_id):
