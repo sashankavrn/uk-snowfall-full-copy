@@ -389,7 +389,7 @@ def lambda_handler(event, context):
                         "mcgNodeName": client.get("mcgNodeName"),
                         "mcgNodeMac": client.get("mcgNodeMac"),
                         "mcgNetworkId": client.get("mcgNetworkId"),
-                        "sys_updated_timestamp": datetime.now(timezone.utc).isoformat()
+                        "sys_updated_timestamp": datetime.now().isoformat()
                     }
                     clientList.append(device_data)
 
@@ -450,8 +450,7 @@ def lambda_handler(event, context):
         fileKeys = []
         try:
             paginator = s3.get_paginator('list_objects_v2')
-            files = paginator.paginate(Bucket=TEMP_FILE_LOCATION_BUCKET_NAME, Prefix=f"meraki-client-temp-data/client-list-{runInstanceName}-part")
-
+            files = paginator.paginate(Bucket=TEMP_FILE_LOCATION_BUCKET_NAME, Prefix=f"meraki/client_info/client-list-{runInstanceName}-part")
             for file in files:
                 for obj in file.get('Contents', []):
                     fileKeys.append(obj['Key'])
