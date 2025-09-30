@@ -20,6 +20,6 @@ SELECT
         ) THEN 'running'
         ELSE 'stopped'
     END AS state,
-    api_exe_timestamp_utc      
+    api_exe_timestamp_utc AT TIME ZONE 'UTC' AT TIME ZONE 'Europe/London' AS api_exe_timestamp      
 FROM ranked_service_name
 WHERE rank = 1;
