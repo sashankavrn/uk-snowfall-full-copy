@@ -293,7 +293,8 @@
     "meraki_client_info":{
         "transform_json": "usage",
         "process_timestamp": [
-            "sys_updated_timestamp"
+            "sys_updated_timestamp",
+            "cdc_timestamp"
         ],
         "replace_values": [
             {
@@ -465,6 +466,9 @@
         ]        
     },
     "newrelic_rmp_device_metrics_daily": {
+        "retention_days": 60      
+    },
+    "newrelic_rmp_network_info_daily": {
         "retention_days": 60      
     },
     "ncr_service_now_service_case": {
