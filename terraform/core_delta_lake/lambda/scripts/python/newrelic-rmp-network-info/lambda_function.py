@@ -92,7 +92,7 @@ def process_data(raw_data):
             "average_transmitDroppedPerSecond":  entry.get("average.transmitDroppedPerSecond"),
             "average_transmitErrorsPerSecond":   entry.get("average.transmitErrorsPerSecond"),
             "average_transmitPacketsPerSecond":  entry.get("average.transmitPacketsPerSecond"),
-            "sys_updated_timestamp":             datetime.utcnow().isoformat()
+            "sys_updated_timestamp":             datetime.now().isoformat()
         })
     return processed
 
@@ -104,7 +104,7 @@ def save_to_bucket(bucket, prefix, data):
         notify_failure(msg)
         return None
     s3      = boto3.client("s3")
-    ts      = datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')
+    ts      = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     s3_key  = f"{prefix}newrelic_rmp_network_info_{ts}.json"
     payload = json.dumps(data, indent=4)
     try:

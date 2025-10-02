@@ -94,7 +94,7 @@ def lambda_handler(event, context):
 
     deviceList = []
     nextToken = None
-    sys_updated_timestamp = datetime.now(timezone.utc).isoformat()
+    sys_updated_timestamp = datetime.now().isoformat()
 
     while True:
         devices, nextToken = merakiAPI(authToken, nextToken)

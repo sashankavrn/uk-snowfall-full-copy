@@ -140,7 +140,7 @@ def process_data(raw_data):
             "average_swapTotalBytes": entry.get("average.swapTotalBytes"),
             "average_swapUsedBytes": entry.get("average.swapUsedBytes"),
             "latest_systemMemoryBytes": entry.get("latest.systemMemoryBytes"),
-            "sys_updated_timestamp": datetime.utcnow().isoformat()
+            "sys_updated_timestamp": datetime.now().isoformat()
         }
         processed_data.append(processed_entry)
     return processed_data
@@ -153,7 +153,7 @@ def save_to_bucket(bucket, prefix, data):
         notify_failure(error_message)
         return None
     s3_client = boto3.client("s3")
-    timestamp = datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     s3_key = f"{prefix}newrelic_rmp_device_metrics_{timestamp}.json"
     data_to_write = json.dumps(data, indent=4)
     try:
