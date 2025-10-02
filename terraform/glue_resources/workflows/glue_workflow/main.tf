@@ -296,9 +296,9 @@ locals {
     max_concurrent = 1
     batch_size     = 100
     batch_window   = 10
-    trigger_type   = "SCHEDULED"
-    schedule       = "EVENT"
-    reporting_date = ""
+    trigger_type    = "EVENT"
+    schedule        = null
+    reporting_date  = null
     },
     "newrelic_rmp_device_metrics_daily" = {
       name            = "uk-snowfall-newrelic-rmp-device_metrics-daily"
