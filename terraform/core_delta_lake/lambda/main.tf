@@ -420,6 +420,78 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_network_info
   source_arn    = aws_cloudwatch_event_rule.newrelic_network_info_lambda_schedule.arn
 }
 
+###########################################################################
+# NEWRELIC-RMP-NETWORK-INFO-DAILY-AGGREGATE
+###########################################################################
+
+###########################################################################
+# Archive the newrelic-network-metrics Python script
+###########################################################################
+data "archive_file" "newrelic_network_info_daily_aggregate_data" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/newrelic-rmp-network-info-daily-aggregate/"
+  output_path = "${path.module}/scripts/zips/newrelic-rmp-network-info-daily-aggregate.zip"
+}
+
+###########################################################################
+# Lambda Function for fetching New Relic network info
+###########################################################################
+resource "aws_lambda_function" "uk_snowfall_newrelic_network_info_daily_aggregate_function" {
+  filename         = "${path.module}/scripts/zips/newrelic-rmp-network-info-daily-aggregate.zip"
+  function_name    = "uk-snowfall-newrelic-rmp-network-info-daily-aggregate-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 4096
+  timeout          = 720
+  description      = "Fetch daily aggregated network info from New Relic API and write to landing bucket"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-rmp-network-info-daily-aggregate.zip")
+  tags             = var.resource_tags
+
+  layers = [
+    "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1",
+    "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:15"
+  ]
+
+  environment {
+    variables = {
+      DATASHARE_BUCKET = "eu-central1-${var.environment}-uk-snowfall-datashare-processed-${var.account_number}"
+      TARGET_BUCKET    = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      SNS_TOPIC_ARN    = var.sns_topic_arn
+    }
+  }
+}
+
+###########################################################################
+# CloudWatch EventBridge Rule to trigger Lambda at 1 AM UTC daily
+###########################################################################
+resource "aws_cloudwatch_event_rule" "newrelic_network_info_daily_aggregate_lambda_schedule" {
+  name                = "uk-snowfall-newrelic-rmp-network-info-daily-aggregate-schedule"
+  description         = "Triggers the New Relic daily aggregate network info Lambda at 1 AM UTC"
+  schedule_expression = "cron(0 1 * * ? *)"
+}
+
+###########################################################################
+# Target binding between the schedule and the Lambda
+###########################################################################
+resource "aws_cloudwatch_event_target" "invoke_newrelic_network_info_daily_aggregate_lambda" {
+  rule      = aws_cloudwatch_event_rule.newrelic_network_info_daily_aggregate_lambda_schedule.name
+  target_id = "newrelic-rmp-network-info-daily-aggregate-target"
+  arn       = aws_lambda_function.uk_snowfall_newrelic_network_info_daily_aggregate_function.arn
+}
+
+###########################################################################
+# Grant EventBridge permission to invoke the Lambda
+###########################################################################
+resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_network_info_daily_aggregate" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_newrelic_network_info_daily_aggregate_function.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.newrelic_network_info_daily_aggregate_lambda_schedule.arn
+}
+
+
 
 
 #######################################################################

@@ -287,6 +287,19 @@ locals {
       schedule        = "cron(0/15 1-23 * * ? *)"
       reporting_date  = ""
     },
+    "newrelic_rmp_network_info_daily_aggregate" = {
+    name           = "uk-snowfall-newrelic-rmp-network-info-daily-aggregate"
+    description    = "Workflow for the New Relic RMP daily aggregated network info data"
+    dataset        = "newrelic_rmp_network_info_daily_aggregate"
+    group          = "preparation"
+    trigger_name   = "uk-snowfall-newrelic-rmp-network-info-daily-aggregate-trigger"
+    max_concurrent = 1
+    batch_size     = 100
+    batch_window   = 10
+    trigger_type   = "SCHEDULED"
+    schedule       = "EVENT"
+    reporting_date = ""
+    },
     "newrelic_rmp_device_metrics_daily" = {
       name            = "uk-snowfall-newrelic-rmp-device_metrics-daily"
       description     = "Workflow for the newrelic rmp device metrics data, triggered daily at 1 AM UTC"
