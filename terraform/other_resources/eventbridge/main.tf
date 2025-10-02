@@ -783,8 +783,8 @@ resource "aws_cloudwatch_event_target" "service_agent_server_files_rule_event_ta
 
 ###################################### New Relic Daily Aggregate Trigger ######################################
 
-resource "aws_cloudwatch_event_rule" "newrelic_rmp_network_info_daily_aggregate_event_rule" {
-  name        = "uk-snowfall-newrelic-rmp-network-info-daily-aggregate-trigger-rule"
+resource "aws_cloudwatch_event_rule" "newrelic_daily_aggregate_event_rule" {
+  name        = "uk-snowfall-nrmp-daily-aggregate-trigger"
   description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name} for daily aggregate"
   event_pattern = <<EOF
 {
@@ -804,8 +804,10 @@ resource "aws_cloudwatch_event_rule" "newrelic_rmp_network_info_daily_aggregate_
 EOF
 }
 
-resource "aws_cloudwatch_event_target" "newrelic_rmp_network_info_daily_aggregate_rule" {
-  rule      = aws_cloudwatch_event_rule.newrelic_rmp_network_info_daily_aggregate_event_rule.name
+
+resource "aws_cloudwatch_event_target" "newrelic_daily_aggregate_event_target" {
+  rule      = aws_cloudwatch_event_rule.newrelic_daily_aggregate_event_rule.name
   arn       = local.workflow_trigger_arns["newrelic_rmp_network_info_daily_aggregate"]
   role_arn  = var.role_assumed_arn
 }
+
