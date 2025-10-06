@@ -71,7 +71,7 @@ def save_to_bucket(bucket, prefix, data):
         notify_failure(error_message)
         return None
     s3_client = boto3.client("s3")
-    timestamp = datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     s3_key = f"{prefix}newrelic_rmp_process_info_{timestamp}.json"
     data_to_write = json.dumps(data, indent=4)
     try:
@@ -97,7 +97,7 @@ def lambda_handler(event, context):
         return {"statusCode": 500, "body": error_message}
 
     # Capture execution timestamp
-    current_timestamp = datetime.utcnow().isoformat()
+    current_timestamp = datetime.now().isoformat()
 
     # Step 1: Fetch unique hostname prefixes over 1 day
     prefix_query = "SELECT uniques(substring(hostname,0,7), 10000) as 'HostnamePrefix' FROM SystemSample SINCE 1 day ago"
