@@ -92,7 +92,7 @@ def save_to_s3(data):
         return None
 
     s3_client = boto3.client("s3")
-    timestamp = datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     s3_key = f"{S3_PREFIX}newrelic_digital_gma_foe_response_{timestamp}.json"
 
     data_to_write = json.dumps(data, indent=4)
@@ -124,7 +124,7 @@ def lambda_handler(event, context):
         print(f"[INFO] Using New Relic Account ID: {account_id}")
 
         # Calculate last full hour in UTC
-        now = datetime.utcnow()
+        now = datetime.now()
         this_hour_end = now.replace(minute=0, second=0, microsecond=0)
         last_hour_start = this_hour_end - timedelta(hours=1)
 
