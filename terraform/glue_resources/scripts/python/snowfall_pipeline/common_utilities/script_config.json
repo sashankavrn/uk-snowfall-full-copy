@@ -360,6 +360,12 @@
                 "regex": "([A-Za-z]{3}\\d{2})$",
                 "new_column_name": "device",
                 "data_type": "string"
+            },
+            {
+                "column_name": "hostname",
+                "regex": "\\d+([A-Za-z]{3})",
+                "new_column_name": "device_type",
+                "data_type": "string"
             }
         ], 
         "change_column_data_type": {
