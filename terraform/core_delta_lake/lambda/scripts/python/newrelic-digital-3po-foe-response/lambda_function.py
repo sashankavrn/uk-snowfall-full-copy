@@ -3,6 +3,7 @@ import json
 import boto3
 import os
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 # AWS Config
 SECRET_NAME = "uk-snowfall"
@@ -17,7 +18,7 @@ def send_sns_notification(message):
         print("[WARNING] SNS_TOPIC_ARN is not set.")
         return
     try:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+        timestamp = datetime.now(ZoneInfo("Europe/London")).strftime("%Y-%m-%d %H:%M:%S %Z")
         full_message = f"[{timestamp}] {message}"
         boto3.client("sns").publish(
             TopicArn=SNS_TOPIC_ARN,
@@ -76,7 +77,7 @@ def save_to_s3(data):
         print("[ERROR] S3 Bucket environment variable `TARGET_BUCKET` is not set.")
         return None
     s3_client = boto3.client("s3")
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    timestamp = datetime.now(ZoneInfo("Europe/London")).strftime('%Y-%m-%d_%H-%M-%S')
     s3_key = f"{S3_PREFIX}newrelic_digital_3po_foe_response_{timestamp}.json"
     try:
         s3_client.put_object(
@@ -100,7 +101,7 @@ def lambda_handler(event, context):
         return {"statusCode": 500, "body": "Failed to retrieve API credentials."}
 
     # Calculate last full hour in UTC
-    now = datetime.now()
+    now = datetime.now(ZoneInfo("Europe/London"))
     this_hour_end = now.replace(minute=0, second=0, microsecond=0)
     last_hour_start = this_hour_end - timedelta(hours=1)
 

@@ -6,6 +6,7 @@ import time
 import os
 import math
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from botocore.exceptions import BotoCoreError, ClientError
 s3 = boto3.client('s3')
 ORG_ID = "662029145223463867"
@@ -283,7 +284,7 @@ def lambda_handler(event, context):
             startIndex=0, 
             networkList=networkList, 
             clientList=[], 
-            runInstanceName=datetime.now().strftime('%Y-%m-%d_%H-%M-%S'), 
+            runInstanceName=datetime.now(ZoneInfo("Europe/London")).strftime('%Y-%m-%d_%H-%M-%S'), 
             functionName=context.function_name
             )
         return
@@ -389,7 +390,7 @@ def lambda_handler(event, context):
                         "mcgNodeName": client.get("mcgNodeName"),
                         "mcgNodeMac": client.get("mcgNodeMac"),
                         "mcgNetworkId": client.get("mcgNetworkId"),
-                        "sys_updated_timestamp": datetime.now().isoformat()
+                        "sys_updated_timestamp": datetime.now(ZoneInfo("Europe/London")).isoformat()
                     }
                     clientList.append(device_data)
 
