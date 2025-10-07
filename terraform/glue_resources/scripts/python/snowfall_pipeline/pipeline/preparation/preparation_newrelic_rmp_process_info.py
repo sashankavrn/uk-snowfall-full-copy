@@ -26,14 +26,12 @@ class PreparationNewrelicRmpProcessInfo(TransformBase):
 
         This method executes the following steps:
         1. Convert latest_timestamp from milliseconds to readable datetime
-        2. Drop the latest_timestamp column
-        3. Create new columns based on configuration
-        4. Fill null values in specified column
-        5. Remove duplicate records.
-        6. Remove trailing whitespaces
-        7. Perform data quality check.
-        8. Add CDC columns.
-        9. Add Partition Columns
+        2. Create new columns based on configuration
+        3. Fill null values in specified column
+        4. Remove duplicate records.
+        5. Remove trailing whitespaces
+        6. Perform data quality check.
+        7. Add CDC columns.
 
         Parameters:
         - df: Input DataFrame.
@@ -46,29 +44,23 @@ class PreparationNewrelicRmpProcessInfo(TransformBase):
         # Step 1: Convert latest_timestamp from milliseconds to readable datetime
         df = df.withColumn("new_relic_timestamp_latest", F.from_unixtime((F.col("new_relic_timestamp_latest") / 1000).cast("long")))
 
-        # Step 2: Drop the latest_timestamp column
-        #df = df.drop("latest_timestamp")
-
-        # Step 3: Create new columns based on configuration
+        # Step 2: Create new columns based on configuration
         df = self.parse_column_values(df, self.pipeline_config.get('new_column_params'))
 
-        # Stpe 4: Fill null values in specified column
+        # Stpe 3: Fill null values in specified column
         df = self.replace_value(df, self.pipeline_config.get('replace_values'))
 
-        # Step 5: Remove duplicate records
+        # Step 4: Remove duplicate records
         df = self.dropping_duplicates(df)
 
-        # Step 6: Removes trailing whitespaces
+        # Step 5: Removes trailing whitespaces
         df = self.remove_trailing_whitespace(df)
 
-        # Step 7: Data quality check
+        # Step 6: Data quality check
         df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'json')  
 
-        # Step 8: Add CDC columns
+        # Step 7: Add CDC columns
         df = self.adding_cdc_columns(df)
-
-        # Step 9: Add Partiton Columns
-        #df = self.create_partition_date_columns(df,'sys_updated_timestamp','sys_updated')
 
         return df
 
