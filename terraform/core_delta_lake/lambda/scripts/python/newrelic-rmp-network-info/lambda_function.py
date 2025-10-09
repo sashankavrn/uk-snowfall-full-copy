@@ -3,6 +3,7 @@ import json
 import boto3
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # AWS Secrets Manager Details
 SECRET_NAME = "uk-snowfall"
@@ -16,16 +17,18 @@ TARGET_BUCKET    = os.environ.get("TARGET_BUCKET")
 S3_PREFIX = "newrelic/newrelic_rmp_network_info/"
 
 def notify_failure(message):
-    """Send SNS notification for a failure event."""
+    """Send SNS notification for a failure event with timestamp."""
     topic_arn = os.environ.get('SNS_TOPIC_ARN')
     if not topic_arn:
         print("[ERROR] SNS_TOPIC_ARN not set in environment variables.")
         return
     try:
         sns_client = boto3.client("sns")
+        timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
+        full_message = f"{timestamp} - {message}"
         sns_client.publish(
             TopicArn=topic_arn,
-            Message=message,
+            Message=full_message,
             Subject="newrelic-rmp-network-info-lambda-failure"
         )
         print("[INFO] SNS notification sent.")
@@ -72,10 +75,7 @@ def new_relic_query(api_key, account_id, nrql):
         return None
 
 def process_data(raw_data):
-    """
-    Process raw network data from New Relic into a structured list.
-    Removed logic extracting restaurant_number and device from hostname.
-    """
+    """Process raw network data from New Relic into a structured list."""
     processed = []
     for entry in raw_data:
         processed.append({
@@ -92,7 +92,7 @@ def process_data(raw_data):
             "average_transmitDroppedPerSecond":  entry.get("average.transmitDroppedPerSecond"),
             "average_transmitErrorsPerSecond":   entry.get("average.transmitErrorsPerSecond"),
             "average_transmitPacketsPerSecond":  entry.get("average.transmitPacketsPerSecond"),
-            "sys_updated_timestamp":             datetime.now().isoformat()
+            "sys_updated_timestamp":             datetime.now(ZoneInfo("Europe/London")).isoformat()
         })
     return processed
 
@@ -104,7 +104,7 @@ def save_to_bucket(bucket, prefix, data):
         notify_failure(msg)
         return None
     s3      = boto3.client("s3")
-    ts      = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    ts      = datetime.now(ZoneInfo("Europe/London")).strftime('%Y-%m-%d_%H-%M-%S')
     s3_key  = f"{prefix}newrelic_rmp_network_info_{ts}.json"
     payload = json.dumps(data, indent=4)
     try:
