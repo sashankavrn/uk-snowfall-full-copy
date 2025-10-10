@@ -134,8 +134,8 @@ def lambda_handler(event, context):
             break
 
     json_data = json.dumps(deviceList, indent=4)
-    current_time = datetime.now(ZoneInfo("Europe/London")).isoformat()
-    filename = f"device_list_{current_time.strftime('%Y-%m-%d_%H-%M-%S')}.json"
+    current_time = datetime.now(ZoneInfo("Europe/London")).strftime('%Y-%m-%d_%H-%M-%S')
+    filename = f"device_list_{current_time}.json"
     bucket_name = os.environ.get('TARGET_BUCKET')
     s3_key = f"meraki/device_info/{filename}"
 
