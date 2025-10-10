@@ -55,7 +55,8 @@ class SemanticNewrelicRmpNetworkInfoDaily(TransformBase):
             F.avg('average_transmit_dropped_per_second').alias('average_transmit_dropped_per_second'),
             F.avg('average_transmit_errors_per_second').alias('average_transmit_errors_per_second'),
             F.avg('average_transmit_packets_per_second').alias('average_transmit_packets_per_second'),
-            F.current_timestamp().alias('sys_updated_timestamp'),
+            F.current_timestamp().alias('sys_updated_timestamp_utc'),
+            F.current_timestamp().cast("string").alias("sys_updated_timestamp"),
             F.current_date().alias('sys_updated_date'),
             F.year(F.current_date()).alias('sys_updated_year'),
             F.month(F.current_date()).alias('sys_updated_month')
