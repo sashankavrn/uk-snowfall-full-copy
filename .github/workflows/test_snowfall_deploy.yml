@@ -118,7 +118,7 @@ jobs:
           fi
 
           # Restrict to top-level terraform modules
-          ALLOWED="core_delta_lake data_share_resources glue_resources other_resources"
+          ALLOWED="core_delta_lake datashare_resources glue_resources other_resources"
 
           # Extract first path segment under terraform/
           mapfile -t TOPS < <(printf '%s\n' "${FILES}" \
