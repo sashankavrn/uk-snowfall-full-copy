@@ -247,7 +247,7 @@ jobs:
             FILES=$(git diff --name-only "${BASE}" "${{ github.sha }}" || true)
           fi
 
-          ALLOWED="core_delta_lake data_share_resources glue_resources other_resources"
+          ALLOWED="core_delta_lake datashare_resources glue_resources other_resources"
           mapfile -t TOPS < <(printf '%s\n' "${FILES}" \
             | awk '/^terraform\//{sub(/^terraform\//,""); print}' \
             | awk -F/ '{print $1}' \
@@ -575,7 +575,7 @@ jobs:
             FILES=$(git diff --name-only "${BASE}" "${{ github.sha }}" || true)
           fi
 
-          ALLOWED="core_delta_lake data_share_resources glue_resources other_resources"
+          ALLOWED="core_delta_lake datashare_resources glue_resources other_resources"
           mapfile -t TOPS < <(printf '%s\n' "${FILES}" \
             | awk '/^terraform\//{sub(/^terraform\//,""); print}' \
             | awk -F/ '{print $1}' \
