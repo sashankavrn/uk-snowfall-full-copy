@@ -2,31 +2,39 @@ name: Glue Workflow Deployment
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        options:
+          - dev
+          - nprod
+          - prod
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  ENVIRONMENT: ${{ github.ref == 'refs/heads/dev' && 'dev'
-    || github.ref == 'refs/heads/main' && 'nprod'
-    || startsWith(github.ref, 'refs/tags/v') && 'prod' }}
-  VAR_FILE: ${{ github.ref == 'refs/heads/dev' && '../dev.tfvars'
-    || github.ref == 'refs/heads/main' && '../nprod.tfvars'
-    || startsWith(github.ref, 'refs/tags/v') && '../prod.tfvars' }}
+  ENVIRONMENT: ${{ github.event.inputs.environment }}
+  VAR_FILE: ${{ github.event.inputs.environment == 'dev' && '../dev.tfvars'
+    || github.event.inputs.environment == 'nprod' && '../nprod.tfvars'
+    || github.event.inputs.environment == 'prod' && '../prod.tfvars' }}
 
 concurrency:
-  group: ${{ github.ref == 'refs/heads/dev' && 'deploy-development'
-    || github.ref == 'refs/heads/main' && 'deploy-nprod'
-    || startsWith(github.ref, 'refs/tags/v') && 'deploy-production'
+  group: ${{ github.event.inputs.environment == 'dev' && 'deploy-development'
+    || github.event.inputs.environment == 'nprod' && 'deploy-nprod'
+    || github.event.inputs.environment == 'prod' && 'deploy-production'
     || 'default' }}
   cancel-in-progress: true
 
 jobs:
   terraform_plan:
+    # Run plan & approval only for prod, same as before but driven by the dispatch input
+    if: ${{ github.event.inputs.environment == 'prod' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
-    # Will be skipped if not working with prod (kept exactly as in your file)
-    if: startsWith(github.event.ref, 'refs/tags/f')
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -38,9 +46,9 @@ jobs:
         id: load_env
         run: |
           echo "Loading AWS_ROLE_TO_ASSUME and STATE_BUCKET from VAR_FILE_AWS..."
-          VAR_FILE_AWS="${{ github.ref == 'refs/heads/dev' && 'terraform/dev.tfvars'
-            || github.ref == 'refs/heads/main' && 'terraform/nprod.tfvars'
-            || startsWith(github.ref, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
+          VAR_FILE_AWS="${{ github.event.inputs.environment == 'dev' && 'terraform/dev.tfvars'
+            || github.event.inputs.environment == 'nprod' && 'terraform/nprod.tfvars'
+            || github.event.inputs.environment == 'prod' && 'terraform/prod.tfvars' }}"
           AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> $GITHUB_ENV
@@ -71,6 +79,8 @@ jobs:
           AWS_REGION: ${{ env.AWS_REGION }}
 
   request_approval:
+    # Approval gate only required for prod
+    if: ${{ github.event.inputs.environment == 'prod' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -87,7 +97,9 @@ jobs:
       contents: read
       id-token: write
     needs: [terraform_plan, request_approval]
-    if: ${{ always() && !failure() && !cancelled() }} # Will count 'Skipped' as success but not run on failure
+    # Count "Skipped" as success so non-prod goes straight to deploy (same behavior)
+    if: ${{ always() && !failure() && !cancelled() }}
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -99,9 +111,9 @@ jobs:
         id: load_env
         run: |
           echo "Loading AWS_ROLE_TO_ASSUME and STATE_BUCKET from VAR_FILE_AWS..."
-          VAR_FILE_AWS="${{ github.ref == 'refs/heads/dev' && 'terraform/dev.tfvars'
-            || github.ref == 'refs/heads/main' && 'terraform/nprod.tfvars'
-            || startsWith(github.ref, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
+          VAR_FILE_AWS="${{ github.event.inputs.environment == 'dev' && 'terraform/dev.tfvars'
+            || github.event.inputs.environment == 'nprod' && 'terraform/nprod.tfvars'
+            || github.event.inputs.environment == 'prod' && 'terraform/prod.tfvars' }}"
           AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> $GITHUB_ENV
