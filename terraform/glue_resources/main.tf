@@ -69,7 +69,7 @@ resource "aws_glue_job" "main_runner_script" {
   }
 }
 
-# Workflow details in the workflows/main.tf file
+#Workflow details in the workflows/main.tf file
 module "workflows" {
   source = "./workflows/glue_workflow"
   resource_tags = merge(var.resource_tags,{Environment = var.environment})
