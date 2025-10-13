@@ -19,7 +19,7 @@ provider "aws" {
 }
 
 
-# Triggering eventbridge module
+#Triggering eventbridge module
 module "event_bridge_module" {
   source        = "./eventbridge"
   environment   = var.environment

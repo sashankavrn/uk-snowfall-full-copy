@@ -6,7 +6,7 @@ on:
       - dev
       - main
     tags:
-      - 'v2.*'   # preserved from your current file
+      - 'v2.*'   # preserved
 
 # Prevent overlapping runs on the same ref (branch/tag)
 concurrency:
@@ -103,7 +103,7 @@ jobs:
           role-session-name: gha-dev
           audience: sts.amazonaws.com
 
-      - name: Detect Changed Terraform Modules (supports nested paths)
+      - name: Detect Changed Terraform Folders (top-level only)
         id: detect
         shell: bash
         run: |
@@ -114,16 +114,18 @@ jobs:
           else
             FILES=$(git diff --name-only "${BASE}" "${{ github.sha }}" || true)
           fi
-          CHANGED=$(echo "${FILES}" \
-            | awk '/^terraform\/.*\.tf$/' \
-            | while read -r f; do d="${f#terraform/}"; echo "${d%/*}"; done \
-            | sed '/^$/d' \
+
+          # Collapse to the first folder under 'terraform/' and keep only known roots.
+          TOPS=$(echo "${FILES}" \
+            | awk -F'/' '/^terraform\/.*\.tf$/ && ($2 ~ /^(core_delta_lake|datashare_resources|glue_resources|other_resources)$/) {print $2}' \
             | sort -u)
-          echo "Changed modules:"
-          printf '%s\n' "${CHANGED}"
+
+          echo "Changed top-level terraform dirs (dev):"
+          printf '%s\n' "${TOPS}"
+
           {
             echo "folders<<EOF"
-            echo "${CHANGED}"
+            echo "${TOPS}"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -194,15 +196,7 @@ jobs:
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
           echo "STATE_BUCKET=$STATE_BUCKET"             >> "$GITHUB_ENV"
 
-      - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
-          role-session-name: gha-nonprod-plan
-          audience: sts.amazonaws.com
-
-      - name: Detect Changed Terraform Modules (supports nested paths)
+      - name: Detect Changed Terraform Folders (top-level only)
         id: detect
         shell: bash
         run: |
@@ -213,15 +207,17 @@ jobs:
           else
             FILES=$(git diff --name-only "${BASE}" "${{ github.sha }}" || true)
           fi
-          CHANGED=$(echo "${FILES}" \
-            | awk '/^terraform\/.*\.tf$/' \
-            | while read -r f; do d="${f#terraform/}"; echo "${d%/*}"; done \
-            | sed '/^$/d' \
+
+          TOPS=$(echo "${FILES}" \
+            | awk -F'/' '/^terraform\/.*\.tf$/ && ($2 ~ /^(core_delta_lake|datashare_resources|glue_resources|other_resources)$/) {print $2}' \
             | sort -u)
-          printf '%s\n' "${CHANGED}"
+
+          echo "Changed top-level terraform dirs (nonprod):"
+          printf '%s\n' "${TOPS}"
+
           {
             echo "folders<<EOF"
-            if [[ -z "${CHANGED}" ]]; then echo "none"; else echo "${CHANGED}"; fi
+            if [[ -z "${TOPS}" ]]; then echo "none"; else echo "${TOPS}"; fi
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -475,15 +471,7 @@ jobs:
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
           echo "STATE_BUCKET=$STATE_BUCKET"             >> "$GITHUB_ENV"
 
-      - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
-          role-session-name: gha-prod-plan
-          audience: sts.amazonaws.com
-
-      - name: Detect Changed Terraform Modules (supports nested paths)
+      - name: Detect Changed Terraform Folders (top-level only)
         id: detect
         shell: bash
         run: |
@@ -494,15 +482,17 @@ jobs:
           else
             FILES=$(git diff --name-only "${BASE}" "${{ github.sha }}" || true)
           fi
-          CHANGED=$(echo "${FILES}" \
-            | awk '/^terraform\/.*\.tf$/' \
-            | while read -r f; do d="${f#terraform/}"; echo "${d%/*}"; done \
-            | sed '/^$/d' \
+
+          TOPS=$(echo "${FILES}" \
+            | awk -F'/' '/^terraform\/.*\.tf$/ && ($2 ~ /^(core_delta_lake|datashare_resources|glue_resources|other_resources)$/) {print $2}' \
             | sort -u)
-          printf '%s\n' "${CHANGED}"
+
+          echo "Changed top-level terraform dirs (prod):"
+          printf '%s\n' "${TOPS}"
+
           {
             echo "folders<<EOF"
-            if [[ -z "${CHANGED}" ]]; then echo "none"; else echo "${CHANGED}"; fi
+            if [[ -z "${TOPS}" ]]; then echo "none"; else echo "${TOPS}"; fi
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
