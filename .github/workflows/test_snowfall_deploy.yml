@@ -2,8 +2,11 @@ name: Terraform Multi-Stage Deployment
 
 on:
   push:
-    branches: [ dev, main ]
-    tags:     [ 'v2.*' ]
+    branches:
+      - dev
+      - main
+    tags:
+      - 'v2.*'   # preserved
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_type }}-${{ github.ref_name }}
@@ -16,13 +19,14 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
-      tfvars:         ${{ steps.setenv.outputs.tfvars }}
-      env:            ${{ steps.setenv.outputs.env }}
-      state_prefix:   ${{ steps.setenv.outputs.state_prefix }}
+      tfvars:       ${{ steps.setenv.outputs.tfvars }}
+      env:          ${{ steps.setenv.outputs.env }}
+      state_prefix: ${{ steps.setenv.outputs.state_prefix }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with:
+          fetch-depth: 0
 
       - name: Set Environment Variables
         id: setenv
@@ -32,20 +36,20 @@ jobs:
           BRANCH="${{ github.ref_name }}"
           IS_TAG="${{ startsWith(github.ref, 'refs/tags/') }}"
           if [[ "$BRANCH" == "dev" ]]; then
-            echo "env=dev"         >> "$GITHUB_OUTPUT"
+            echo "env=dev"           >> "$GITHUB_OUTPUT"
             echo "tfvars=dev.tfvars" >> "$GITHUB_OUTPUT"
           elif [[ "$IS_TAG" == "true" ]]; then
-            echo "env=prod"        >> "$GITHUB_OUTPUT"
+            echo "env=prod"          >> "$GITHUB_OUTPUT"
             echo "tfvars=prod.tfvars" >> "$GITHUB_OUTPUT"
           else
-            echo "env=nprod"       >> "$GITHUB_OUTPUT"
+            echo "env=nprod"         >> "$GITHUB_OUTPUT"
             echo "tfvars=nprod.tfvars" >> "$GITHUB_OUTPUT"
           fi
           # Constant prefix folder inside the bucket for your state layout
           echo "state_prefix=snowfall-data-pipeline" >> "$GITHUB_OUTPUT"
 
   # -----------------------------------------------------------------------
-  # 2) DEV — (no manual approval, branch = dev)
+  # 2) DEV — (no manual approval)
   # -----------------------------------------------------------------------
   dev:
     needs: setup
@@ -60,14 +64,17 @@ jobs:
       STATE_KEY_PREFIX:  ${{ needs.setup.outputs.state_prefix }}
       AWS_REGION:        ${{ secrets.AWS_REGION }}
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.7.4 }
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.4
 
       - name: Load AWS Role and State Bucket
-        id: load
         shell: bash
         run: |
           set -euo pipefail
@@ -77,7 +84,7 @@ jobs:
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           [[ -n "${AWS_ROLE_TO_ASSUME:-}" && -n "${STATE_BUCKET:-}" ]] || { echo "Missing aws_role_to_assume or terraform_bucket_name in $VAR_FILE"; exit 1; }
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"             >> "$GITHUB_ENV"
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -142,7 +149,7 @@ jobs:
           aws s3 cp last_successful_commit.txt "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}"
 
   # -----------------------------------------------------------------------
-  # 3) NONPROD — plan (branch main) and apply (with approval)
+  # 3) NONPROD — plan (no approval) and apply (with approval)
   # -----------------------------------------------------------------------
   nonprod-plan:
     needs: setup
@@ -157,11 +164,15 @@ jobs:
       STATE_KEY_PREFIX:  ${{ needs.setup.outputs.state_prefix }}
       AWS_REGION:        ${{ secrets.AWS_REGION }}
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.7.4 }
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.4
 
       - name: Load AWS Role and State Bucket
         shell: bash
@@ -172,7 +183,7 @@ jobs:
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           [[ -n "${AWS_ROLE_TO_ASSUME:-}" && -n "${STATE_BUCKET:-}" ]] || { echo "Missing aws_role_to_assume or terraform_bucket_name in $VAR_FILE"; exit 1; }
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"             >> "$GITHUB_ENV"
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -244,7 +255,8 @@ jobs:
     needs: [setup, nonprod-plan]
     if: ${{ github.ref_name == 'main' }}
     runs-on: ubuntu-latest
-    environment: { name: nonprod } # manual approval gate
+    environment:
+      name: nonprod  # manual approval gate
     permissions:
       contents: read
       id-token: write
@@ -261,11 +273,17 @@ jobs:
         id: mark-approved
         run: echo "approved=true" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0, ref: ${{ github.sha }} }
+      - name: Checkout the exact SHA
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
 
-      - uses: actions/download-artifact@v4
-        with: { name: nonprod-plan-${{ github.sha }}, path: ./plan_dl }
+      - name: Download plan artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: nonprod-plan-${{ github.sha }}
+          path: ./plan_dl
 
       - name: Read planned SHA & module list
         id: meta
@@ -278,7 +296,7 @@ jobs:
           elif [[ -f "plan_dl/planned_sha.txt" ]]; then
             PLAN_SHA_PATH="plan_dl/planned_sha.txt"
           fi
-          [[ -n "${PLAN_SHA_PATH}" ]] || { echo "::error::Planned SHA artifact not found."; ls -R plan_dl || true; exit 1; }
+          [[ -n "${PLAN_SHA_PATH}" ]] || { echo "::error::Planned SHA artifact not found. Ensure nonprod-plan ran and uploaded artifacts."; ls -R plan_dl || true; exit 1; }
           PLANNED_SHA=$(cat "${PLAN_SHA_PATH}")
           echo "planned_sha=${PLANNED_SHA}" >> "$GITHUB_OUTPUT"
 
@@ -296,6 +314,7 @@ jobs:
           set -euo pipefail
           if [[ "${{ steps.meta.outputs.planned_sha }}" != "${{ github.sha }}" ]]; then
             echo "Refusing to apply: planned at ${{ steps.meta.outputs.planned_sha }}, current @ ${{ github.sha }}."
+            echo "Re-run the plan to regenerate artifacts for the current commit."
             exit 1
           fi
 
@@ -307,7 +326,7 @@ jobs:
           AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"             >> "$GITHUB_ENV"
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -344,7 +363,8 @@ jobs:
 
       - name: Post-Apply Validation (echo-mode)
         shell: bash
-        env: { MAX_RETRIES: ${{ env.MAX_RETRIES }} }
+        env:
+          MAX_RETRIES: ${{ env.MAX_RETRIES }}
         run: |
           set -euo pipefail
           CHANGED="${{ steps.meta.outputs.modules }}"
@@ -392,7 +412,7 @@ jobs:
           aws s3 cp last_successful_commit.txt "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}"
 
   # -----------------------------------------------------------------------
-  # 4) PROD — plan (tags v2.*) and apply (with approval)
+  # 4) PROD — plan (no approval) and apply (with approval)
   # -----------------------------------------------------------------------
   prod-plan:
     needs: setup
@@ -407,11 +427,15 @@ jobs:
       STATE_KEY_PREFIX:  ${{ needs.setup.outputs.state_prefix }}
       AWS_REGION:        ${{ secrets.AWS_REGION }}
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.7.4 }
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.4
 
       - name: Load AWS Role and State Bucket
         shell: bash
@@ -422,7 +446,7 @@ jobs:
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           [[ -n "${AWS_ROLE_TO_ASSUME:-}" && -n "${STATE_BUCKET:-}" ]] || { echo "Missing aws_role_to_assume or terraform_bucket_name in $VAR_FILE"; exit 1; }
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"             >> "$GITHUB_ENV"
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -443,10 +467,12 @@ jobs:
           else
             FILES=$(git diff --name-only "${BASE}" "${{ github.sha }}" || true)
           fi
+
           TOPS=$(echo "${FILES}" \
             | awk -F'/' '/^terraform\/.*\.tf$/ {print $2}' \
             | grep -E '^(core_delta_lake|datashare_resources|glue_resources|other_resources)$' \
             | sort -u)
+
           echo "Changed top-level terraform dirs (prod):"
           printf '%s\n' "${TOPS}"
           { echo "folders<<EOF"; if [[ -z "${TOPS}" ]]; then echo "none"; else echo "${TOPS}"; fi; echo "EOF"; } >> "$GITHUB_OUTPUT"
@@ -477,7 +503,8 @@ jobs:
           fi
           echo "${{ github.sha }}" > plan_artifacts/planned_sha.txt
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload plan artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: prod-plan-${{ github.sha }}
           path: plan_artifacts
@@ -487,7 +514,8 @@ jobs:
     needs: [setup, prod-plan]
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
-    environment: { name: prod } # manual approval gate
+    environment:
+      name: prod  # manual approval gate
     permissions:
       contents: read
       id-token: write
@@ -504,11 +532,17 @@ jobs:
         id: mark-approved
         run: echo "approved=true" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0, ref: ${{ github.sha }} }
+      - name: Checkout the exact SHA
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
 
-      - uses: actions/download-artifact@v4
-        with: { name: prod-plan-${{ github.sha }}, path: ./plan_dl }
+      - name: Download plan artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: prod-plan-${{ github.sha }}
+          path: ./plan_dl
 
       - name: Read planned SHA & module list
         id: meta
@@ -521,7 +555,7 @@ jobs:
           elif [[ -f "plan_dl/planned_sha.txt" ]]; then
             PLAN_SHA_PATH="plan_dl/planned_sha.txt"
           fi
-          [[ -n "${PLAN_SHA_PATH}" ]] || { echo "::error::Planned SHA artifact not found."; ls -R plan_dl || true; exit 1; }
+          [[ -n "${PLAN_SHA_PATH}" ]] || { echo "::error::Planned SHA artifact not found. Ensure prod-plan ran and uploaded artifacts."; ls -R plan_dl || true; exit 1; }
           PLANNED_SHA=$(cat "${PLAN_SHA_PATH}")
           echo "planned_sha=${PLANNED_SHA}" >> "$GITHUB_OUTPUT"
 
@@ -539,6 +573,7 @@ jobs:
           set -euo pipefail
           if [[ "${{ steps.meta.outputs.planned_sha }}" != "${{ github.sha }}" ]]; then
             echo "Refusing to apply: planned at ${{ steps.meta.outputs.planned_sha }}, current @ ${{ github.sha }}."
+            echo "Re-run the plan to regenerate artifacts for the current commit."
             exit 1
           fi
 
@@ -550,7 +585,7 @@ jobs:
           AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"             >> "$GITHUB_ENV"
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -587,7 +622,8 @@ jobs:
 
       - name: Post-Apply Validation (echo-mode)
         shell: bash
-        env: { MAX_RETRIES: ${{ env.MAX_RETRIES }} }
+        env:
+          MAX_RETRIES: ${{ env.MAX_RETRIES }}
         run: |
           set -euo pipefail
           CHANGED="${{ steps.meta.outputs.modules }}"
@@ -641,8 +677,8 @@ jobs:
     needs: [setup, nonprod-plan, nonprod-apply, prod-plan, prod-apply]
     runs-on: ubuntu-latest
     if: >-
-      ${{ (needs.nonprod-apply.result == 'failure' && needs.nonprod-apply.outputs.approved == 'true') ||
-          (needs.prod-apply.result == 'failure'    && needs.prod-apply.outputs.approved    == 'true') }}
+      ${{ (needs.nonprod-apply.result == 'failure' && needs.nonprod-apply.outputs.approved == 'true')
+          || (needs.prod-apply.result == 'failure'    && needs.prod-apply.outputs.approved    == 'true') }}
     permissions:
       contents: read
       id-token: write
@@ -652,13 +688,17 @@ jobs:
       STATE_KEY_PREFIX:  ${{ needs.setup.outputs.state_prefix }}
       AWS_REGION:        ${{ secrets.AWS_REGION }}
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.7.4 }
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.4
 
-      # Nonprod rollback (echo)
+      # --- NONPROD ROLLBACK (echo mode) ---
       - name: NONPROD — Load AWS Role and State Bucket
         if: ${{ needs.nonprod-apply.result == 'failure' && needs.nonprod-apply.outputs.approved == 'true' }}
         shell: bash
@@ -668,7 +708,7 @@ jobs:
           AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"             >> "$GITHUB_ENV"
 
       - name: NONPROD — Configure AWS Credentials (OIDC)
         if: ${{ needs.nonprod-apply.result == 'failure' && needs.nonprod-apply.outputs.approved == 'true' }}
@@ -726,7 +766,7 @@ jobs:
             popd >/dev/null
           done
 
-      # Prod rollback (echo)
+      # --- PROD ROLLBACK (echo mode) ---
       - name: PROD — Load AWS Role and State Bucket
         if: ${{ needs.prod-apply.result == 'failure' && needs.prod-apply.outputs.approved == 'true' }}
         shell: bash
@@ -736,7 +776,7 @@ jobs:
           AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"             >> "$GITHUB_ENV"
 
       - name: PROD — Configure AWS Credentials (OIDC)
         if: ${{ needs.prod-apply.result == 'failure' && needs.prod-apply.outputs.approved == 'true' }}
