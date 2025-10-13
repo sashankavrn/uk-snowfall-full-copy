@@ -35,7 +35,7 @@ module "datashare_buckets" {
 
 
 
-#Triggering the Lambda Module
+# Triggering the Lambda Module
 module "datashare_lambda_module" {
   source             = "./lambda"
   environment        = var.environment
