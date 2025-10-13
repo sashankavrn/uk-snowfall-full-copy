@@ -1,24 +1,22 @@
 name: Glue Workflow Deployment
 
 on:
-  push:
-    branches:
-      - dev
-      - main
-    tags:
-      - v*
+  workflow_dispatch:
+
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  ENVIRONMENT: ${{ github.ref == 'refs/heads/dev' && 'dev' ||
-      github.ref == 'refs/heads/main' && 'nprod' || startsWith(github.ref, 'refs/tags/v') && 'prod' }}
-  VAR_FILE: ${{ github.ref == 'refs/heads/dev' && '../dev.tfvars' ||
-      github.ref == 'refs/heads/main' && '../nprod.tfvars' ||
-      startsWith(github.ref, 'refs/tags/v') && '../prod.tfvars' }}
+  ENVIRONMENT: ${{ github.ref == 'refs/heads/dev' && 'dev'
+    || github.ref == 'refs/heads/main' && 'nprod'
+    || startsWith(github.ref, 'refs/tags/v') && 'prod' }}
+  VAR_FILE: ${{ github.ref == 'refs/heads/dev' && '../dev.tfvars'
+    || github.ref == 'refs/heads/main' && '../nprod.tfvars'
+    || startsWith(github.ref, 'refs/tags/v') && '../prod.tfvars' }}
 
 concurrency:
-  group: ${{ github.ref == 'refs/heads/dev' && 'deploy-development' ||
-        github.ref == 'refs/heads/main' && 'deploy-nprod' ||
-        startsWith(github.ref, 'refs/tags/v') && 'deploy-production' || 'default' }}
+  group: ${{ github.ref == 'refs/heads/dev' && 'deploy-development'
+    || github.ref == 'refs/heads/main' && 'deploy-nprod'
+    || startsWith(github.ref, 'refs/tags/v') && 'deploy-production'
+    || 'default' }}
   cancel-in-progress: true
 
 jobs:
@@ -27,12 +25,12 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    if: startsWith(github.event.ref, 'refs/tags/f') # Will be skipped if not working with prod
-
+    # Will be skipped if not working with prod (kept exactly as in your file)
+    if: startsWith(github.event.ref, 'refs/tags/f')
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
-    
+
       - name: initialise
         uses: ./.github/composite/initialise_job
 
@@ -40,23 +38,14 @@ jobs:
         id: load_env
         run: |
           echo "Loading AWS_ROLE_TO_ASSUME and STATE_BUCKET from VAR_FILE_AWS..."
-          VAR_FILE_AWS="${{ github.ref == 'refs/heads/dev' && 'terraform/dev.tfvars' ||
-          github.ref == 'refs/heads/main' && 'terraform/nprod.tfvars' ||
-          startsWith(github.ref, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
-          
+          VAR_FILE_AWS="${{ github.ref == 'refs/heads/dev' && 'terraform/dev.tfvars'
+            || github.ref == 'refs/heads/main' && 'terraform/nprod.tfvars'
+            || startsWith(github.ref, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
           AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
+          echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> $GITHUB_ENV
+          echo "STATE_BUCKET=$STATE_BUCKET" >> $GITHUB_ENV
 
-          echo "AWS_ROLE_TO_ASSUME=${AWS_ROLE_TO_ASSUME}" >> $GITHUB_ENV
-          echo "STATE_BUCKET=${STATE_BUCKET}" >> $GITHUB_ENV
-
-      - name: Print Variable Values
-        run: |
-          echo "ENVIRONMENT: $ENVIRONMENT"
-          echo "AWS_ROLE_TO_ASSUME: $AWS_ROLE_TO_ASSUME"
-          echo "STATE_BUCKET: $STATE_BUCKET"
-          echo "VAR_FILE: $VAR_FILE"
-      
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -80,7 +69,7 @@ jobs:
           terraform plan -var-file=${{ env.VAR_FILE }} -out=tfplan
         env:
           AWS_REGION: ${{ env.AWS_REGION }}
-          
+
   request_approval:
     runs-on: ubuntu-latest
     permissions:
@@ -91,43 +80,33 @@ jobs:
     steps:
       - name: Waiting on approval
         run: echo "Waiting on approval"
-          
+
   terraform_deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write
     needs: [terraform_plan, request_approval]
-    if: ${{ always() && !failure() && !cancelled() }} # Will count 'Skipped' as a Success but wont run on failure.
-
+    if: ${{ always() && !failure() && !cancelled() }} # Will count 'Skipped' as success but not run on failure
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
-        
+
       - name: initialise
         uses: ./.github/composite/initialise_job
-        
+
       - name: Load AWS Role and State Bucket
         id: load_env
         run: |
           echo "Loading AWS_ROLE_TO_ASSUME and STATE_BUCKET from VAR_FILE_AWS..."
-          VAR_FILE_AWS="${{ github.ref == 'refs/heads/dev' && 'terraform/dev.tfvars' ||
-          github.ref == 'refs/heads/main' && 'terraform/nprod.tfvars' ||
-          startsWith(github.ref, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
-          
+          VAR_FILE_AWS="${{ github.ref == 'refs/heads/dev' && 'terraform/dev.tfvars'
+            || github.ref == 'refs/heads/main' && 'terraform/nprod.tfvars'
+            || startsWith(github.ref, 'refs/tags/v') && 'terraform/prod.tfvars' }}"
           AWS_ROLE_TO_ASSUME=$(grep 'aws_role_to_assume' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep 'terraform_bucket_name' "$VAR_FILE_AWS" | cut -d '=' -f2 | tr -d ' "')
+          echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> $GITHUB_ENV
+          echo "STATE_BUCKET=$STATE_BUCKET" >> $GITHUB_ENV
 
-          echo "AWS_ROLE_TO_ASSUME=${AWS_ROLE_TO_ASSUME}" >> $GITHUB_ENV
-          echo "STATE_BUCKET=${STATE_BUCKET}" >> $GITHUB_ENV
-
-      - name: Print Variable Values
-        run: |
-          echo "ENVIRONMENT: $ENVIRONMENT"
-          echo "AWS_ROLE_TO_ASSUME: $AWS_ROLE_TO_ASSUME"
-          echo "STATE_BUCKET: $STATE_BUCKET"
-          echo "VAR_FILE: $VAR_FILE"
-      
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -135,7 +114,6 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           role-session-name: GitHubActions
           web-identity-token-file: ${{ steps.oidc-token.outputs.token }}
-
 
       - name: Running the Glue Resources Stage
         run: |
