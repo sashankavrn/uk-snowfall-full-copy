@@ -174,7 +174,7 @@ jobs:
             terraform init ${BACKEND_OPTS}
 
             terraform plan -var-file="../${TFVARS}" -out=tfplan
-            echo "terraform apply -auto-approve tfplan"
+            terraform apply -auto-approve tfplan
 
             popd >/dev/null
           done <<< "${CHANGED}"
