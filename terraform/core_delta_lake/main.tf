@@ -22,7 +22,7 @@ provider "aws" {
 
 
 
-  # #Picks up from secrets in github
+  # Picks up from secrets in github
   # provider "aws" {
   #   region      = var.AWS_REGION
   #   access_key = ""
