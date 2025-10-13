@@ -76,7 +76,7 @@ module "workflows" {
   glue_job_name = aws_glue_job.main_runner_script.name
 }
 
-#########  Glue Data Catalog Databases #########
+######### Glue Data Catalog Databases #########
 
 resource "aws_glue_catalog_database" "databases" {
   for_each = {
