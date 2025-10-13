@@ -1,17 +1,14 @@
 from snowfall_pipeline.common_utilities.transform_base import TransformBase
 from snowfall_pipeline.common_utilities.decorators import transformation_timer
 from delta.tables import DeltaTable
-from pyspark.sql import functions as F
-from datetime import datetime, time
 
-
-class ProcessedNewrelicRmpProcessInfo(TransformBase):
+class ProcessedNewrelicRmpNetworkInfo(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
         self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
         self.pipeline_config = self.full_configs[self.datasets]
-        self.file_path = "newrelic/newrelic_rmp_process_info"
+        self.file_path = "newrelic/newrelic_rmp_network_info"
 
 
     def get_data(self):
@@ -48,15 +45,22 @@ class ProcessedNewrelicRmpProcessInfo(TransformBase):
         column_mapping = {
             'restaurant_number': ('restaurant_number', 'Integer'),
             'device': ('device', 'string'),
-            'device_type': ('device_type', 'string'),
             'hostname': ('host_name', 'string'),
-            'name': ('service_name', 'string'),
-            'new_relic_timestamp_latest_timestamp': ('new_relic_timestamp_latest_utc', 'timestamp'),
-            'new_relic_timestamp_latest': ('new_relic_timestamp_latest', 'string'),
-            'new_relic_timestamp_latest_dt': ('new_relic_latest_date', 'date'),
-            'api_exe_timestamp_timestamp': ('api_exe_timestamp_utc', 'timestamp'),
-            'api_exe_timestamp': ('api_exe_timestamp', 'string'),
-            'api_exe_timestamp_dt': ('api_exe_date', 'date'),
+            'average_receivebytespersecond': ('average_receive_bytes_per_second', 'double'), 
+            'average_receivedroppedpersecond': ('average_receive_dropped_per_second', 'double'), 
+            'average_receiveerrorspersecond': ('average_receive_errors_per_second', 'double'), 
+            'average_receivepacketspersecond': ('average_receive_packets_per_second', 'double'), 
+            'average_transmitbytespersecond': ('average_transmit_bytes_per_second', 'double'), 
+            'average_transmitdroppedpersecond': ('average_transmit_dropped_per_second', 'double'), 
+            'average_transmiterrorspersecond': ('average_transmit_errors_per_second', 'double'), 
+            'average_transmitpacketspersecond': ('average_transmit_packets_per_second', 'double'), 
+            'latest_hardwareaddress': ('latest_hardware_address', 'string'), 
+            'latest_interfacename': ('latest_interface_name', 'string'), 
+            'latest_ipv4address': ('latest_ipv4_address', 'string'), 
+            'latest_ipv6address': ('latest_ipv6_address', 'string'),
+            'sys_updated_timestamp_timestamp': ('sys_updated_timestamp_utc', 'timestamp'),
+            'sys_updated_timestamp': ('sys_updated_timestamp', 'string'),
+            'sys_updated_timestamp_dt': ('sys_updated_date', 'date'),
             'cdc_timestamp_timestamp': ('cdc_timestamp_utc', 'timestamp'),
             'cdc_timestamp': ('cdc_timestamp', 'string'),
             'cdc_timestamp_dt': ('cdc_date', 'date')
@@ -102,41 +106,8 @@ class ProcessedNewrelicRmpProcessInfo(TransformBase):
                 # Vacuum the table
                 self.vacuum_table(save_output_path,48)
 
-            if not self.aws_instance.athena_table_exists('processed', 'newrelic_rmp_process_info'):
+            if not self.aws_instance.athena_table_exists('processed', 'newrelic_rmp_network_info'):
                 # Execute Athena query to create the table
-                self.aws_instance.create_athena_delta_table('processed', 'newrelic_rmp_process_info', save_output_path, self.athena_output_path)
-
-            # Get current time
-            now = datetime.now().time()
-
-            # Define your daily time window
-            start_time = time(23, 55)
-            end_time = time(0, 15)
-
-            # Run only if within the time window
-            if start_time <= now <= end_time:
-                if isinstance(retention_days, int) and retention_days > 0:
-                    s3_paths = [
-                        f"s3://{self.preparation_bucket_name}/newrelic/newrelic_rmp_device_metrics/",
-                        f"s3://{self.processed_bucket_name}/newrelic/newrelic_rmp_device_metrics/"
-                    ]
-
-                    for s3_path in s3_paths:
-                        delta_table = DeltaTable.forPath(self.spark, s3_path)
-                        
-                        delta_table.delete(F.col("sys_updated_timestamp") < F.current_timestamp() - F.expr(f"INTERVAL {retention_days} DAYS"))
-                        
-                        delta_table.vacuum(retentionHours=48)
-                    self.logger.info(f"Retention cleanup completed successfully at {datetime.now()}")
-                else:
-                    self.logger.info(f"Invalid retention days: {retention_days}. It must be an integer greater than 0.")
-            else:
-                self.logger.info("Outside the allowed time window (23:55 to 00:15). Skipping cleanup.")
-
-            # If error detected from DQ failing then will raise
-            if self.sns_trigger:
-                message = "Records in the error folder that have failed transformation"
-                self.aws_instance.send_sns_message(message)
-
+                self.aws_instance.create_athena_delta_table('processed', 'newrelic_rmp_network_info', save_output_path, self.athena_output_path)
             
             self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')

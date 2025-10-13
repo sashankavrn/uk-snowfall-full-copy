@@ -4,7 +4,7 @@ from delta.tables import DeltaTable
 from pyspark.sql import functions as F
 
 
-class PreparationNewrelicRmpProcessInfo(TransformBase):
+class PreparationNewrelicRmpNetworkInfo(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
@@ -12,7 +12,7 @@ class PreparationNewrelicRmpProcessInfo(TransformBase):
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
         self.pipeline_config = self.full_configs[self.datasets]
         self.dq_rule = dq_rules.get(self.datasets)
-        self.file_path = "newrelic/newrelic_rmp_process_info"
+        self.file_path = "newrelic/newrelic_rmp_network_info"
         self.list_of_files = self.aws_instance.get_files_in_s3_path(f"{self.raw_bucket_name}/{self.file_path}/")
 
 
@@ -25,13 +25,12 @@ class PreparationNewrelicRmpProcessInfo(TransformBase):
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Convert latest_timestamp from milliseconds to readable datetime
-        2. Create new columns based on configuration
-        3. Fill null values in specified column
-        4. Remove duplicate records.
-        5. Remove trailing whitespaces
-        6. Perform data quality check.
-        7. Add CDC columns.
+        1. Create new columns based on configuration
+        2. Fill null values in specified column
+        3. Remove duplicate records.
+        4. Remove trailing whitespaces
+        5. Perform data quality check.
+        6. Add CDC columns.
 
         Parameters:
         - df: Input DataFrame.
@@ -40,26 +39,23 @@ class PreparationNewrelicRmpProcessInfo(TransformBase):
         - DataFrame: Transformed DataFrame.
 
         """
-        
-        # Step 1: Convert latest_timestamp from milliseconds to readable datetime
-        df = df.withColumn("new_relic_timestamp_latest", F.from_unixtime((F.col("new_relic_timestamp_latest") / 1000).cast("long")))
 
-        # Step 2: Create new columns based on configuration
+        # Step 1: Create new columns based on configuration
         df = self.parse_column_values(df, self.pipeline_config.get('new_column_params'))
 
-        # Stpe 3: Fill null values in specified column
+        # Stpe 2: Fill null values in specified column
         df = self.replace_value(df, self.pipeline_config.get('replace_values'))
 
-        # Step 4: Remove duplicate records
+        # Step 3: Remove duplicate records
         df = self.dropping_duplicates(df)
 
-        # Step 5: Removes trailing whitespaces
+        # Step 4: Removes trailing whitespaces
         df = self.remove_trailing_whitespace(df)
 
-        # Step 6: Data quality check
+        # Step 5: Data quality check
         df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'json')  
 
-        # Step 7: Add CDC columns
+        # Step 6: Add CDC columns
         df = self.adding_cdc_columns(df)
 
         return df
@@ -97,9 +93,9 @@ class PreparationNewrelicRmpProcessInfo(TransformBase):
             self.vacuum_table(save_output_path,48)
 
         # Check if Athena table needs to be created
-        if not self.aws_instance.athena_table_exists('preparation', 'newrelic_rmp_process_info'):
+        if not self.aws_instance.athena_table_exists('preparation', 'newrelic_rmp_network_info'):
             # Execute Athena query to create the table
-            self.aws_instance.create_athena_delta_table('preparation', 'newrelic_rmp_process_info', save_output_path, self.athena_output_path)
+            self.aws_instance.create_athena_delta_table('preparation', 'newrelic_rmp_network_info', save_output_path, self.athena_output_path)
         
         # Delete files
         for file_name in self.list_of_files:

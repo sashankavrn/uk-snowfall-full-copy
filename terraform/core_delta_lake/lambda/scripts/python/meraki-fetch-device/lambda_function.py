@@ -5,6 +5,7 @@ import boto3
 import time
 import os
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from botocore.exceptions import BotoCoreError, ClientError
 
 def get_secret():
@@ -94,7 +95,7 @@ def lambda_handler(event, context):
 
     deviceList = []
     nextToken = None
-    sys_updated_timestamp = datetime.now(timezone.utc).isoformat()
+    sys_updated_timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
 
     while True:
         devices, nextToken = merakiAPI(authToken, nextToken)
@@ -133,8 +134,8 @@ def lambda_handler(event, context):
             break
 
     json_data = json.dumps(deviceList, indent=4)
-    current_time = datetime.now()
-    filename = f"device_list_{current_time.strftime('%Y-%m-%d_%H-%M-%S')}.json"
+    current_time = datetime.now(ZoneInfo("Europe/London")).strftime('%Y-%m-%d_%H-%M-%S')
+    filename = f"device_list_{current_time}.json"
     bucket_name = os.environ.get('TARGET_BUCKET')
     s3_key = f"meraki/device_info/{filename}"
 

@@ -3,6 +3,7 @@ import json
 import boto3
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # AWS Secrets Manager Details
 SECRET_NAME = "uk-snowfall"
@@ -91,7 +92,7 @@ def process_data(raw_data):
             "windowsFamily": entry.get("latest.windowsFamily"),
             "windowsPlatform": entry.get("latest.windowsPlatform"),
             "windowsVersion": entry.get("latest.windowsVersion"),
-            "sys_updated_timestamp": datetime.utcnow().isoformat()
+            "sys_updated_timestamp": datetime.now(ZoneInfo("Europe/London")).isoformat()
         }
         for entry in raw_data
     ]
@@ -107,7 +108,7 @@ def save_to_s3(data):
         return None
 
     s3_client = boto3.client("s3")
-    timestamp = datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')
+    timestamp = datetime.now(ZoneInfo("Europe/London")).strftime('%Y-%m-%d_%H-%M-%S')
     s3_key = f"{S3_PREFIX}newrelic_rmp_device_info_{timestamp}.json"
 
     data_to_write = json.dumps(data, indent=4)

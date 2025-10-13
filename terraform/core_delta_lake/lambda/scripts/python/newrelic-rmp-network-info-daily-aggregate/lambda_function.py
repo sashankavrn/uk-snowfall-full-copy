@@ -14,7 +14,7 @@ DATASHARE_BUCKET = os.environ.get("DATASHARE_BUCKET")
 TARGET_BUCKET    = os.environ.get("TARGET_BUCKET")
 
 # S3 key prefix for network info data
-S3_PREFIX = "newrelic/newrelic_rmp_network_info/"
+S3_PREFIX = "newrelic/newrelic_rmp_network_info_daily_aggregate/"
 
 def notify_failure(message):
     """Send SNS notification for a failure event with timestamp."""
@@ -29,7 +29,7 @@ def notify_failure(message):
         sns_client.publish(
             TopicArn=topic_arn,
             Message=full_message,
-            Subject="newrelic-rmp-network-info-lambda-failure"
+            Subject="newrelic-rmp-network-info-daily-aggregate-lambda-failure"
         )
         print("[INFO] SNS notification sent.")
     except Exception as e:
@@ -105,7 +105,7 @@ def save_to_bucket(bucket, prefix, data):
         return None
     s3      = boto3.client("s3")
     ts      = datetime.now(ZoneInfo("Europe/London")).strftime('%Y-%m-%d_%H-%M-%S')
-    s3_key  = f"{prefix}newrelic_rmp_network_info_{ts}.json"
+    s3_key  = f"{prefix}newrelic_rmp_network_info_daily_aggregate_{ts}.json"
     payload = json.dumps(data, indent=4)
     try:
         s3.put_object(

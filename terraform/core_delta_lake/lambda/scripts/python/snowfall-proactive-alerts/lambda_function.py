@@ -3,13 +3,14 @@ import time
 import json
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from boto3.dynamodb.conditions import Attr
 
 # Read config from environment variables
-DYNAMO_REGION   = os.environ.get("DYNAMO_REGION", "eu-central-1")
-RULES_TABLE     = os.environ["RULES_TABLE"]
-TICKETS_TABLE   = os.environ["TICKETS_TABLE"]
-ATHENA_REGION   = os.environ.get("ATHENA_REGION", "eu-central-1")
+DYNAMO_REGION    = os.environ.get("DYNAMO_REGION", "eu-central-1")
+RULES_TABLE      = os.environ["RULES_TABLE"]
+TICKETS_TABLE    = os.environ["TICKETS_TABLE"]
+ATHENA_REGION    = os.environ.get("ATHENA_REGION", "eu-central-1")
 ATHENA_OUTPUT_S3 = os.environ["ATHENA_OUTPUT_S3"]
 
 # DynamoDB clients
@@ -21,45 +22,43 @@ tickets_table = dynamodb.Table(TICKETS_TABLE)
 athena = boto3.client('athena', region_name=ATHENA_REGION)
 
 def lambda_handler(event, context):
-    print(f"Fetching rules from DynamoDB table: {RULES_TABLE} in {DYNAMO_REGION}...")
+    execution_time = datetime.now(ZoneInfo("Europe/London")).isoformat()
+    print(f"[INFO] Lambda execution started at {execution_time}")
+    print(f"[INFO] Fetching rules from DynamoDB table: {RULES_TABLE} in {DYNAMO_REGION}...")
+
     rules = get_rules()
 
     for rule in rules:
         if not rule.get("active", False):
             continue
 
-        print(f"Checking rule {rule['rule_id']}...")
+        print(f"[INFO] Checking rule {rule['rule_id']} at {datetime.now(ZoneInfo('Europe/London')).isoformat()}")
 
         athena_result = query_athena(
-            rule['athena_database'],
-            rule['athena_table'],
-            rule['metric']
+            rule['query'],
+            rule['database'],
         )
 
         if athena_result and evaluate_rule(rule, athena_result):
-            print(f"Rule {rule['rule_id']} violated. Checking tickets...")
+            print(f"[INFO] Rule {rule['rule_id']} violated. Checking tickets...")
             if not ticket_exists(rule['rule_id']):
-                print("No existing ticket found. Creating new ticket...")
+                print("[INFO] No existing ticket found. Creating new ticket...")
                 create_ticket(rule)
             else:
-                print("Ticket already exists. Skipping...")
+                print("[INFO] Ticket already exists. Skipping...")
         else:
-            print(f"Rule {rule['rule_id']} not violated.")
+            print(f"[INFO] Rule {rule['rule_id']} not violated.")
 
     return {"status": "completed"}
-
 
 def get_rules():
     response = rules_table.scan()
     return response.get('Items', [])
 
-
-def query_athena(database, table, metric):
-    query = f'SELECT host_name, sys_updated_timestamp, {metric} FROM "{database}"."{table}"  where {metric} > 90  LIMIT 10;'
-    print(f"Running Athena query: {query}")
-
+def query_athena(athena_query, database):
+    print(f"[INFO] Running Athena query: {athena_query}")
     response = athena.start_query_execution(
-        QueryString=query,
+        QueryString=athena_query,
         QueryExecutionContext={'Database': database},
         ResultConfiguration={'OutputLocation': ATHENA_OUTPUT_S3}
     )
@@ -75,32 +74,18 @@ def query_athena(database, table, metric):
     if state == 'SUCCEEDED':
         results = athena.get_query_results(QueryExecutionId=query_execution_id)
         rows = results['ResultSet']['Rows']
-        print(rows)
+        print(f"[INFO] Athena returned {len(rows)} rows")
         if len(rows) > 1:
             last_row = rows[1]['Data']
             record = {
-                'server_id': last_row[0]['VarCharValue'],
-                'timestamp': last_row[1]['VarCharValue'],
-                metric: float(last_row[2]['VarCharValue'])
+                'restaurant_number': last_row[0]['VarCharValue'],
+                'message': last_row[1]['VarCharValue']
             }
             return record
     return None
 
-
 def evaluate_rule(rule, record):
-    metric = rule['metric']
-    threshold = float(rule['threshold'])
-    comparison = rule['comparison']
-
-    value = record.get(metric, 0)
-    print(f"Evaluating {metric}: {value} {comparison} {threshold}")
-
-    if comparison == "gt":
-        return value > threshold
-    elif comparison == "lt":
-        return value < threshold
-    return False
-
+    return record  # Placeholder for actual logic
 
 def ticket_exists(rule_id):
     response = tickets_table.scan(
@@ -108,14 +93,14 @@ def ticket_exists(rule_id):
     )
     return len(response.get('Items', [])) > 0
 
-
 def create_ticket(rule):
     ticket_id = f"INC{int(time.time())}"
+    timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
     item = {
         'ticket_id': ticket_id,
         'rule_id': rule['rule_id'],
         'status': 'OPEN',
-        'created_at': datetime.utcnow().isoformat()
+        'created_at': timestamp
     }
     tickets_table.put_item(Item=item)
-    print(f"Mock ticket created: {ticket_id}")
+    print(f"[INFO] Ticket created: {ticket_id} at {timestamp}")

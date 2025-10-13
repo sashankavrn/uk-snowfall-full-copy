@@ -3,6 +3,7 @@ import json
 import boto3
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 # AWS Secrets Manager Details
 SECRET_NAME = "uk-snowfall"
@@ -14,16 +15,20 @@ TARGET_BUCKET = os.environ.get("TARGET_BUCKET")
 S3_PREFIX = "newrelic/newrelic_rmp_process_info/"
 
 def notify_failure(message):
+    """Send SNS notification for a failure event with timestamp in subject and body."""
     topic_arn = os.environ.get('SNS_TOPIC_ARN')
     if not topic_arn:
         print("[ERROR] SNS_TOPIC_ARN not set in environment variables.")
         return
     try:
         sns_client = boto3.client("sns")
+        timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
+        full_message = f"{timestamp} - {message}"
+        subject_line = f"newrelic-rmp-process-info-lambda-failure @ {timestamp}"
         sns_client.publish(
             TopicArn=topic_arn,
-            Message=message,
-            Subject="newrelic-rmp-process-info-lambda-failure"
+            Message=full_message,
+            Subject=subject_line
         )
         print("[INFO] SNS notification sent.")
     except Exception as e:
@@ -71,7 +76,7 @@ def save_to_bucket(bucket, prefix, data):
         notify_failure(error_message)
         return None
     s3_client = boto3.client("s3")
-    timestamp = datetime.utcnow().strftime('%Y-%m-%d_%H-%M-%S')
+    timestamp = datetime.now(ZoneInfo("Europe/London")).strftime('%Y-%m-%d_%H-%M-%S')
     s3_key = f"{prefix}newrelic_rmp_process_info_{timestamp}.json"
     data_to_write = json.dumps(data, indent=4)
     try:
@@ -97,7 +102,7 @@ def lambda_handler(event, context):
         return {"statusCode": 500, "body": error_message}
 
     # Capture execution timestamp
-    current_timestamp = datetime.utcnow().isoformat()
+    current_timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
 
     # Step 1: Fetch unique hostname prefixes over 1 day
     prefix_query = "SELECT uniques(substring(hostname,0,7), 10000) as 'HostnamePrefix' FROM SystemSample SINCE 1 day ago"
@@ -105,6 +110,7 @@ def lambda_handler(event, context):
     prefix_data = new_relic_query(api_key, account_id, prefix_query)
     if not prefix_data:
         error_message = "Failed to retrieve hostname prefixes from New Relic."
+        notify_failure(error_message)
         return {"statusCode": 500, "body": error_message}
     prefix_results = prefix_data.get("data", {}).get("actor", {}).get("account", {}).get("nrql", {}).get("results", [])
     if not prefix_results or len(prefix_results) == 0:

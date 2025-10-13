@@ -293,7 +293,8 @@
     "meraki_client_info":{
         "transform_json": "usage",
         "process_timestamp": [
-            "sys_updated_timestamp"
+            "sys_updated_timestamp",
+            "cdc_timestamp"
         ],
         "replace_values": [
             {
@@ -340,6 +341,46 @@
         ]        
     },
     "newrelic_rmp_process_info": {
+        "process_timestamp": [
+            "new_relic_timestamp_latest",
+            "api_exe_timestamp",
+            "cdc_timestamp"
+        ],
+        "primary_key": "restaurant_number",
+        "retention_days": 60,
+        "new_column_params": [
+            {
+                "column_name": "hostname",
+                "regex": "^[A-Za-z]{2}(\\d+)",
+                "new_column_name": "restaurant_number",
+                "data_type": "integer"
+            },
+            {
+                "column_name": "hostname",
+                "regex": "([A-Za-z]{3}\\d{2})$",
+                "new_column_name": "device",
+                "data_type": "string"
+            },
+            {
+                "column_name": "hostname",
+                "regex": "\\d+([A-Za-z]{3})",
+                "new_column_name": "device_type",
+                "data_type": "string"
+            }
+        ], 
+        "change_column_data_type": {
+            "latest_timestamp": "string",
+            "cdc_timestamp": "string"
+        },
+        "replace_values": [
+            {
+                "column_name": "restaurant_number",
+                "old_value": "None",
+                "new_value": -1
+            }
+        ]        
+    },
+    "newrelic_rmp_network_info": {
         "process_timestamp": [
             "sys_updated_timestamp",
             "cdc_timestamp"
@@ -431,6 +472,9 @@
         ]        
     },
     "newrelic_rmp_device_metrics_daily": {
+        "retention_days": 60      
+    },
+    "newrelic_rmp_network_info_daily": {
         "retention_days": 60      
     },
     "ncr_service_now_service_case": {
