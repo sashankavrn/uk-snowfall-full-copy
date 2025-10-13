@@ -2,13 +2,9 @@ name: Terraform Multi-Stage Deployment
 
 on:
   push:
-    branches:
-      - dev
-      - main
-    tags:
-      - 'v2.*'   # preserved
+    branches: [ dev, main ]
+    tags:     [ 'v2.*' ]
 
-# Prevent overlapping runs on the same ref (branch/tag)
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_type }}-${{ github.ref_name }}
   cancel-in-progress: false
@@ -20,13 +16,13 @@ jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
-      tfvars: ${{ steps.setenv.outputs.tfvars }}
-      env: ${{ steps.setenv.outputs.env }}
+      tfvars:         ${{ steps.setenv.outputs.tfvars }}
+      env:            ${{ steps.setenv.outputs.env }}
+      state_prefix:   ${{ steps.setenv.outputs.state_prefix }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        with: { fetch-depth: 0 }
 
       - name: Set Environment Variables
         id: setenv
@@ -36,26 +32,20 @@ jobs:
           BRANCH="${{ github.ref_name }}"
           IS_TAG="${{ startsWith(github.ref, 'refs/tags/') }}"
           if [[ "$BRANCH" == "dev" ]]; then
-            echo "ENV=dev"              >> "$GITHUB_ENV"
-            echo "TFVARS=dev.tfvars"    >> "$GITHUB_ENV"
-            echo "env=dev"              >> "$GITHUB_OUTPUT"
-            echo "tfvars=dev.tfvars"    >> "$GITHUB_OUTPUT"
+            echo "env=dev"         >> "$GITHUB_OUTPUT"
+            echo "tfvars=dev.tfvars" >> "$GITHUB_OUTPUT"
           elif [[ "$IS_TAG" == "true" ]]; then
-            echo "ENV=prod"             >> "$GITHUB_ENV"
-            echo "TFVARS=prod.tfvars"   >> "$GITHUB_ENV"
-            echo "env=prod"             >> "$GITHUB_OUTPUT"
-            echo "tfvars=prod.tfvars"   >> "$GITHUB_OUTPUT"
+            echo "env=prod"        >> "$GITHUB_OUTPUT"
+            echo "tfvars=prod.tfvars" >> "$GITHUB_OUTPUT"
           else
-            echo "ENV=nprod"            >> "$GITHUB_ENV"
-            echo "TFVARS=nprod.tfvars"  >> "$GITHUB_ENV"
-            echo "env=nprod"            >> "$GITHUB_OUTPUT"
-            echo "tfvars=nprod.tfvars"  >> "$GITHUB_OUTPUT"
+            echo "env=nprod"       >> "$GITHUB_OUTPUT"
+            echo "tfvars=nprod.tfvars" >> "$GITHUB_OUTPUT"
           fi
-          # Constant state prefix folder inside the bucket (per your layout)
-          echo "STATE_KEY_PREFIX=snowfall-data-pipeline" >> "$GITHUB_ENV"
+          # Constant prefix folder inside the bucket for your state layout
+          echo "state_prefix=snowfall-data-pipeline" >> "$GITHUB_OUTPUT"
 
   # -----------------------------------------------------------------------
-  # 2) DEV — (no manual approval)
+  # 2) DEV — (no manual approval, branch = dev)
   # -----------------------------------------------------------------------
   dev:
     needs: setup
@@ -65,21 +55,19 @@ jobs:
       contents: read
       id-token: write
     env:
-      ENV: ${{ needs.setup.outputs.env }}
-      TFVARS: ${{ needs.setup.outputs.tfvars }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ENV:               ${{ needs.setup.outputs.env }}
+      TFVARS:            ${{ needs.setup.outputs.tfvars }}
+      STATE_KEY_PREFIX:  ${{ needs.setup.outputs.state_prefix }}
+      AWS_REGION:        ${{ secrets.AWS_REGION }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.7.4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.7.4 }
 
       - name: Load AWS Role and State Bucket
+        id: load
         shell: bash
         run: |
           set -euo pipefail
@@ -89,15 +77,15 @@ jobs:
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           [[ -n "${AWS_ROLE_TO_ASSUME:-}" && -n "${STATE_BUCKET:-}" ]] || { echo "Missing aws_role_to_assume or terraform_bucket_name in $VAR_FILE"; exit 1; }
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET" >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region:        ${{ env.AWS_REGION }}
+          role-to-assume:    ${{ env.AWS_ROLE_TO_ASSUME }}
           role-session-name: gha-dev
-          audience: sts.amazonaws.com
+          audience:          sts.amazonaws.com
 
       - name: Detect Changed Terraform Folders (top-level only)
         id: detect
@@ -111,7 +99,6 @@ jobs:
             FILES=$(git diff --name-only "${BASE}" "${{ github.sha }}" || true)
           fi
 
-          # Keep only top-level stage dirs we support under terraform/
           TOPS=$(echo "${FILES}" \
             | awk -F'/' '/^terraform\/.*\.tf$/ {print $2}' \
             | grep -E '^(core_delta_lake|datashare_resources|glue_resources|other_resources)$' \
@@ -119,7 +106,6 @@ jobs:
 
           echo "Changed top-level terraform dirs (dev):"
           printf '%s\n' "${TOPS}"
-
           {
             echo "folders<<EOF"
             echo "${TOPS}"
@@ -135,18 +121,13 @@ jobs:
             echo "No Terraform changes detected for Dev."
             exit 0
           fi
-
           for stage in ${CHANGED}; do
             echo "=== DEV: ${stage} ==="
             pushd "terraform/${stage}" >/dev/null
-
-            KEY="${STATE_KEY_PREFIX}/${stage}/terraform.tfstate"
+            KEY="${STATE_KEY_PREFIX:-snowfall-data-pipeline}/${stage}/terraform.tfstate"
             echo "Using backend: bucket=${STATE_BUCKET}, key=${KEY}, region=${AWS_REGION}"
-            aws s3 ls "s3://${STATE_BUCKET}/${KEY}" >/dev/null 2>&1 || echo "::notice::State object not found yet (first-time init?): s3://${STATE_BUCKET}/${KEY}"
-
-            BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${KEY} -backend-config=region=${AWS_REGION}"
-            terraform init ${BACKEND_OPTS}
-
+            aws s3 ls "s3://${STATE_BUCKET}/${KEY}" >/dev/null 2>&1 || echo "::notice::State not found (first run?): s3://${STATE_BUCKET}/${KEY}"
+            terraform init -backend-config="bucket=${STATE_BUCKET}" -backend-config="key=${KEY}" -backend-config="region=${AWS_REGION}"
             terraform plan -var-file="../${TFVARS}" -out=tfplan
             terraform apply -auto-approve tfplan
             popd >/dev/null
@@ -161,7 +142,7 @@ jobs:
           aws s3 cp last_successful_commit.txt "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}"
 
   # -----------------------------------------------------------------------
-  # 3) NONPROD — plan (no approval) and apply (with approval)
+  # 3) NONPROD — plan (branch main) and apply (with approval)
   # -----------------------------------------------------------------------
   nonprod-plan:
     needs: setup
@@ -171,19 +152,16 @@ jobs:
       contents: read
       id-token: write
     env:
-      ENV: ${{ needs.setup.outputs.env }}
-      TFVARS: ${{ needs.setup.outputs.tfvars }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ENV:               ${{ needs.setup.outputs.env }}
+      TFVARS:            ${{ needs.setup.outputs.tfvars }}
+      STATE_KEY_PREFIX:  ${{ needs.setup.outputs.state_prefix }}
+      AWS_REGION:        ${{ secrets.AWS_REGION }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.7.4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.7.4 }
 
       - name: Load AWS Role and State Bucket
         shell: bash
@@ -194,15 +172,15 @@ jobs:
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           [[ -n "${AWS_ROLE_TO_ASSUME:-}" && -n "${STATE_BUCKET:-}" ]] || { echo "Missing aws_role_to_assume or terraform_bucket_name in $VAR_FILE"; exit 1; }
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET" >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region:        ${{ env.AWS_REGION }}
+          role-to-assume:    ${{ env.AWS_ROLE_TO_ASSUME }}
           role-session-name: gha-nonprod-plan
-          audience: sts.amazonaws.com
+          audience:          sts.amazonaws.com
 
       - name: Detect Changed Terraform Folders (top-level only)
         id: detect
@@ -223,7 +201,6 @@ jobs:
 
           echo "Changed top-level terraform dirs (nonprod):"
           printf '%s\n' "${TOPS}"
-
           {
             echo "folders<<EOF"
             if [[ -z "${TOPS}" ]]; then echo "none"; else echo "${TOPS}"; fi
@@ -236,7 +213,6 @@ jobs:
           set -euo pipefail
           mkdir -p plan_artifacts
           CHANGED="${{ steps.detect.outputs.folders }}"
-
           if [[ -z "${CHANGED}" || "${CHANGED}" == "none" ]]; then
             echo "No Terraform changes detected for Non-Prod."
             echo "none" > plan_artifacts/modules.txt
@@ -245,12 +221,9 @@ jobs:
             for stage in ${CHANGED}; do
               echo "=== NONPROD PLAN: ${stage} ==="
               pushd "terraform/${stage}" >/dev/null
-
-              KEY="${STATE_KEY_PREFIX}/${stage}/terraform.tfstate"
+              KEY="${STATE_KEY_PREFIX:-snowfall-data-pipeline}/${stage}/terraform.tfstate"
               echo "Using backend: bucket=${STATE_BUCKET}, key=${KEY}, region=${AWS_REGION}"
-              BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${KEY} -backend-config=region=${AWS_REGION}"
-              terraform init ${BACKEND_OPTS}
-
+              terraform init -backend-config="bucket=${STATE_BUCKET}" -backend-config="key=${KEY}" -backend-config="region=${AWS_REGION}"
               terraform plan -var-file="../${TFVARS}" -out=tfplan
               terraform show -no-color tfplan > "../../plan_artifacts/plan_${stage}.txt"
               cp tfplan "../../plan_artifacts/tfplan_${stage}.bin"
@@ -271,16 +244,16 @@ jobs:
     needs: [setup, nonprod-plan]
     if: ${{ github.ref_name == 'main' }}
     runs-on: ubuntu-latest
-    environment:
-      name: nonprod # manual approval gate
+    environment: { name: nonprod } # manual approval gate
     permissions:
       contents: read
       id-token: write
     env:
-      ENV: ${{ needs.setup.outputs.env }}
-      TFVARS: ${{ needs.setup.outputs.tfvars }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      MAX_RETRIES: 2
+      ENV:               ${{ needs.setup.outputs.env }}
+      TFVARS:            ${{ needs.setup.outputs.tfvars }}
+      STATE_KEY_PREFIX:  ${{ needs.setup.outputs.state_prefix }}
+      AWS_REGION:        ${{ secrets.AWS_REGION }}
+      MAX_RETRIES:       2
     outputs:
       approved: ${{ steps.mark-approved.outputs.approved }}
     steps:
@@ -288,17 +261,11 @@ jobs:
         id: mark-approved
         run: echo "approved=true" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout the exact SHA
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.sha }}
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0, ref: ${{ github.sha }} }
 
-      - name: Download plan artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: nonprod-plan-${{ github.sha }}
-          path: ./plan_dl
+      - uses: actions/download-artifact@v4
+        with: { name: nonprod-plan-${{ github.sha }}, path: ./plan_dl }
 
       - name: Read planned SHA & module list
         id: meta
@@ -311,7 +278,7 @@ jobs:
           elif [[ -f "plan_dl/planned_sha.txt" ]]; then
             PLAN_SHA_PATH="plan_dl/planned_sha.txt"
           fi
-          [[ -n "${PLAN_SHA_PATH}" ]] || { echo "::error::Planned SHA artifact not found. Ensure nonprod-plan ran and uploaded artifacts."; ls -R plan_dl || true; exit 1; }
+          [[ -n "${PLAN_SHA_PATH}" ]] || { echo "::error::Planned SHA artifact not found."; ls -R plan_dl || true; exit 1; }
           PLANNED_SHA=$(cat "${PLAN_SHA_PATH}")
           echo "planned_sha=${PLANNED_SHA}" >> "$GITHUB_OUTPUT"
 
@@ -321,11 +288,7 @@ jobs:
           elif [[ -f "plan_dl/modules.txt" ]]; then
             MODS=$(grep -v '^$' "plan_dl/modules.txt" || true)
           fi
-          {
-            echo "modules<<EOF"
-            echo "${MODS:-none}"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          { echo "modules<<EOF"; echo "${MODS:-none}"; echo "EOF"; } >> "$GITHUB_OUTPUT"
 
       - name: Verify plan/apply commit integrity
         shell: bash
@@ -333,7 +296,6 @@ jobs:
           set -euo pipefail
           if [[ "${{ steps.meta.outputs.planned_sha }}" != "${{ github.sha }}" ]]; then
             echo "Refusing to apply: planned at ${{ steps.meta.outputs.planned_sha }}, current @ ${{ github.sha }}."
-            echo "Re-run the plan to regenerate artifacts for the current commit."
             exit 1
           fi
 
@@ -345,15 +307,15 @@ jobs:
           AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET" >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region:        ${{ env.AWS_REGION }}
+          role-to-assume:    ${{ env.AWS_ROLE_TO_ASSUME }}
           role-session-name: gha-nonprod-apply
-          audience: sts.amazonaws.com
+          audience:          sts.amazonaws.com
 
       - name: Apply — Non-Prod
         shell: bash
@@ -367,12 +329,9 @@ jobs:
           for stage in ${CHANGED}; do
             echo "=== NONPROD APPLY: ${stage} ==="
             pushd "terraform/${stage}" >/dev/null
-
-            KEY="${STATE_KEY_PREFIX}/${stage}/terraform.tfstate"
+            KEY="${STATE_KEY_PREFIX:-snowfall-data-pipeline}/${stage}/terraform.tfstate"
             echo "Using backend: bucket=${STATE_BUCKET}, key=${KEY}, region=${AWS_REGION}"
-            BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${KEY} -backend-config=region=${AWS_REGION}"
-            terraform init ${BACKEND_OPTS}
-
+            terraform init -backend-config="bucket=${STATE_BUCKET}" -backend-config="key=${KEY}" -backend-config="region=${AWS_REGION}"
             BIN="../../plan_dl/plan_artifacts/tfplan_${stage}.bin"
             if [[ -f "${BIN}" ]]; then
               terraform apply -auto-approve "${BIN}"
@@ -383,10 +342,9 @@ jobs:
             popd >/dev/null
           done
 
-      - name: "Post-Apply Validation (echo-mode): plan & conditional re-apply loop"
+      - name: Post-Apply Validation (echo-mode)
         shell: bash
-        env:
-          MAX_RETRIES: ${{ env.MAX_RETRIES }}
+        env: { MAX_RETRIES: ${{ env.MAX_RETRIES }} }
         run: |
           set -euo pipefail
           CHANGED="${{ steps.meta.outputs.modules }}"
@@ -397,11 +355,8 @@ jobs:
           for stage in ${CHANGED}; do
             echo "=== VALIDATE (Non-Prod): ${stage} ==="
             pushd "terraform/${stage}" >/dev/null
-
-            KEY="${STATE_KEY_PREFIX}/${stage}/terraform.tfstate"
-            BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${KEY} -backend-config=region=${AWS_REGION}"
-            terraform init ${BACKEND_OPTS}
-
+            KEY="${STATE_KEY_PREFIX:-snowfall-data-pipeline}/${stage}/terraform.tfstate"
+            terraform init -backend-config="bucket=${STATE_BUCKET}" -backend-config="key=${KEY}" -backend-config="region=${AWS_REGION}"
             attempt=0
             while :; do
               echo "Running validation plan (attempt $((attempt+1)))..."
@@ -414,19 +369,12 @@ jobs:
                 break
               elif [[ $code -eq 2 ]]; then
                 echo "Validation indicates remaining changes for ${stage}."
-                BIN="../../plan_dl/plan_artifacts/tfplan_${stage}.bin"
-                if [[ -f "${BIN}" ]]; then
-                  echo "terraform apply -auto-approve \"${BIN}\""
-                else
-                  echo "terraform apply -auto-approve"
-                fi
                 attempt=$((attempt+1))
                 if [[ $attempt -ge ${MAX_RETRIES:-2} ]]; then
                   echo "Reached max retries (${MAX_RETRIES:-2}) for ${stage}. Leaving with pending changes (echo mode)."
                   break
                 fi
                 sleep $((5*attempt))
-                continue
               else
                 echo "::warning::Validation plan failed for ${stage} (exit ${code}). See .post_apply_plan.txt"
                 break
@@ -444,7 +392,7 @@ jobs:
           aws s3 cp last_successful_commit.txt "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}"
 
   # -----------------------------------------------------------------------
-  # 4) PROD — plan (no approval) and apply (with approval)
+  # 4) PROD — plan (tags v2.*) and apply (with approval)
   # -----------------------------------------------------------------------
   prod-plan:
     needs: setup
@@ -454,19 +402,16 @@ jobs:
       contents: read
       id-token: write
     env:
-      ENV: ${{ needs.setup.outputs.env }}
-      TFVARS: ${{ needs.setup.outputs.tfvars }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ENV:               ${{ needs.setup.outputs.env }}
+      TFVARS:            ${{ needs.setup.outputs.tfvars }}
+      STATE_KEY_PREFIX:  ${{ needs.setup.outputs.state_prefix }}
+      AWS_REGION:        ${{ secrets.AWS_REGION }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.7.4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.7.4 }
 
       - name: Load AWS Role and State Bucket
         shell: bash
@@ -477,15 +422,15 @@ jobs:
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           [[ -n "${AWS_ROLE_TO_ASSUME:-}" && -n "${STATE_BUCKET:-}" ]] || { echo "Missing aws_role_to_assume or terraform_bucket_name in $VAR_FILE"; exit 1; }
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET" >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region:        ${{ env.AWS_REGION }}
+          role-to-assume:    ${{ env.AWS_ROLE_TO_ASSUME }}
           role-session-name: gha-prod-plan
-          audience: sts.amazonaws.com
+          audience:          sts.amazonaws.com
 
       - name: Detect Changed Terraform Folders (top-level only)
         id: detect
@@ -498,20 +443,13 @@ jobs:
           else
             FILES=$(git diff --name-only "${BASE}" "${{ github.sha }}" || true)
           fi
-
           TOPS=$(echo "${FILES}" \
             | awk -F'/' '/^terraform\/.*\.tf$/ {print $2}' \
             | grep -E '^(core_delta_lake|datashare_resources|glue_resources|other_resources)$' \
             | sort -u)
-
           echo "Changed top-level terraform dirs (prod):"
           printf '%s\n' "${TOPS}"
-
-          {
-            echo "folders<<EOF"
-            if [[ -z "${TOPS}" ]]; then echo "none"; else echo "${TOPS}"; fi
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          { echo "folders<<EOF"; if [[ -z "${TOPS}" ]]; then echo "none"; else echo "${TOPS}"; fi; echo "EOF"; } >> "$GITHUB_OUTPUT"
 
       - name: Terraform plan (Prod) — only changed modules
         shell: bash
@@ -527,12 +465,9 @@ jobs:
             for stage in ${CHANGED}; do
               echo "=== PROD PLAN: ${stage} ==="
               pushd "terraform/${stage}" >/dev/null
-
-              KEY="${STATE_KEY_PREFIX}/${stage}/terraform.tfstate"
+              KEY="${STATE_KEY_PREFIX:-snowfall-data-pipeline}/${stage}/terraform.tfstate"
               echo "Using backend: bucket=${STATE_BUCKET}, key=${KEY}, region=${AWS_REGION}"
-              BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${KEY} -backend-config=region=${AWS_REGION}"
-              terraform init ${BACKEND_OPTS}
-
+              terraform init -backend-config="bucket=${STATE_BUCKET}" -backend-config="key=${KEY}" -backend-config="region=${AWS_REGION}"
               terraform plan -var-file="../${TFVARS}" -out=tfplan
               terraform show -no-color tfplan > "../../plan_artifacts/plan_${stage}.txt"
               cp tfplan "../../plan_artifacts/tfplan_${stage}.bin"
@@ -542,8 +477,7 @@ jobs:
           fi
           echo "${{ github.sha }}" > plan_artifacts/planned_sha.txt
 
-      - name: Upload plan artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: prod-plan-${{ github.sha }}
           path: plan_artifacts
@@ -553,16 +487,16 @@ jobs:
     needs: [setup, prod-plan]
     if: ${{ startsWith(github.ref, 'refs/tags/') }}
     runs-on: ubuntu-latest
-    environment:
-      name: prod # manual approval gate
+    environment: { name: prod } # manual approval gate
     permissions:
       contents: read
       id-token: write
     env:
-      ENV: ${{ needs.setup.outputs.env }}
-      TFVARS: ${{ needs.setup.outputs.tfvars }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      MAX_RETRIES: 2
+      ENV:               ${{ needs.setup.outputs.env }}
+      TFVARS:            ${{ needs.setup.outputs.tfvars }}
+      STATE_KEY_PREFIX:  ${{ needs.setup.outputs.state_prefix }}
+      AWS_REGION:        ${{ secrets.AWS_REGION }}
+      MAX_RETRIES:       2
     outputs:
       approved: ${{ steps.mark-approved.outputs.approved }}
     steps:
@@ -570,17 +504,11 @@ jobs:
         id: mark-approved
         run: echo "approved=true" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout the exact SHA
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.sha }}
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0, ref: ${{ github.sha }} }
 
-      - name: Download plan artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: prod-plan-${{ github.sha }}
-          path: ./plan_dl
+      - uses: actions/download-artifact@v4
+        with: { name: prod-plan-${{ github.sha }}, path: ./plan_dl }
 
       - name: Read planned SHA & module list
         id: meta
@@ -593,7 +521,7 @@ jobs:
           elif [[ -f "plan_dl/planned_sha.txt" ]]; then
             PLAN_SHA_PATH="plan_dl/planned_sha.txt"
           fi
-          [[ -n "${PLAN_SHA_PATH}" ]] || { echo "::error::Planned SHA artifact not found. Ensure prod-plan ran and uploaded artifacts."; ls -R plan_dl || true; exit 1; }
+          [[ -n "${PLAN_SHA_PATH}" ]] || { echo "::error::Planned SHA artifact not found."; ls -R plan_dl || true; exit 1; }
           PLANNED_SHA=$(cat "${PLAN_SHA_PATH}")
           echo "planned_sha=${PLANNED_SHA}" >> "$GITHUB_OUTPUT"
 
@@ -603,11 +531,7 @@ jobs:
           elif [[ -f "plan_dl/modules.txt" ]]; then
             MODS=$(grep -v '^$' "plan_dl/modules.txt" || true)
           fi
-          {
-            echo "modules<<EOF"
-            echo "${MODS:-none}"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          { echo "modules<<EOF"; echo "${MODS:-none}"; echo "EOF"; } >> "$GITHUB_OUTPUT"
 
       - name: Verify plan/apply commit integrity
         shell: bash
@@ -615,7 +539,6 @@ jobs:
           set -euo pipefail
           if [[ "${{ steps.meta.outputs.planned_sha }}" != "${{ github.sha }}" ]]; then
             echo "Refusing to apply: planned at ${{ steps.meta.outputs.planned_sha }}, current @ ${{ github.sha }}."
-            echo "Re-run the plan to regenerate artifacts for the current commit."
             exit 1
           fi
 
@@ -627,15 +550,15 @@ jobs:
           AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET" >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region:        ${{ env.AWS_REGION }}
+          role-to-assume:    ${{ env.AWS_ROLE_TO_ASSUME }}
           role-session-name: gha-prod-apply
-          audience: sts.amazonaws.com
+          audience:          sts.amazonaws.com
 
       - name: Apply — Prod
         shell: bash
@@ -649,12 +572,9 @@ jobs:
           for stage in ${CHANGED}; do
             echo "=== PROD APPLY: ${stage} ==="
             pushd "terraform/${stage}" >/dev/null
-
-            KEY="${STATE_KEY_PREFIX}/${stage}/terraform.tfstate"
+            KEY="${STATE_KEY_PREFIX:-snowfall-data-pipeline}/${stage}/terraform.tfstate"
             echo "Using backend: bucket=${STATE_BUCKET}, key=${KEY}, region=${AWS_REGION}"
-            BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${KEY} -backend-config=region=${AWS_REGION}"
-            terraform init ${BACKEND_OPTS}
-
+            terraform init -backend-config="bucket=${STATE_BUCKET}" -backend-config="key=${KEY}" -backend-config="region=${AWS_REGION}"
             BIN="../../plan_dl/plan_artifacts/tfplan_${stage}.bin"
             if [[ -f "${BIN}" ]]; then
               terraform apply -auto-approve "${BIN}"
@@ -665,10 +585,9 @@ jobs:
             popd >/dev/null
           done
 
-      - name: "Post-Apply Validation (echo-mode): plan & conditional re-apply loop"
+      - name: Post-Apply Validation (echo-mode)
         shell: bash
-        env:
-          MAX_RETRIES: ${{ env.MAX_RETRIES }}
+        env: { MAX_RETRIES: ${{ env.MAX_RETRIES }} }
         run: |
           set -euo pipefail
           CHANGED="${{ steps.meta.outputs.modules }}"
@@ -679,11 +598,8 @@ jobs:
           for stage in ${CHANGED}; do
             echo "=== VALIDATE (Prod): ${stage} ==="
             pushd "terraform/${stage}" >/dev/null
-
-            KEY="${STATE_KEY_PREFIX}/${stage}/terraform.tfstate"
-            BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${KEY} -backend-config=region=${AWS_REGION}"
-            terraform init ${BACKEND_OPTS}
-
+            KEY="${STATE_KEY_PREFIX:-snowfall-data-pipeline}/${stage}/terraform.tfstate"
+            terraform init -backend-config="bucket=${STATE_BUCKET}" -backend-config="key=${KEY}" -backend-config="region=${AWS_REGION}"
             attempt=0
             while :; do
               echo "Running validation plan (attempt $((attempt+1)))..."
@@ -696,19 +612,12 @@ jobs:
                 break
               elif [[ $code -eq 2 ]]; then
                 echo "Validation indicates remaining changes for ${stage}."
-                BIN="../../plan_dl/plan_artifacts/tfplan_${stage}.bin"
-                if [[ -f "${BIN}" ]]; then
-                  echo "terraform apply -auto-approve \"${BIN}\""
-                else
-                  echo "terraform apply -auto-approve"
-                fi
                 attempt=$((attempt+1))
                 if [[ $attempt -ge ${MAX_RETRIES:-2} ]]; then
                   echo "Reached max retries (${MAX_RETRIES:-2}) for ${stage}. Leaving with pending changes (echo mode)."
                   break
                 fi
                 sleep $((5*attempt))
-                continue
               else
                 echo "::warning::Validation plan failed for ${stage} (exit ${code}). See .post_apply_plan.txt"
                 break
@@ -738,21 +647,18 @@ jobs:
       contents: read
       id-token: write
     env:
-      ENV: ${{ needs.setup.outputs.env }}
-      TFVARS: ${{ needs.setup.outputs.tfvars }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+      ENV:               ${{ needs.setup.outputs.env }}
+      TFVARS:            ${{ needs.setup.outputs.tfvars }}
+      STATE_KEY_PREFIX:  ${{ needs.setup.outputs.state_prefix }}
+      AWS_REGION:        ${{ secrets.AWS_REGION }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.7.4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.7.4 }
 
-      # --- NONPROD ROLLBACK ---
+      # Nonprod rollback (echo)
       - name: NONPROD — Load AWS Role and State Bucket
         if: ${{ needs.nonprod-apply.result == 'failure' && needs.nonprod-apply.outputs.approved == 'true' }}
         shell: bash
@@ -762,16 +668,16 @@ jobs:
           AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET" >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
 
       - name: NONPROD — Configure AWS Credentials (OIDC)
         if: ${{ needs.nonprod-apply.result == 'failure' && needs.nonprod-apply.outputs.approved == 'true' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region:        ${{ env.AWS_REGION }}
+          role-to-assume:    ${{ env.AWS_ROLE_TO_ASSUME }}
           role-session-name: gha-rollback-nonprod
-          audience: sts.amazonaws.com
+          audience:          sts.amazonaws.com
 
       - name: NONPROD — Download plan artifact
         if: ${{ needs.nonprod-apply.result == 'failure' && needs.nonprod-apply.outputs.approved == 'true' }}
@@ -813,15 +719,14 @@ jobs:
           for stage in ${MODULES}; do
             echo "Rollback plan+apply (echo) for ${stage}"
             pushd "terraform/${stage}" >/dev/null
-            KEY="${STATE_KEY_PREFIX}/${stage}/terraform.tfstate"
-            BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${KEY} -backend-config=region=${AWS_REGION}"
-            terraform init ${BACKEND_OPTS}
+            KEY="${STATE_KEY_PREFIX:-snowfall-data-pipeline}/${stage}/terraform.tfstate"
+            terraform init -backend-config="bucket=${STATE_BUCKET}" -backend-config="key=${KEY}" -backend-config="region=${AWS_REGION}"
             terraform plan -var-file="../${TFVARS}" -out=tfplan
             echo "terraform apply -auto-approve tfplan"
             popd >/dev/null
           done
 
-      # --- PROD ROLLBACK ---
+      # Prod rollback (echo)
       - name: PROD — Load AWS Role and State Bucket
         if: ${{ needs.prod-apply.result == 'failure' && needs.prod-apply.outputs.approved == 'true' }}
         shell: bash
@@ -831,16 +736,16 @@ jobs:
           AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
           echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-          echo "STATE_BUCKET=$STATE_BUCKET" >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET"            >> "$GITHUB_ENV"
 
       - name: PROD — Configure AWS Credentials (OIDC)
         if: ${{ needs.prod-apply.result == 'failure' && needs.prod-apply.outputs.approved == 'true' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region:        ${{ env.AWS_REGION }}
+          role-to-assume:    ${{ env.AWS_ROLE_TO_ASSUME }}
           role-session-name: gha-rollback-prod
-          audience: sts.amazonaws.com
+          audience:          sts.amazonaws.com
 
       - name: PROD — Download plan artifact
         if: ${{ needs.prod-apply.result == 'failure' && needs.prod-apply.outputs.approved == 'true' }}
@@ -882,9 +787,9 @@ jobs:
           for stage in ${MODULES}; do
             echo "Rollback plan+apply (echo) for ${stage}"
             pushd "terraform/${stage}" >/dev/null
-            KEY="${STATE_KEY_PREFIX}/${stage}/terraform.tfstate"
-            BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${KEY} -backend-config=region=${AWS_REGION}"
-            terraform init ${BACKEND_OPTS}
+            KEY="${STATE_KEY_PREFIX:-snowfall-data-pipeline}/${stage}/terraform.tfstate"
+            terraform init -backend-config="bucket=${STATE_BUCKET}" -backend-config="key=${KEY}" -backend-config="region=${AWS_REGION}"
             terraform plan -var-file="../${TFVARS}" -out=tfplan
             echo "terraform apply -auto-approve tfplan"
             popd >/dev/null
+          done
