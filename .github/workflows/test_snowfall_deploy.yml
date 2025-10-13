@@ -115,13 +115,12 @@ jobs:
             FILES=$(git diff --name-only "${BASE}" "${{ github.sha }}" || true)
           fi
 
-          # Limit to *.tf under terraform/, collapse to top-level dir under terraform/
+          # Collapse to the first folder under 'terraform/' and keep only known roots.
           TOPS=$(echo "${FILES}" \
-            | awk -F'/' '/^terraform\/.*\.tf$/ {print $2}' \
-            | grep -E '^(core_delta_lake|datashare_resources|glue_resources|other_resources)$' \
+            | awk -F'/' '/^terraform\/.*\.tf$/ && ($2 ~ /^(core_delta_lake|datashare_resources|glue_resources|other_resources)$/) {print $2}' \
             | sort -u)
 
-          echo "Changed top-level terraform dirs:"
+          echo "Changed top-level terraform dirs (dev):"
           printf '%s\n' "${TOPS}"
 
           {
@@ -210,11 +209,12 @@ jobs:
           fi
 
           TOPS=$(echo "${FILES}" \
-            | awk -F'/' '/^terraform\/.*\.tf$/ {print $2}' \
-            | grep -E '^(core_delta_lake|datashare_resources|glue_resources|other_resources)$' \
+            | awk -F'/' '/^terraform\/.*\.tf$/ && ($2 ~ /^(core_delta_lake|datashare_resources|glue_resources|other_resources)$/) {print $2}' \
             | sort -u)
 
+          echo "Changed top-level terraform dirs (nonprod):"
           printf '%s\n' "${TOPS}"
+
           {
             echo "folders<<EOF"
             if [[ -z "${TOPS}" ]]; then echo "none"; else echo "${TOPS}"; fi
@@ -484,11 +484,12 @@ jobs:
           fi
 
           TOPS=$(echo "${FILES}" \
-            | awk -F'/' '/^terraform\/.*\.tf$/ {print $2}' \
-            | grep -E '^(core_delta_lake|datashare_resources|glue_resources|other_resources)$' \
+            | awk -F'/' '/^terraform\/.*\.tf$/ && ($2 ~ /^(core_delta_lake|datashare_resources|glue_resources|other_resources)$/) {print $2}' \
             | sort -u)
 
+          echo "Changed top-level terraform dirs (prod):"
           printf '%s\n' "${TOPS}"
+
           {
             echo "folders<<EOF"
             if [[ -z "${TOPS}" ]]; then echo "none"; else echo "${TOPS}"; fi
@@ -662,7 +663,6 @@ jobs:
           for stage in $CHANGED; do
             echo "=== VALIDATE (Prod): $stage ==="
             pushd "terraform/$stage" >/dev/null
-            KEY="${ENV}/${stage}.tfstate}"
             KEY="${ENV}/${stage}.tfstate"
             BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${KEY} -backend-config=region=${AWS_REGION}"
             terraform init $BACKEND_OPTS
