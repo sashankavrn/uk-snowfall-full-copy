@@ -50,7 +50,7 @@ module "datashare_lambda_module" {
 
 
 
-# Triggering event bridge module
+#  Triggering event bridge module
 module "event_bridge_module" {
   source                 = "./eventbridge"
   environment            = var.environment

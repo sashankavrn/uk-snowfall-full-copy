@@ -15,7 +15,7 @@ terraform {
 
 }
 
-#Picks up from secrets in github
+#  Picks up from secrets in github
 provider "aws" {
   region      = var.AWS_REGION
 }
@@ -31,7 +31,7 @@ provider "aws" {
   # }
   
 
-# Triggering the S3 Module
+#Triggering the S3 Module
 module "s3_module_main" {
   source                          = "./s3/main_bucket"
   environment                     = var.environment
