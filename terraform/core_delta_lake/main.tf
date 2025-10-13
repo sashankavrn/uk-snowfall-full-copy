@@ -15,7 +15,7 @@ terraform {
 
 }
 
-#  Picks up from secrets in github
+# Picks up from secrets in github
 provider "aws" {
   region      = var.AWS_REGION
 }
