@@ -336,6 +336,12 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.sha }}
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.4
+          
 
       - name: Download plan artifacts
         uses: actions/download-artifact@v4
@@ -665,6 +671,11 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.sha }}
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.4
+
       - name: Download plan artifacts
         uses: actions/download-artifact@v4
         with:
@@ -791,7 +802,7 @@ jobs:
             STATE_URI="s3://${STATE_BUCKET}/${STATE_KEY}"
 
             echo "Using remote state: ${STATE_URI}"
-            if aws s3 ls "${STATE_URI}" --region "${AWS_REGION}" >/div/null 2>&1; then
+            if aws s3 ls "${STATE_URI}" --region "${AWS_REGION}" >/dev/null 2>&1; then
               echo "State exists for validation."
             else
               echo "::notice::No existing state at ${STATE_URI} — first run may report drift until apply."
