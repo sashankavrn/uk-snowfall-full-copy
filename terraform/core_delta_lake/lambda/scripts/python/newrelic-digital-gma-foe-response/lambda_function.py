@@ -142,7 +142,7 @@ def lambda_handler(event, context):
             AND (message LIKE '%UpdateOrderStatusAsync%' OR message LIKE '%DoFoeStoreStaging%') 
             FACET aparse(message, '%DoFoeStoreStaging : * :%'),  
             IF(length(aparse(message, '%FAULT : * :%')) > 0, aparse(message, '%FAULT : *'), 'No Fault') 
-            SINCE '{since_str}' UNTIL '{until_str}' 
+            SINCE '{since_str} [Europe/London]' UNTIL '{until_str} [Europe/London]' 
             LIMIT MAX
         """
 
