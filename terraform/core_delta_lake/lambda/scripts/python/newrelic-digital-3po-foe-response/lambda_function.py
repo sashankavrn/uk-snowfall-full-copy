@@ -118,12 +118,13 @@ def lambda_handler(event, context):
           and (message like '%FOE returned foeErrorCode:%' or message like '%FOERespon%')
           and action in ('Release', 'SubmitOrder', 'SubmitOrderV2')
           and (not aparse(message, '%VALUES%,%,%,%,%,%,%,%,% *, Sql%') is null)
+          and message like '%Submit%'
         FACET 
           aparse(message, '%VALUES%,%,%, *,%') as 'Restaurant', 
           aparse(message,'%VALUES%,%,%,%,%,%,%,% *,%') as 'FOE Response',
           aparse(message, '%VALUES%,%,%,%,%,%,%,%,% *,%') as '3PO Response',
           aparse(message, '%VALUES%,%,%,%,%,%,%,%,%,% *, Sql%') as '3PO Response Description'
-        SINCE '{since_str}' UNTIL '{until_str}' 
+       SINCE '{since_str} [Europe/London]' UNTIL '{until_str} [Europe/London]'
         LIMIT MAX
     """
 
