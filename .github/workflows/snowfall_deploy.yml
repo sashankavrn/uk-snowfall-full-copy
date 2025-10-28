@@ -3,10 +3,10 @@ name: Terraform Multi-Stage Deployment
 on:
   push:
     branches:
-      - dev-test
-      - main-test
+      - dev
+      - main
     tags:
-      - 'test*'
+      - 'v2.*'
 
 # Prevent overlapping runs on the same ref (branch/tag)
 concurrency:
@@ -159,7 +159,7 @@ jobs:
             BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${STATE_KEY} -backend-config=region=${AWS_REGION}"
             terraform init ${BACKEND_OPTS}
             terraform plan  -var-file="../${TFVARS}" -out=tfplan
-            echo "terraform apply -auto-approve tfplan"
+            terraform apply -auto-approve tfplan
             popd >/dev/null
           done <<< "${CHANGED}"
 
@@ -408,10 +408,10 @@ jobs:
             terraform init ${BACKEND_OPTS}
             BIN="../../plan_dl/plan_artifacts/tfplan_${stage}.bin"
             if [[ -f "${BIN}" ]]; then
-              echo "terraform apply -auto-approve ${BIN}"
+              terraform apply -auto-approve "${BIN}"
             else
               terraform plan -var-file="../${TFVARS}" -out=tfplan
-              echo "terraform apply -auto-approve tfplan"
+              terraform apply -auto-approve tfplan
             fi
             popd >/dev/null
           done <<< "${CHANGED}"
@@ -453,9 +453,9 @@ jobs:
                 echo "Validation indicates remaining changes for ${stage}. Applying..."
                 BIN="../../plan_dl/plan_artifacts/tfplan_${stage}.bin"
                 if [[ -f "${BIN}" ]]; then
-                  echo "terraform apply -auto-approve ${BIN}"
+                  terraform apply -auto-approve "${BIN}"
                 else
-                  echo "terraform apply -auto-approve"
+                  terraform apply -auto-approve
                 fi
                 attempt=$((attempt+1))
                 if [[ $attempt -ge ${MAX_RETRIES:-2} ]]; then
