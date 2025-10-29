@@ -10,8 +10,10 @@ on:
 
 # Prevent overlapping runs on the same ref (branch/tag)
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref_type }}-${{ github.ref_name }}
-  cancel-in-progress: false
+  # Keep test runs isolated from the main workflow and from prod tags
+  group: "${{ github.workflow }}-TEST-${{ github.ref_type }}-${{ github.ref_name }}"
+  # When you push a new commit to the same -test branch, cancel the older run
+  cancel-in-progress: true
 jobs:
   # -------------------------------------------------------
   # 1) Setup: decide env/var files based on ref
