@@ -696,10 +696,10 @@ jobs:
             terraform init ${BACKEND_OPTS}
             BIN="../../plan_dl/plan_artifacts/tfplan_${stage}.bin"
             if [[ -f "${BIN}" ]]; then
-              terraform apply -auto-approve "${BIN}"
+              echo "terraform apply -auto-approve ${BIN}"
             else
               terraform plan -var-file="../${TFVARS}" -out=tfplan
-              terraform apply -auto-approve tfplan
+              echo "terraform apply -auto-approve tfplan"
             fi
             popd >/dev/null
           done <<< "${CHANGED}"
@@ -741,9 +741,9 @@ jobs:
                 echo "Validation indicates remaining changes for ${stage}. Applying..."
                 BIN="../../plan_dl/plan_artifacts/tfplan_${stage}.bin"
                 if [[ -f "${BIN}" ]]; then
-                  terraform apply -auto-approve "${BIN}"
+                  echo "terraform apply -auto-approve ${BIN}"
                 else
-                  terraform apply -auto-approve
+                  echo "terraform apply -auto-approve"
                 fi
                 attempt=$((attempt+1))
                 if [[ $attempt -ge ${MAX_RETRIES:-2} ]]; then
