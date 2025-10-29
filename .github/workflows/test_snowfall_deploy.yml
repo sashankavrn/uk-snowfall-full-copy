@@ -33,20 +33,13 @@ jobs:
         run: |
           set -euo pipefail
           BRANCH="${{ github.ref_name }}"
-          IS_TAG_V2="${{ startsWith(github.ref, 'refs/tags/v2.') }}"
-          if [[ "$BRANCH" == "dev" ]]; then
-            echo "ENV=dev"        >> "$GITHUB_ENV"
-            echo "TFVARS=dev.tfvars" >> "$GITHUB_ENV"
-            echo "env=dev"        >> "$GITHUB_OUTPUT"
+          if [[ "$BRANCH" == "dev-test" ]]; then
+            echo "env=dev"           >> "$GITHUB_OUTPUT"
             echo "tfvars=dev.tfvars" >> "$GITHUB_OUTPUT"
-          elif [[ "$IS_TAG_V2" == "true" ]]; then
-            echo "ENV=prod"         >> "$GITHUB_ENV"
-            echo "TFVARS=prod.tfvars" >> "$GITHUB_ENV"
-            echo "env=prod"         >> "$GITHUB_OUTPUT"
-            echo "tfvars=prod.tfvars" >> "$GITHUB_OUTPUT"
+          elif [[ "$BRANCH" == "main-test" ]]; then
+            echo "env=nprod"           >> "$GITHUB_OUTPUT"
+            echo "tfvars=nprod.tfvars" >> "$GITHUB_OUTPUT"
           else
-            echo "ENV=nprod"           >> "$GITHUB_ENV"
-            echo "TFVARS=nprod.tfvars" >> "$GITHUB_ENV"
             echo "env=nprod"           >> "$GITHUB_OUTPUT"
             echo "tfvars=nprod.tfvars" >> "$GITHUB_OUTPUT"
           fi
