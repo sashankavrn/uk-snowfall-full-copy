@@ -56,13 +56,9 @@ variable "meraki_schedule" {}
 variable "stage_name" {}
 
 variable "prod_email" {  
-  description = "Email for prod SNS notifications"  
-  type        = string  
   default     = "snowfall.engineering@uk.mcd.com"
 }
 
-variable "non_prod_email" {
-  description = "Email address for non-production SNS notifications"  
-  type        = string  
-  default     = "snowfall.dev@uk.mcd.com"
+variable "not_prod_email" {
+  default     = "snowfall.engineering.dev@uk.mcd.com"
 }
