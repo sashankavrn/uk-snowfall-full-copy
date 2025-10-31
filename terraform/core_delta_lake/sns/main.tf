@@ -7,6 +7,6 @@ resource "aws_sns_topic" "snowfall_topic" {
 resource "aws_sns_topic_subscription" "email_target" {
   topic_arn = aws_sns_topic.snowfall_topic.arn
   protocol  = "email"
-  endpoint  = "snowfall.engineering@uk.mcd.com"
+  endpoint  = var.environment == "prod" ? var.prod_email : var.not_prod_email
 }
 

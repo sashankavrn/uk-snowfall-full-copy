@@ -64,6 +64,8 @@ module "sns_module" {
   source        = "./sns"
   environment   = var.environment
   resource_tags = merge(var.resource_tags, { Environment = var.environment })
+  prod_email     = var.prod_email  
+  not_prod_email = var.not_prod_email
 }
 
 module "appflow_module" {

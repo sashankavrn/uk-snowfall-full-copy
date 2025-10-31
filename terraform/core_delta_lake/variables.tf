@@ -54,3 +54,11 @@ variable "connector_profile_name" {
 variable "meraki_schedule" {}
 
 variable "stage_name" {}
+
+variable "prod_email" {  
+  default     = "snowfall.engineering@uk.mcd.com"
+}
+
+variable "not_prod_email" {
+  default     = "snowfall.engineering.dev@uk.mcd.com"
+}
