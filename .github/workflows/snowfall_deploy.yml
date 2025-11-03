@@ -1,19 +1,17 @@
-name: TEST Terraform Multi-Stage Deployment
+name: Terraform Multi-Stage Deployment
 
 on:
   push:
     branches:
-      - dev-test
-      - main-test
+      - dev
+      - main
     tags:
-      - 'test*'
+      - 'v2.*'
 
 # Prevent overlapping runs on the same ref (branch/tag)
 concurrency:
-  # Keep test runs isolated from the main workflow and from prod tags
-  group: "${{ github.workflow }}-TEST-${{ github.ref_type }}-${{ github.ref_name }}"
-  # When you push a new commit to the same -test branch, cancel the older run
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref_type }}-${{ github.ref_name }}
+  cancel-in-progress: false
 jobs:
   # -------------------------------------------------------
   # 1) Setup: decide env/var files based on ref
@@ -35,13 +33,20 @@ jobs:
         run: |
           set -euo pipefail
           BRANCH="${{ github.ref_name }}"
-          if [[ "$BRANCH" == "dev-test" ]]; then
-            echo "env=dev"           >> "$GITHUB_OUTPUT"
+          IS_TAG_V2="${{ startsWith(github.ref, 'refs/tags/v2.') }}"
+          if [[ "$BRANCH" == "dev" ]]; then
+            echo "ENV=dev"        >> "$GITHUB_ENV"
+            echo "TFVARS=dev.tfvars" >> "$GITHUB_ENV"
+            echo "env=dev"        >> "$GITHUB_OUTPUT"
             echo "tfvars=dev.tfvars" >> "$GITHUB_OUTPUT"
-          elif [[ "$BRANCH" == "main-test" ]]; then
-            echo "env=nprod"           >> "$GITHUB_OUTPUT"
-            echo "tfvars=nprod.tfvars" >> "$GITHUB_OUTPUT"
+          elif [[ "$IS_TAG_V2" == "true" ]]; then
+            echo "ENV=prod"         >> "$GITHUB_ENV"
+            echo "TFVARS=prod.tfvars" >> "$GITHUB_ENV"
+            echo "env=prod"         >> "$GITHUB_OUTPUT"
+            echo "tfvars=prod.tfvars" >> "$GITHUB_OUTPUT"
           else
+            echo "ENV=nprod"           >> "$GITHUB_ENV"
+            echo "TFVARS=nprod.tfvars" >> "$GITHUB_ENV"
             echo "env=nprod"           >> "$GITHUB_OUTPUT"
             echo "tfvars=nprod.tfvars" >> "$GITHUB_OUTPUT"
           fi
@@ -51,7 +56,7 @@ jobs:
   # -------------------------------------------------------
   dev:
     needs: setup
-    if: ${{ endsWith(github.ref_name, '-test') }}
+    if: ${{ github.ref_name == 'dev' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -154,7 +159,7 @@ jobs:
             BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${STATE_KEY} -backend-config=region=${AWS_REGION}"
             terraform init ${BACKEND_OPTS}
             terraform plan  -var-file="../${TFVARS}" -out=tfplan
-            echo "terraform apply -auto-approve tfplan"
+            terraform apply -auto-approve tfplan
             popd >/dev/null
           done <<< "${CHANGED}"
 
@@ -163,15 +168,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-#          echo "${{ github.sha }}" > last_successful_commit.txt
-#          aws s3 cp last_successful_commit.txt "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}"
+          echo "${{ github.sha }}" > last_successful_commit.txt
+          aws s3 cp last_successful_commit.txt "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}"
 
   # -------------------------------------------------------
   # 3) NONPROD — plan (no approval) and apply (with approval)
   # -------------------------------------------------------
   nonprod-plan:
     needs: setup
-    if: ${{ endsWith(github.ref_name, '-test') }}
+    if: ${{ github.ref_name == 'main' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -286,7 +291,7 @@ jobs:
 
   nonprod-apply:
     needs: [setup, nonprod-plan]
-    if: ${{ endsWith(github.ref_name, '-test') }}
+    if: ${{ github.ref_name == 'main' }}
     runs-on: ubuntu-latest
     environment:
       name: nonprod # manual approval gate
@@ -403,10 +408,10 @@ jobs:
             terraform init ${BACKEND_OPTS}
             BIN="../../plan_dl/plan_artifacts/tfplan_${stage}.bin"
             if [[ -f "${BIN}" ]]; then
-              echo "terraform apply -auto-approve ${BIN}"
+              terraform apply -auto-approve "${BIN}"
             else
               terraform plan -var-file="../${TFVARS}" -out=tfplan
-              echo "terraform apply -auto-approve tfplan"
+              terraform apply -auto-approve tfplan
             fi
             popd >/dev/null
           done <<< "${CHANGED}"
@@ -448,9 +453,9 @@ jobs:
                 echo "Validation indicates remaining changes for ${stage}. Applying..."
                 BIN="../../plan_dl/plan_artifacts/tfplan_${stage}.bin"
                 if [[ -f "${BIN}" ]]; then
-                  echo "terraform apply -auto-approve ${BIN}"
+                  terraform apply -auto-approve "${BIN}"
                 else
-                  echo "terraform apply -auto-approve"
+                  terraform apply -auto-approve
                 fi
                 attempt=$((attempt+1))
                 if [[ $attempt -ge ${MAX_RETRIES:-2} ]]; then
@@ -472,8 +477,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-#          echo "${{ github.sha }}" > last_successful_commit.txt
-#          aws s3 cp last_successful_commit.txt "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}"
+          echo "${{ github.sha }}" > last_successful_commit.txt
+          aws s3 cp last_successful_commit.txt "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}"
 
   # -------------------------------------------------------
   # 4) PROD — plan (no approval) and apply (with approval)
@@ -481,7 +486,7 @@ jobs:
   # -------------------------------------------------------
   prod-plan:
     needs: setup
-    if: ${{ startsWith(github.ref, 'refs/tags/test') }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v2.') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -573,7 +578,7 @@ jobs:
 
   prod-apply:
     needs: [setup, prod-plan]
-    if: ${{ startsWith(github.ref, 'refs/tags/test') }}
+    if: ${{ startsWith(github.ref, 'refs/tags/v2.') }}
     runs-on: ubuntu-latest
     environment:
       name: prod  # manual approval gate
@@ -691,10 +696,10 @@ jobs:
             terraform init ${BACKEND_OPTS}
             BIN="../../plan_dl/plan_artifacts/tfplan_${stage}.bin"
             if [[ -f "${BIN}" ]]; then
-              echo "terraform apply -auto-approve ${BIN}"
+              terraform apply -auto-approve "${BIN}"
             else
               terraform plan -var-file="../${TFVARS}" -out=tfplan
-              echo "terraform apply -auto-approve tfplan"
+              terraform apply -auto-approve tfplan
             fi
             popd >/dev/null
           done <<< "${CHANGED}"
@@ -736,9 +741,9 @@ jobs:
                 echo "Validation indicates remaining changes for ${stage}. Applying..."
                 BIN="../../plan_dl/plan_artifacts/tfplan_${stage}.bin"
                 if [[ -f "${BIN}" ]]; then
-                  echo "terraform apply -auto-approve ${BIN}"
+                  terraform apply -auto-approve "${BIN}"
                 else
-                  echo "terraform apply -auto-approve"
+                  terraform apply -auto-approve
                 fi
                 attempt=$((attempt+1))
                 if [[ $attempt -ge ${MAX_RETRIES:-2} ]]; then
@@ -760,8 +765,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
- #         echo "${{ github.sha }}" > last_successful_commit.txt
- #         aws s3 cp last_successful_commit.txt "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}"
+          echo "${{ github.sha }}" > last_successful_commit.txt
+          aws s3 cp last_successful_commit.txt "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}"
 
   # -------------------------------------------------------
   # 5) ROLLBACK — only for nonprod/prod failures (never for dev)
@@ -793,13 +798,12 @@ jobs:
         if: ${{ needs.nonprod-apply.result == 'failure' }}
         shell: bash
         run: |
-          echo "Rollback"
-        #   set -euo pipefail
-        #   VAR_FILE="terraform/${TFVARS}"
-        #   AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
-        #   STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
-        #   echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-        #   echo "STATE_BUCKET=$STATE_BUCKET" >> "$GITHUB_ENV"
+          set -euo pipefail
+          VAR_FILE="terraform/${TFVARS}"
+          AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
+          STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
+          echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET" >> "$GITHUB_ENV"
 
       - name: NONPROD — Configure AWS Credentials (OIDC)
         if: ${{ needs.nonprod-apply.result == 'failure' }}
@@ -821,62 +825,60 @@ jobs:
         if: ${{ needs.nonprod-apply.result == 'failure' }}
         shell: bash
         run: |
-          echo "Rollback"
-        #   set -euo pipefail
-        #   if ! aws s3 ls "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}" >/dev/null 2>&1; then
-        #     echo "No last_successful_commit.txt found in s3://${STATE_BUCKET}. Nothing to roll back to."
-        #     exit 0
-        #   fi
-        #   aws s3 cp "s3://${STATE_BUCKET}/last_successful_commit.txt" last_successful_commit.txt --region "${AWS_REGION}"
-        #   LAST_COMMIT=$(cat last_successful_commit.txt)
-        #   echo "Rolling back to commit ${LAST_COMMIT}"
-        #   MODS_FILE=""
-        #   if [[ -f "plan_dl/plan_artifacts/modules.txt" ]]; then
-        #     MODS_FILE="plan_dl/plan_artifacts/modules.txt"
-        #   elif [[ -f "plan_dl/modules.txt" ]]; then
-        #     MODS_FILE="plan_dl/modules.txt"
-        #   fi
-        #   if [[ -z "$MODS_FILE" ]]; then
-        #     echo "No modules.txt in artifact. Nothing to roll back."
-        #     exit 0
-        #   fi
-        #   MODULES=$(grep -v '^$' "$MODS_FILE" || true)
-        #   if [[ -z "${MODULES}" || "${MODULES}" == "none" ]]; then
-        #     echo "Modules list empty. Nothing to roll back."
-        #     exit 0
-        #   fi
-        #   git checkout "${LAST_COMMIT}"
-        #   while IFS= read -r stage; do
-        #     [[ -z "$stage" ]] && continue
-        #     echo "Rollback plan+apply (echo) for $stage"
-        #     pushd "terraform/$stage" >/dev/null
-        #     STATE_KEY="snowfall-data-pipeline/${stage}/terraform.tfstate"
-        #     STATE_URI="s3://${STATE_BUCKET}/${STATE_KEY}"
-        #     echo "Using remote state: ${STATE_URI}"
-        #     if aws s3 ls "${STATE_URI}" --region "${AWS_REGION}" >/dev/null 2>&1; then
-        #       echo "Found existing remote state at ${STATE_URI}"
-        #     else
-        #       echo "::notice::No existing state at ${STATE_URI} — Terraform will create it if needed."
-        #     fi
-        #     BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${STATE_KEY} -backend-config=region=${AWS_REGION}"
-        #     terraform init ${BACKEND_OPTS}
-        #     terraform plan -var-file="../${TFVARS}" -out=tfplan
-        #     echo "terraform apply -auto-approve tfplan"
-        #     popd >/dev/null
-        #   done <<< "${MODULES}"
+          set -euo pipefail
+          if ! aws s3 ls "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}" >/dev/null 2>&1; then
+            echo "No last_successful_commit.txt found in s3://${STATE_BUCKET}. Nothing to roll back to."
+            exit 0
+          fi
+          aws s3 cp "s3://${STATE_BUCKET}/last_successful_commit.txt" last_successful_commit.txt --region "${AWS_REGION}"
+          LAST_COMMIT=$(cat last_successful_commit.txt)
+          echo "Rolling back to commit ${LAST_COMMIT}"
+          MODS_FILE=""
+          if [[ -f "plan_dl/plan_artifacts/modules.txt" ]]; then
+            MODS_FILE="plan_dl/plan_artifacts/modules.txt"
+          elif [[ -f "plan_dl/modules.txt" ]]; then
+            MODS_FILE="plan_dl/modules.txt"
+          fi
+          if [[ -z "$MODS_FILE" ]]; then
+            echo "No modules.txt in artifact. Nothing to roll back."
+            exit 0
+          fi
+          MODULES=$(grep -v '^$' "$MODS_FILE" || true)
+          if [[ -z "${MODULES}" || "${MODULES}" == "none" ]]; then
+            echo "Modules list empty. Nothing to roll back."
+            exit 0
+          fi
+          git checkout "${LAST_COMMIT}"
+          while IFS= read -r stage; do
+            [[ -z "$stage" ]] && continue
+            echo "Rollback plan+apply (echo) for $stage"
+            pushd "terraform/$stage" >/dev/null
+            STATE_KEY="snowfall-data-pipeline/${stage}/terraform.tfstate"
+            STATE_URI="s3://${STATE_BUCKET}/${STATE_KEY}"
+            echo "Using remote state: ${STATE_URI}"
+            if aws s3 ls "${STATE_URI}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+              echo "Found existing remote state at ${STATE_URI}"
+            else
+              echo "::notice::No existing state at ${STATE_URI} — Terraform will create it if needed."
+            fi
+            BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${STATE_KEY} -backend-config=region=${AWS_REGION}"
+            terraform init ${BACKEND_OPTS}
+            terraform plan -var-file="../${TFVARS}" -out=tfplan
+            echo "terraform apply -auto-approve tfplan"
+            popd >/dev/null
+          done <<< "${MODULES}"
 
       # --- PROD ROLLBACK ---
       - name: PROD — Load AWS Role and State Bucket
         if: ${{ needs.prod-apply.result == 'failure' }}
         shell: bash
         run: |
-          echo "Rollback"
-        #   set -euo pipefail
-        #   VAR_FILE="terraform/${TFVARS}"
-        #   AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
-        #   STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
-        #   echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
-        #   echo "STATE_BUCKET=$STATE_BUCKET" >> "$GITHUB_ENV"
+          set -euo pipefail
+          VAR_FILE="terraform/${TFVARS}"
+          AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
+          STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
+          echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET" >> "$GITHUB_ENV"
 
       - name: PROD — Configure AWS Credentials (OIDC)
         if: ${{ needs.prod-apply.result == 'failure' }}
@@ -898,46 +900,45 @@ jobs:
         if: ${{ needs.prod-apply.result == 'failure' }}
         shell: bash
         run: |
-          echo "Rollback"
-        #   set -euo pipefail
-        #   if ! aws s3 ls "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}" >/dev/null 2>&1; then
-        #     echo "No last_successful_commit.txt found in s3://${STATE_BUCKET}. Nothing to roll back to."
-        #     exit 0
-        #   fi
-        #   aws s3 cp "s3://${STATE_BUCKET}/last_successful_commit.txt" last_successful_commit.txt --region "${AWS_REGION}"
-        #   LAST_COMMIT=$(cat last_successful_commit.txt)
-        #   echo "Rolling back to commit ${LAST_COMMIT}"
-        #   MODS_FILE=""
-        #   if [[ -f "plan_dl/plan_artifacts/modules.txt" ]]; then
-        #     MODS_FILE="plan_dl/plan_artifacts/modules.txt"
-        #   elif [[ -f "plan_dl/modules.txt" ]]; then
-        #     MODS_FILE="plan_dl/modules.txt"
-        #   fi
-        #   if [[ -z "$MODS_FILE" ]]; then
-        #     echo "No modules.txt in artifact. Nothing to roll back."
-        #     exit 0
-        #   fi
-        #   MODULES=$(grep -v '^$' "$MODS_FILE" || true)
-        #   if [[ -z "${MODULES}" || "${MODULES}" == "none" ]]; then
-        #     echo "Modules list empty. Nothing to roll back."
-        #     exit 0
-        #   fi
-        #   git checkout "${LAST_COMMIT}"
-        #   while IFS= read -r stage; do
-        #     [[ -z "$stage" ]] && continue
-        #     echo "Rollback plan+apply (echo) for $stage"
-        #     pushd "terraform/$stage" >/dev/null
-        #     STATE_KEY="snowfall-data-pipeline/${stage}/terraform.tfstate"
-        #     STATE_URI="s3://${STATE_BUCKET}/${STATE_KEY}"
-        #     echo "Using remote state: ${STATE_URI}"
-        #     if aws s3 ls "${STATE_URI}" --region "${AWS_REGION}" >/dev/null 2>&1; then
-        #       echo "Found existing remote state at ${STATE_URI}"
-        #     else
-        #       echo "::notice::No existing state at ${STATE_URI} — Terraform will create it if needed."
-        #     fi
-        #     BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${STATE_KEY} -backend-config=region=${AWS_REGION}"
-        #     terraform init ${BACKEND_OPTS}
-        #     terraform plan -var-file="../${TFVARS}" -out=tfplan
-        #     echo "terraform apply -auto-approve tfplan"
-        #     popd >/dev/null
-        #   done <<< "${MODULES}"
+          set -euo pipefail
+          if ! aws s3 ls "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}" >/dev/null 2>&1; then
+            echo "No last_successful_commit.txt found in s3://${STATE_BUCKET}. Nothing to roll back to."
+            exit 0
+          fi
+          aws s3 cp "s3://${STATE_BUCKET}/last_successful_commit.txt" last_successful_commit.txt --region "${AWS_REGION}"
+          LAST_COMMIT=$(cat last_successful_commit.txt)
+          echo "Rolling back to commit ${LAST_COMMIT}"
+          MODS_FILE=""
+          if [[ -f "plan_dl/plan_artifacts/modules.txt" ]]; then
+            MODS_FILE="plan_dl/plan_artifacts/modules.txt"
+          elif [[ -f "plan_dl/modules.txt" ]]; then
+            MODS_FILE="plan_dl/modules.txt"
+          fi
+          if [[ -z "$MODS_FILE" ]]; then
+            echo "No modules.txt in artifact. Nothing to roll back."
+            exit 0
+          fi
+          MODULES=$(grep -v '^$' "$MODS_FILE" || true)
+          if [[ -z "${MODULES}" || "${MODULES}" == "none" ]]; then
+            echo "Modules list empty. Nothing to roll back."
+            exit 0
+          fi
+          git checkout "${LAST_COMMIT}"
+          while IFS= read -r stage; do
+            [[ -z "$stage" ]] && continue
+            echo "Rollback plan+apply (echo) for $stage"
+            pushd "terraform/$stage" >/dev/null
+            STATE_KEY="snowfall-data-pipeline/${stage}/terraform.tfstate"
+            STATE_URI="s3://${STATE_BUCKET}/${STATE_KEY}"
+            echo "Using remote state: ${STATE_URI}"
+            if aws s3 ls "${STATE_URI}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+              echo "Found existing remote state at ${STATE_URI}"
+            else
+              echo "::notice::No existing state at ${STATE_URI} — Terraform will create it if needed."
+            fi
+            BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} -backend-config=key=${STATE_KEY} -backend-config=region=${AWS_REGION}"
+            terraform init ${BACKEND_OPTS}
+            terraform plan -var-file="../${TFVARS}" -out=tfplan
+            echo "terraform apply -auto-approve tfplan"
+            popd >/dev/null
+          done <<< "${MODULES}"
