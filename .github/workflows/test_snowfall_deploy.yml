@@ -792,7 +792,8 @@ jobs:
       - name: NONPROD — Load AWS Role and State Bucket
         if: ${{ needs.nonprod-apply.result == 'failure' }}
         shell: bash
-        # run: |
+        run: |
+          echo "Rollback"
         #   set -euo pipefail
         #   VAR_FILE="terraform/${TFVARS}"
         #   AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
@@ -819,7 +820,8 @@ jobs:
       - name: NONPROD — Roll back all modules from the attempt (echo apply)
         if: ${{ needs.nonprod-apply.result == 'failure' }}
         shell: bash
-        # run: |
+        run: |
+          echo "Rollback"
         #   set -euo pipefail
         #   if ! aws s3 ls "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}" >/dev/null 2>&1; then
         #     echo "No last_successful_commit.txt found in s3://${STATE_BUCKET}. Nothing to roll back to."
@@ -867,7 +869,8 @@ jobs:
       - name: PROD — Load AWS Role and State Bucket
         if: ${{ needs.prod-apply.result == 'failure' }}
         shell: bash
-        # run: |
+        run: |
+          echo "Rollback"
         #   set -euo pipefail
         #   VAR_FILE="terraform/${TFVARS}"
         #   AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
@@ -894,7 +897,8 @@ jobs:
       - name: PROD — Roll back all modules from the attempt (echo apply)
         if: ${{ needs.prod-apply.result == 'failure' }}
         shell: bash
-        # run: |
+        run: |
+          echo "Rollback"
         #   set -euo pipefail
         #   if ! aws s3 ls "s3://${STATE_BUCKET}/last_successful_commit.txt" --region "${AWS_REGION}" >/dev/null 2>&1; then
         #     echo "No last_successful_commit.txt found in s3://${STATE_BUCKET}. Nothing to roll back to."
