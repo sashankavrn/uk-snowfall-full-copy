@@ -6,6 +6,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from boto3.dynamodb.conditions import Attr
 
+
 # Read config from environment variables
 DYNAMO_REGION    = os.environ.get("DYNAMO_REGION", "eu-central-1")
 RULES_TABLE      = os.environ["RULES_TABLE"]
@@ -20,6 +21,7 @@ tickets_table = dynamodb.Table(TICKETS_TABLE)
 
 # Athena client
 athena = boto3.client('athena', region_name=ATHENA_REGION)
+sns_client = boto3.client('sns')
 
 def lambda_handler(event, context):
     execution_time = datetime.now(ZoneInfo("Europe/London")).isoformat()
@@ -91,6 +93,8 @@ def ticket_exists(rule_id):
     response = tickets_table.scan(
         FilterExpression=Attr('rule_id').eq(rule_id) & Attr('status').eq('OPEN')
     )
+    print(response)
+    print("length"), len(response.get('Items'))
     return len(response.get('Items', [])) > 0
 
 def create_ticket(rule):
@@ -104,3 +108,18 @@ def create_ticket(rule):
     }
     tickets_table.put_item(Item=item)
     print(f"[INFO] Ticket created: {ticket_id} at {timestamp}")
+    send_snsnotification(rule, item)
+
+
+def send_snsnotification(rule, item):
+    # Format message for email
+    subject = f"Proactive alerts : {rule['incident_description']}"
+    message = json.dumps(item, indent=2)
+
+    # Publish to SNS
+    response = sns_client.publish(
+        TopicArn=os.environ["SNS_TOPIC_ARN"],
+        Subject=subject,
+        Message=message
+    )
+    print(response)
