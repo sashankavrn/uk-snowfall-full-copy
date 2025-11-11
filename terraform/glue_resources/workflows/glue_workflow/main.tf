@@ -417,6 +417,19 @@ locals {
       schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
+    "ncr_service_now_knowledge" = {
+      name            = "uk-snowfall-ncr-service-now-knowledge"
+      description     = "Workflow for the NCR ServiceNow Knowledge Base data"
+      dataset         = "ncr_service_now_knowledge"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-knowledge-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(45 * * * ? *)"
+      reporting_date  = ""
+    },
     "ncr_service_now_worknotes" = {
       name            = "uk-snowfall-ncr-service-now-worknotes"
       description     = "Workflow for the NCR ServiceNow Worknotes data"

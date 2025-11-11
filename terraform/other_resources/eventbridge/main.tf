@@ -693,6 +693,37 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_knowledge_base_event_tar
   role_arn = var.role_assumed_arn
 }
 
+
+###################################### NCR ServiceNow Knowledge ##############################################
+
+resource "aws_cloudwatch_event_rule" "ncr_service_now_knowledge_event_rule" {
+  name        = "uk-snowfall-ncr-service-now-knowledge-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [ {
+        "prefix": "ncr_service_now/knowledge/"
+      } ]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "ncr_service_now_knowledge_event_target" {
+  rule     = aws_cloudwatch_event_rule.ncr_service_now_knowledge_event_rule.name
+  arn      = local.workflow_trigger_arns["ncr_service_now_knowledge"]
+  role_arn = var.role_assumed_arn
+}
+
+
 ###################################### NCR ServiceNow Incident Task ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_incident_task_event_rule" {

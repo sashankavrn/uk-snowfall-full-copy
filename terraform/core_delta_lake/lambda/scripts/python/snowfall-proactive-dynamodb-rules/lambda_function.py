@@ -82,12 +82,12 @@ ORDER BY error_percentage DESC
     """
 
     rule_item = {
-        'rule_id':              {'S': '1'},
+        'rule_id':              {'S': '9'},
         'active':               {'BOOL': True},
         'query':                {'S': query},
         'database':             {'S': 'uk_snowfall_processed'},
         'threshold':            {'S': '95'},
-        'incident_description': {'S': 'Disk usage above 90%'},
+        'incident_description': {'S': 'test - Disk usage above 90%'},
         'metric':               {'S': 'average_disk_used_percent'},
         'created_at':           {'S': timestamp}
     }
