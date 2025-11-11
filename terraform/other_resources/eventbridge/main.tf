@@ -842,3 +842,33 @@ resource "aws_cloudwatch_event_target" "service_agent_server_files_rule_event_ta
 #   role_arn  = var.role_assumed_arn
 # }
 
+###################################### HappySignals ##############################################
+
+resource "aws_cloudwatch_event_rule" "happysignals_event_rule" {
+  name        = "uk-snowfall-happysignals-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [ {
+        "prefix": "happysignals/"
+      } ]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "happysignals_event_target" {
+  rule     = aws_cloudwatch_event_rule.happysignals_event_rule.name
+  arn      = local.workflow_trigger_arns["happysignals"]
+  role_arn = var.role_assumed_arn
+}
+
+
