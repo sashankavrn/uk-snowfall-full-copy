@@ -27,6 +27,7 @@ TECH360_PREFIXES = {
     "ncr_service_now/incident/",
     "ncr_service_now/problem_record/",
     "ncr_service_now/service_case/"
+    "ncr_service_now/workenotes/"
 }
 
 # Load mapping.json

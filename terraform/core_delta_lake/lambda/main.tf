@@ -142,7 +142,7 @@ resource "aws_lambda_permission" "allow_landing_meraki_bucket" {
 resource "aws_cloudwatch_event_rule" "meraki_lambda_schedule" {
   name                = "uk-snowfall-meraki-fetch-device-schedule"
   description         = "Triggers the Lambda function every minute"
-  schedule_expression = var.meraki_schedule 
+  schedule_expression = var.meraki_schedule
 }
 
 ## Add Lambda as the Target of the Event Rule
