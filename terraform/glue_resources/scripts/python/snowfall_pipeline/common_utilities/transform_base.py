@@ -1221,48 +1221,4 @@ class TransformBase:
 
         return df
 
-    def is_df_empty(self, df, delta_table_path):
-        """
-        Determine whether to proceed with processing based on:
-        - Whether the input DataFrame is empty.
-        - Whether the last processed CDC timestamp is older than 5 days.
 
-        Args:
-            df (DataFrame): Input DataFrame from the new file.
-            delta_table_path (str): S3 path to the Delta table.
-
-        Returns:
-            bool: True if processing should continue, False otherwise.
-        """
-
-        try:
-            #Check if the input DataFrame is empty
-            if not df.rdd.isEmpty():
-                self.logger.info("Input DataFrame is not empty. Proceeding with processing.")
-                return False
-
-            self.logger.warning("Input DataFrame is empty. Checking last CDC timestamp in Delta table...")
-
-            #Read the Delta table
-            delta_df = self.spark.read.format("delta").load(delta_table_path)
-
-            #Get the latest CDC timestamp
-            latest_cdc_ts = delta_df.select(F.spark_max(F.col("cdc_timestamp"))).collect()[0][0]
-
-            if latest_cdc_ts is None:
-                self.logger.warning("No CDC timestamp found in Delta table. Proceeding with processing.")
-                return False
-
-            # Step 4: Compare with current date minus 5 days
-            threshold_date = datetime.now() - F.timedelta(days=5)
-
-            if latest_cdc_ts < threshold_date:
-                self.logger.info(f"Last CDC timestamp ({latest_cdc_ts}) is older than 5 days. Proceeding with processing.")
-                return False
-            else:
-                self.logger.info(f"Last CDC timestamp ({latest_cdc_ts}) is within the last 5 days. Skipping processing.")
-                return True
-
-        except Exception as e:
-            self.logger.error(f"Error during CDC timestamp check: {str(e)}")
-            return False  # Fail-safe: proceed if check fails
