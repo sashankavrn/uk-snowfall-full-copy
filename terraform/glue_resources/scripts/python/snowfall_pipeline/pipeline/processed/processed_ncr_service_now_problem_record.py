@@ -23,11 +23,13 @@ class ProcessedNcrServiceNowProblemRecord(TransformBase):
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Remove HTML tags from specified string columns
-        2. Splits datetime column
-        3. Filters passed records
-        4. Drops unnecessary columns
-        5. Change column names and schema.
+        1: Check if DataFrame is empty
+        2. Decode HTML entities in specified columns
+        3. Remove HTML tags from specified string columns
+        4. Splits datetime column
+        5. Filters passed records
+        6. Drops unnecessary columns
+        7. Change column names and schema.
 
         Parameters:
         - df (DataFrame): Input DataFrame.
@@ -35,16 +37,26 @@ class ProcessedNcrServiceNowProblemRecord(TransformBase):
         Returns:
         - DataFrame: Transformed DataFrame.
         """
-        # Step 1: Remove HTML tags from specified string columns
+
+        # Step 1: Check if DataFrame is empty
+        if not df.head(1):
+            self.logger.warning(f"No data found in source '{self.file_path}'. Skipping transformation and exiting workflow.")
+            self.sns_trigger = False  # Prevent SNS alert
+            return None
+        
+        # Step 2: Decode HTML entities in specified columns
+        df = self.html_entity_decoder(df, self.pipeline_config.get('html_entity_columns'))
+
+        # Step 3: Remove HTML tags from specified string columns
         df = self.strip_html_tags (df, self.pipeline_config.get('html_tag_columns'))
 
-        # Step 2: Splits datetime column
+        # Step 4: Splits datetime column
         df = self.split_datetime_column(df,self.pipeline_config.get('process_timestamp'))
 
-        # Step 3: Filters passed records
+        # Step 5: Filters passed records
         df = self.filter_quality_result(df,partition_column_drop=['sys_created_year','sys_created_month'])
 
-        # Step 4: Drops unnecessary columns
+        # Step 6: Drops unnecessary columns
         df = self.drop_columns_for_processed(df)
 
         column_mapping = {
@@ -144,7 +156,7 @@ class ProcessedNcrServiceNowProblemRecord(TransformBase):
             'sys_created_month': ('sys_created_month', 'integer')
         }
 
-        # Step 5: Changes column names and schema
+        # Step 7: Changes column names and schema
         df = self.change_column_names_and_schema(df, column_mapping)
 
         return df

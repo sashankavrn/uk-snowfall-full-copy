@@ -23,7 +23,7 @@ class ProcessedNcrServiceNowIncident(TransformBase):
         This method executes the following steps:
         1. Decode HTML entities in specified columns
         2. Adds incident type based on restaurant number
-        3. Extracts Vista dispatch number from work notes
+        3. Set vista_dispatch_number to always null
         4. Adds 'P' prefix to priority_id to create priority label
         5. Splits datetime column
         6. Filters passed records
@@ -43,12 +43,8 @@ class ProcessedNcrServiceNowIncident(TransformBase):
         # Step 2: Adds incident type based on restaurant number
         df = df.withColumn("incident_type", F.when(F.col("restaurant_number") != -1, "Store").otherwise("Corporate"))
 
-        # Step 3: Extracts Vista dispatch number from work notes
-        df = df.withColumn("vista_dispatch_number", F.when(
-                F.col("work_notes").rlike(r"Vista dispatch request number (\d+) received\."),
-                F.regexp_extract("work_notes", r"Vista dispatch request number (\d+) received\.", 1)
-            )
-        )
+        # Step 3: Set vista_dispatch_number to always null
+        df = df.withColumn("vista_dispatch_number", F.lit(None))
 
         # Step 4: Adds 'P' prefix to priority_id to create priority label
         df = df.withColumn("priority", F.concat(F.lit("P"), F.col("priority_id")))
