@@ -4,7 +4,7 @@ from delta.tables import DeltaTable
 
 
 
-class PreparationNcrServiceNowChangeRequest(TransformBase):
+class PreparationGenesysSessionSummary(TransformBase):
 
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
@@ -12,7 +12,7 @@ class PreparationNcrServiceNowChangeRequest(TransformBase):
         self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
         self.pipeline_config = self.full_configs[self.datasets]
         self.dq_rule = dq_rules.get(self.datasets)
-        self.file_path = "ncr_service_now/change_request"
+        self.file_path = "genesys/session_summary"
         self.list_of_files = self.aws_instance.get_files_in_s3_path(f"{self.raw_bucket_name}/{self.file_path}/")
 
 
@@ -26,15 +26,11 @@ class PreparationNcrServiceNowChangeRequest(TransformBase):
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Check if DataFrame is empty
-        2. Convert 'cab_date' column to string type
-        3. Remove duplicate records.
-        4. Remove trailing whitespaces
-        5. Perform data quality check.
-        6. Mask PII Data
-        7. Add CDC columns.
-        8. Add Partition Columns
-        9. Change column data types as per configuration
+        1. Remove duplicate records.
+        2. Remove trailing whitespaces.
+        3. Perform data quality check.
+        4. Add CDC columns.
+        5. Change column data types as per configuration.
 
         Parameters:
         - df: Input DataFrame.
@@ -43,39 +39,23 @@ class PreparationNcrServiceNowChangeRequest(TransformBase):
         - DataFrame: Transformed DataFrame.
 
         """
+    
+        # Step 1: Remove duplicate records
+        df = self.dropping_duplicates(df, ['conversationid', 'sessionid'])
 
-        # Step 1: Check if DataFrame is empty
-        if not df.head(1):
-            self.logger.warning(f"No data found in source '{self.file_path}'. Skipping transformation and exiting workflow.")
-            self.sns_trigger = False  # Prevent SNS alert
-            return None
-
-        # Step 2: Convert 'cab_date' column to string type
-        df = df.withColumn("cab_date", df["cab_date"].cast("string")) 
-
-        # # Step 3: Remove duplicate records
-        df = self.dropping_duplicates(df)
-
-        # Step 4: Removes trailing whitespaces
+        # Step 2: Removes trailing whitespaces
         df = self.remove_trailing_whitespace(df)
 
-        # Step 5: Data quality check
-        df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'parquet')
+        # Step 3: Data quality check
+        df = self.data_quality_check(df, self.dq_rule,self.pipeline_config.get('primary_key'), self.raw_bucket_name, self.file_path, 'parquet')  
 
-        # Step 6: Mask PII Information
-        df = self.redact_pii_columns(df,self.pipeline_config.get('redact_pii_columns'))
-
-        # Step 7: Add CDC columns
+        # Step 4: Add CDC columns
         df = self.adding_cdc_columns(df)
 
-        # Step 8: Add Partiton Columns
-        df = self.create_partition_date_columns(df,'sys_created_on','sys_created')
-
-        # Step 9: Change column data types as per configuration
+        # Step 5: Change column data types as per configuration
         df = self.change_column_types_data_frame(df, self.pipeline_config.get('change_column_data_type'))  
 
         return df
-
 
     def save_data(self, df):
         """
@@ -85,15 +65,7 @@ class PreparationNcrServiceNowChangeRequest(TransformBase):
         - df (DataFrame): Input DataFrame to be saved.
 
         """
-
-        # Check if the DataFrame is None (i.e., no data was returned or it was empty and skipped during transformation)
-        if df is None:
-            self.logger.info(f"No data to save for '{self.file_path}'. Workflow completed without processing.")
-            # Move files to the Archive folder
-            for file_name in self.list_of_files:
-                self.aws_instance.move_s3_object(self.raw_bucket_name, file_name, f"archive/{file_name}")
-            return
-        
+    
         # Define the S3 save path
         save_output_path = f"s3://{self.preparation_bucket_name}/{self.file_path}/"
 
@@ -106,7 +78,6 @@ class PreparationNcrServiceNowChangeRequest(TransformBase):
 
             # Create the Delta table
             df.write.format("delta").mode("overwrite") \
-            .partitionBy('sys_created_year','sys_created_month') \
             .save(save_output_path)
             
         else:
@@ -118,9 +89,9 @@ class PreparationNcrServiceNowChangeRequest(TransformBase):
             # Vacuum the table
             self.vacuum_table(save_output_path,48)
 
-        if not self.aws_instance.athena_table_exists('preparation', 'ncr_service_now_change_request'):
+        if not self.aws_instance.athena_table_exists('preparation', 'genesys_session_summary'):
             # Execute Athena query to create the table
-            self.aws_instance.create_athena_delta_table('preparation', 'ncr_service_now_change_request', save_output_path, self.athena_output_path)
+            self.aws_instance.create_athena_delta_table('preparation', 'genesys_session_summary', save_output_path, self.athena_output_path)
         
         # Move files to the Archive folder
         for file_name in self.list_of_files:

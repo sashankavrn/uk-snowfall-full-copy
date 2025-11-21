@@ -152,10 +152,28 @@ dq_rules = {
         IsComplete "number",
         IsComplete "sys_created_on"
     ]""",
-    "ncr_service_now_knowledge_base":"""Rules = [
-        ColumnCount <= 65,
+    "ncr_service_now_knowledge":"""Rules = [
+        ColumnCount <= 150,
         RowCount > 0,
         IsComplete "master_customer_id",
+        IsComplete "sys_created_on"
+    ]""",
+    "ncr_service_now_worknotes":"""Rules = [
+        ColumnCount <= 20,
+        RowCount > 0,
+        IsComplete "sys_id",
+        IsComplete "sys_created_on"
+    ]""",
+    "genesys_session_summary":"""Rules = [
+        ColumnCount <= 65,
+        RowCount > 0,
+        IsComplete "conversationid",
+        IsComplete "conversationstarttime"
+    ]""",
+    "happysignals":"""Rules = [
+        ColumnCount <= 190,
+        RowCount > 0,
+        IsComplete "number",
         IsComplete "sys_created_on"
     ]""",
     "store_db_config":"""Rules = [

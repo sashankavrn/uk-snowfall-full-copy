@@ -624,6 +624,13 @@
             "fix_notes",
             "workaround"
         ],
+        "html_entity_columns": [
+            "cause_notes",
+            "u_customer_description",
+            "u_customer_notes",
+            "fix_notes",
+            "workaround"
+        ],
         "primary_key": "number",
         "change_column_data_type": {
             "sys_created_on": "timestamp",
@@ -672,40 +679,68 @@
             "cdc_timestamp": "timestamp"
         }  
     },
-    "ncr_service_now_knowledge_base": {
-        "add_seconds": [
-            "business_duration",
-            "calendar_duration"
-        ],
+    "ncr_service_now_knowledge": {
         "process_timestamp": [
             "sys_updated_on",
             "sys_created_on",
-            "closed_at",
-            "opened_at",
-            "work_end",
-            "reopened_time",
-            "resolved_at"
+            "cdc_timestamp"
+        ],
+        "primary_key": "master_customer_id",
+        "change_column_data_type": {
+            "sys_created_on": "timestamp",
+            "cdc_timestamp": "timestamp"
+        },
+        "html_tag_columns": [
+            "u_kb_troubleshooting_and_verification"
+        ],
+        "html_entity_columns": [
+            "u_kb_troubleshooting_and_verification"
+        ]
+    },
+    "ncr_service_now_worknotes": {
+        "process_timestamp": [
+            "sys_created_on",
+            "cdc_timestamp"
         ],
         "redact_pii_columns": [
-            "description",
-            "close_notes"
+            "value"
         ],
-        "new_column_params": [
-            {
-                "column_name": "u_site_display_value",
-                "regex": "- (\\d{4}) -",
-                "new_column_name": "restaurant_number",
-                "data_type": "integer"
-            }
+        "html_tag_columns": [
+            "value"
         ],
-        "replace_values": [
-            {
-                "column_name": "restaurant_number",
-                "old_value": "None",
-                "new_value": -1
-            }
+        "html_entity_columns": [
+            "value"
         ],
-        "primary_key": "master_customer_id"
+        "primary_key": "sys_id",
+        "change_column_data_type": {
+            "sys_created_on": "timestamp",
+            "cdc_timestamp": "timestamp"
+        }
+    },
+    "genesys_session_summary": {
+        "process_timestamp": [
+            "conversationstarttime",
+            "conversationendtime",
+            "sessionstarttime",
+            "sessionendtime",
+            "cdc_timestamp"
+        ],
+        "primary_key": "conversationid",
+        "change_column_data_type": {
+            "cdc_timestamp": "timestamp"
+        }  
+    },
+    "happysignals": {
+        "process_timestamp": [
+            "sys_created_on",
+            "answered",
+            "cdc_timestamp"
+        ],
+        "primary_key": "number",
+        "change_column_data_type": {
+            "sys_created_on": "timestamp",
+            "cdc_timestamp": "timestamp"
+        }  
     },
     "store_db_config":{
         "process_timestamp": [
