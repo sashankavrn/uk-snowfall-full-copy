@@ -166,9 +166,6 @@ class ProcessedNcrServiceNowChangeRequest(TransformBase):
         # Check if the DataFrame is None (i.e., no data was returned or it was empty and skipped during transformation)
         if df is None:
             self.logger.info(f"No data to save for '{self.file_path}'. Workflow completed without processing.")
-            # Move files to the Archive folder
-            for file_name in self.list_of_files:
-                self.aws_instance.move_s3_object(self.raw_bucket_name, file_name, f"archive/{file_name}")
             return
         
         # Define the S3 save path
