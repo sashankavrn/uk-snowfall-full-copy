@@ -162,43 +162,51 @@ class ProcessedNcrServiceNowProblemRecord(TransformBase):
         return df
 
     def save_data(self, df):
-            """
-            Save DataFrame to an S3 location and create/update a Delta table if needed.
+        """
+        Save DataFrame to an S3 location and create/update a Delta table if needed.
 
-            Parameters:
-            - df (DataFrame): Input DataFrame to be saved.
+        Parameters:
+        - df (DataFrame): Input DataFrame to be saved.
 
-            """
-            # Define the S3 save path
-            save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
+        """
+        # Check if the DataFrame is None (i.e., no data was returned or it was empty and skipped during transformation)
+        if df is None:
+            self.logger.info(f"No data to save for '{self.file_path}'. Workflow completed without processing.")
+            # Move files to the Archive folder
+            for file_name in self.list_of_files:
+                self.aws_instance.move_s3_object(self.raw_bucket_name, file_name, f"archive/{file_name}")
+            return
+        
+        # Define the S3 save path
+        save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
 
-            # Check if Delta table needs to be created
-            if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
-                self.athena_trigger = True
-                
-            # Determine whether to create or merge to the Delta table
-            if self.athena_trigger:
-                # Create the Delta table
-                df.write.format("delta").mode("overwrite") \
-                .partitionBy('sys_created_year','sys_created_month') \
-                .save(save_output_path)
-                
-            else:
-                # Append the Delta table
-                df.write.format("delta").mode("append") \
-                .save(save_output_path)
-
-                # Vacuum the table
-                self.vacuum_table(save_output_path,48)
-
-            if not self.aws_instance.athena_table_exists('processed', 'ncr_service_now_problem_record'):
-                # Execute Athena query to create the table
-                self.aws_instance.create_athena_delta_table('processed', 'ncr_service_now_problem_record', save_output_path, self.athena_output_path)
-
-            # If error detected from DQ failing then will raise
-            if self.sns_trigger:
-                message = "Records in the error folder that have failed transformation"
-                self.aws_instance.send_sns_message(message)
-
+        # Check if Delta table needs to be created
+        if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
+            self.athena_trigger = True
             
-            self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
+        # Determine whether to create or merge to the Delta table
+        if self.athena_trigger:
+            # Create the Delta table
+            df.write.format("delta").mode("overwrite") \
+            .partitionBy('sys_created_year','sys_created_month') \
+            .save(save_output_path)
+            
+        else:
+            # Append the Delta table
+            df.write.format("delta").mode("append") \
+            .save(save_output_path)
+
+            # Vacuum the table
+            self.vacuum_table(save_output_path,48)
+
+        if not self.aws_instance.athena_table_exists('processed', 'ncr_service_now_problem_record'):
+            # Execute Athena query to create the table
+            self.aws_instance.create_athena_delta_table('processed', 'ncr_service_now_problem_record', save_output_path, self.athena_output_path)
+
+        # If error detected from DQ failing then will raise
+        if self.sns_trigger:
+            message = "Records in the error folder that have failed transformation"
+            self.aws_instance.send_sns_message(message)
+
+        
+        self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
