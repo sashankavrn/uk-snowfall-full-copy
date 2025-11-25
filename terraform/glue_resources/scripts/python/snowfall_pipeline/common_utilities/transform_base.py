@@ -1220,3 +1220,5 @@ class TransformBase:
             df = df.withColumn(col_name, F.trim(F.col(col_name)))
 
         return df
+
+

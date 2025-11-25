@@ -61,6 +61,13 @@ resource "aws_s3_object" "datashare_landing_folder" {
     error= "error/nonparquet/"
     test= "test/"
   }
+   lifecycle {    
+    ignore_changes = [      
+      etag,
+      version_id,
+      source_hash
+    ]  
+  }
 }
 
   
@@ -90,6 +97,13 @@ resource "aws_s3_object" "datashare_processed_folders" {
     cisco_meraki              = "meraki/"
     newrelic                  = "newrelic/"
     ods_user_data             = "ods_user_data/"
+  }
+  lifecycle {    
+    ignore_changes = [      
+      etag,
+      version_id,
+      source_hash
+    ]  
   }
 }
 
@@ -170,6 +184,11 @@ resource "aws_s3_object" "datashare_tech360_ncr_folders" {
 
   lifecycle {
     prevent_destroy = false
-    ignore_changes  = [source]
+    ignore_changes  = [
+      source,
+      etag,
+      version_id,
+      source_hash
+    ]
   }
 }

@@ -4,13 +4,13 @@ variable "resource_tags" {
 
   default = {
     Application_ID  = "APP2002212"
-    Owner           = "andrew.platts@uk.mcd.com"
+    Owner           = "camille.taylor@uk.mcd.com"
     GBL             = "195500433387"
     Market          = "GB"
     Application     = "SNOW"
     Purpose         = "SNOWFALL"
-    Budget_Owner    = "andrew.platts@uk.mcd.com"
-    IT_Owner        = "andrew.platts@uk.mcd.com"
+    Budget_Owner    = "camille.taylor@uk.mcd.com"
+    IT_Owner        = "camille.taylor@uk.mcd.com"
 
 
   }

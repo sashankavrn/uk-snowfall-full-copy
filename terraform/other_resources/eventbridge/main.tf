@@ -693,6 +693,37 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_knowledge_base_event_tar
   role_arn = var.role_assumed_arn
 }
 
+
+###################################### NCR ServiceNow Knowledge ##############################################
+
+resource "aws_cloudwatch_event_rule" "ncr_service_now_knowledge_event_rule" {
+  name        = "uk-snowfall-ncr-service-now-knowledge-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [ {
+        "prefix": "ncr_service_now/knowledge/"
+      } ]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "ncr_service_now_knowledge_event_target" {
+  rule     = aws_cloudwatch_event_rule.ncr_service_now_knowledge_event_rule.name
+  arn      = local.workflow_trigger_arns["ncr_service_now_knowledge"]
+  role_arn = var.role_assumed_arn
+}
+
+
 ###################################### NCR ServiceNow Incident Task ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_incident_task_event_rule" {
@@ -810,4 +841,34 @@ resource "aws_cloudwatch_event_target" "service_agent_server_files_rule_event_ta
 #   arn       = local.workflow_trigger_arns["newrelic_rmp_network_info_daily_aggregate"]
 #   role_arn  = var.role_assumed_arn
 # }
+
+###################################### HappySignals ##############################################
+
+resource "aws_cloudwatch_event_rule" "happysignals_event_rule" {
+  name        = "uk-snowfall-happysignals-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [ {
+        "prefix": "happysignals/"
+      } ]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "happysignals_event_target" {
+  rule     = aws_cloudwatch_event_rule.happysignals_event_rule.name
+  arn      = local.workflow_trigger_arns["happysignals"]
+  role_arn = var.role_assumed_arn
+}
+
 

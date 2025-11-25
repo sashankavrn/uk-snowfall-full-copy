@@ -189,8 +189,8 @@
             "destinationPath": "gcc/"
         },
         {
-            "fileName": "happysignals/",
-            "destinationPath": "happysignals/"
+            "fileName": "happysignals",
+            "destinationPath": "happysignals"
         }
     ]
 }

@@ -1,7 +1,7 @@
 -- This view depends on the below table:
 -- "uk_snowfall_processed"."ncr_service_now_incident"
 
-CREATE OR REPLACE VIEW ncr_service_now_incident_latest AS
+CREATE OR REPLACE VIEW "uk_snowfall_semantic"."ncr_service_now_incident_latest" AS
 WITH latest_incidents AS (
     SELECT 
         *,
