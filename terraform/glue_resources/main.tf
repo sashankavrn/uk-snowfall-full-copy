@@ -22,7 +22,7 @@ data "terraform_remote_state" "core_module" {
   }
 }
 
-# Provider configuration
+#Provider configuration
 provider "aws" {
   region = var.AWS_REGION
 }
