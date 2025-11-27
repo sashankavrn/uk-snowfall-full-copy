@@ -297,7 +297,8 @@ jobs:
       ENV:        ${{ needs.setup.outputs.env }}
       TFVARS:     ${{ needs.setup.outputs.tfvars }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      MAX_RETRIES: 2
+      AWS_RETRY_MODE: standard
+      MAX_RETRIES: 1
     steps:
       - name: Checkout the exact SHA
         uses: actions/checkout@v4
@@ -410,6 +411,20 @@ jobs:
             fi
             popd >/dev/null
           done <<< "${CHANGED}"
+
+      - name: Push recovered state if apply failed to upload
+        if: always()
+        shell: bash
+        run: |
+          if [ -f errored.tfstate ]; then
+            echo "::warning::Detected errored.tfstate — attempting to push recovered state to backend..."
+            terraform state push errored.tfstate || {
+              echo "::error::Failed to push recovered state. Manual intervention may be required."
+              exit 1
+            }
+          else
+            echo "No errored.tfstate found — nothing to recover."
+          fi
 
       - name: "Post-Apply Validation: plan & conditional re-apply loop"
         shell: bash
