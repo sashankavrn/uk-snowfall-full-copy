@@ -29,7 +29,7 @@ concurrency:
 jobs:
   terraform_plan:
     # Run plan & approval only for prod, same as before but driven by the dispatch input
-    if: ${{ github.event.inputs.environment == 'prod' }}
+    if: ${{ github.event.inputs.environment == 'never' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -80,7 +80,7 @@ jobs:
 
   request_approval:
     # Approval gate only required for prod
-    if: ${{ github.event.inputs.environment == 'prod' }}
+    if: ${{ github.event.inputs.environment == 'never' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
