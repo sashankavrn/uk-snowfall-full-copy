@@ -7,4 +7,7 @@ variable "sns_topic_arn" {}
 variable "account_number" {}
 variable "artifact_bucket_arn" {}
 variable "meraki_schedule" {}
+variable "newrelic_10min_schedule" {}
+variable "newrelic_5min_schedule" {}
+variable "newrelic_1am_schedule" {}
 variable "service_agent_bucket_arn"{}

@@ -52,6 +52,9 @@ variable "connector_profile_name" {
 }
 
 variable "meraki_schedule" {}
+variable "newrelic_10min_schedule" {}
+variable "newrelic_5min_schedule" {}
+variable "newrelic_1am_schedule" {}
 
 variable "stage_name" {}
 

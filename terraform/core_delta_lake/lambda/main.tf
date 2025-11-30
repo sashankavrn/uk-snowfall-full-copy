@@ -210,7 +210,7 @@ resource "aws_lambda_permission" "allow_landing_newrelic_bucket" {
 resource "aws_cloudwatch_event_rule" "newrelic_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-fetch-device-schedule"
   description         = "Triggers the Lambda function every hour"
- schedule_expression = "cron(0 1 * * ? *)"  # Runs at 1 AM UTC every day
+ schedule_expression = var.newrelic_1am_schedule #"cron(0 1 * * ? *)"  # Runs at 1:01,2:01.. AM UTC every day
 }
 
 # Add Lambda as the Target of the Event Rule
@@ -271,7 +271,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_metrics_function" {
 resource "aws_cloudwatch_event_rule" "newrelic_metrics_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-device-metrics-schedule"
   description         = "Triggers the New Relic device metrics Lambda every 10 minutes"
-  schedule_expression = "rate(10 minutes)"
+  schedule_expression = var.newrelic_10min_schedule #"rate(10 minutes)"
 }
 
 # Add Lambda as the target of the Event Rule
@@ -330,7 +330,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_process_info_function" {
 resource "aws_cloudwatch_event_rule" "newrelic_process_info_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-process-info-schedule"
   description         = "Triggers the New Relic process info Lambda every 10 minutes"
-  schedule_expression = "rate(10 minutes)"   #  "rate(10 minutes)"
+  schedule_expression = var.newrelic_10min_schedule   #  "rate(10 minutes)"
 }
 
 # Add Lambda as the target of the Event Rule
@@ -397,7 +397,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_network_info_function" {
 resource "aws_cloudwatch_event_rule" "newrelic_network_info_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-network-info-schedule"
   description         = "Triggers the New Relic network info Lambda every 10 minutes"
-  schedule_expression = "rate(10 minutes)"
+  schedule_expression = var.newrelic_10min_schedule #"rate(10 minutes)"
 }
 
 ###########################################################################
@@ -468,7 +468,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_network_info_daily_aggregat
 resource "aws_cloudwatch_event_rule" "newrelic_network_info_daily_aggregate_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-network-info-daily-aggregate-schedule"
   description         = "Triggers the New Relic daily aggregate network info Lambda at 1 AM UTC"
-  schedule_expression = "cron(0 1 * * ? *)"
+  schedule_expression = var.newrelic_1am_schedule #"cron(0 1 * * ? *)"
 }
 
 ###########################################################################
@@ -546,7 +546,7 @@ resource "aws_lambda_permission" "allow_landing_newrelic_digital_gma_foe_respons
 resource "aws_cloudwatch_event_rule" "newrelic_digital_gma_foe_response_lambda_schedule" {
   name                = "uk-snowfall-newrelic-digital-gma-foe-response-schedule"
   description         = "Triggers the Lambda function every hour at 5 minutes past the hour"
-  schedule_expression = "cron(5 * * * ? *)"
+  schedule_expression = var.newrelic_5min_schedule #"cron(5 * * * ? *)"
 }
 
 resource "aws_cloudwatch_event_target" "invoke_newrelic_digital_gma_foe_response_lambda" {
@@ -610,7 +610,7 @@ resource "aws_lambda_permission" "allow_landing_newrelic_digital_3po_foe_respons
 resource "aws_cloudwatch_event_rule" "newrelic_digital_3po_foe_response_lambda_schedule" {
   name                = "uk-snowfall-newrelic-digital-3po-foe-response-schedule"
   description         = "Triggers the Lambda function every hour at 5 minutes past the hour"
-  schedule_expression = "cron(5 * * * ? *)"
+  schedule_expression = var.newrelic_5min_schedule #"cron(5 * * * ? *)"
 }
 
 
