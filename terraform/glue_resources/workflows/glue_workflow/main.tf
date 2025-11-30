@@ -479,7 +479,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = null
       "reporting_date" = ""
     },
     "genesys_conv_attributes" = {
@@ -492,7 +492,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = null
       "reporting_date" = ""
     },
     "genesys_conversations_det" = {
@@ -505,7 +505,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = null
       "reporting_date" = ""
     },
     "genesys_conversations" = {
@@ -518,7 +518,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = null
       "reporting_date" = ""
     },
     "genesys_presence" = {
@@ -531,7 +531,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = null
       "reporting_date" = ""
     },
     "genesys_queue_abandons" = {
@@ -544,7 +544,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = null
       "reporting_date" = ""
     },
     "genesys_queue_config" = {
@@ -557,7 +557,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = null
       "reporting_date" = ""
     },
     "genesys_routing_status" = {
@@ -570,7 +570,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = null
       "reporting_date" = ""
     },
     "genesys_queue_history" = {
@@ -583,7 +583,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = null
       "reporting_date" = ""
     },
     "genesys_session_summary" = {
@@ -596,7 +596,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = "cron(45 * * * ? *)"
       "reporting_date" = ""
     },
     "genesys_user_details" = {
@@ -609,7 +609,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = null
       "reporting_date" = ""
     },
     "genesys_user_status_history" = {
@@ -622,7 +622,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = null
       "reporting_date" = ""
     },
     "restaurant_count_by_day" = {
