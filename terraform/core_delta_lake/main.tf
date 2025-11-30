@@ -56,6 +56,9 @@ module "lambda_module" {
   account_number     = var.account_number
   artifact_bucket_arn = module.s3_module_main.artifact_bucket_bucket_arn
   meraki_schedule = var.meraki_schedule
+  newrelic_10min_schedule = var.newrelic_10min_schedule
+  newrelic_5min_schedule = var.newrelic_5min_schedule
+  newrelic_1am_schedule = var.newrelic_1am_schedule
   service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
 }
 
