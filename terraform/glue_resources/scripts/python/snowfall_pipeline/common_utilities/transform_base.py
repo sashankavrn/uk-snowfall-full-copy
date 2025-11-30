@@ -45,7 +45,7 @@ class TransformBase:
         group (str) : Group name pulled from glue workflow propeties
     """
 
-    def __init__(self,spark,sc,glueContext):
+    def __init__(self,spark,sc,glueContext, dataset=None, group=None):
         self.logger = SnowfallLogger.get_logger()
         self.spark = spark
         self.sc = sc
@@ -66,8 +66,11 @@ class TransformBase:
         self.processed_bucket_name = f"eu-central1-{self.environment}-uk-snowfall-processed-{self.account_number}"
         self.semantic_bucket_name = f"eu-central1-{self.environment}-uk-snowfall-semantic-{self.account_number}"
         self.athena_output_path = f"eu-central1-{self.environment}-uk-snowfall-athena-{self.account_number}/"
-        self.datasets = self.aws_instance.get_workflow_properties('DATASET')
-        self.group = self.aws_instance.get_workflow_properties('GROUP')
+        self.dataset = dataset
+        self.group = group
+        if not self.dataset:
+            self.datasets = self.aws_instance.get_workflow_properties('DATASET')
+            self.group = self.aws_instance.get_workflow_properties('GROUP')
         self.schema_changed = False
         
 
@@ -456,13 +459,19 @@ class TransformBase:
                 source_df = self.spark.read.json(f"s3://{bucket_name}/{file_path}/")
 
         elif file_format == 'csv':
-            source_df = self.spark.read.csv(f"s3://{bucket_name}/{file_path}/", header=True)
+            #source_df = self.spark.read.csv(f"s3://{bucket_name}/{file_path}/", header=True)
+            
+            source_df = self.spark.read.format("csv") \
+                .option("header", "true") \
+                .option("recursiveFileLookup", "true") \
+                .load(f"s3://{bucket_name}/{file_path}/")
+
 
         elif file_format == 'parquet':
             source_df = self.spark.read.parquet(f"s3://{bucket_name}/{file_path}/")
 
         elif file_format == 'xml':
-            source_df = self.spark.read.format("xml").option("rowTag", row_tag).load(f"s3://{bucket_name}/{file_path}/")
+            source_df = self.spark.read.format("xml").option("rowTag", row_tag).load(f"s3://{bucket_name}/{file_path}/*/*.xml")
 
         elif file_format == 'delta':
 
@@ -1085,20 +1094,22 @@ class TransformBase:
             self.logger.info('Delta table overwritten with new schema.')
         else:
             self.logger.info('Delta table is not overwritten, no column data types has been changed or column is not present in table .')
-
+    
+    @transformation_timer
     def explode_df(self, df):
         for (name, dtype) in df.dtypes:
             if "array" in dtype:
                 df = df.withColumn(name, F.explode(name))
         return df
 
-
+    @transformation_timer
     def is_flat(self, df):
         for (_, dtype) in df.dtypes:
             if "array" in dtype or "struct" in dtype:
                 return False
         return True
 
+    @transformation_timer
     def flatten_schema(self, schema, prefix=None):
         fields = []
         for field in schema.fields:
@@ -1109,15 +1120,17 @@ class TransformBase:
                 fields.append(name)
         return fields
 
+    @transformation_timer
     def flatten_nest_df(self, df):
         fields = self.flatten_schema(df.schema)
         new_fields = [item.replace(".", "_").replace(":", "_") for item in fields]
         df = df.select(fields).toDF(*new_fields)
 
-        print('flatten_nest_df completed')
+        self.logger.info('flatten_nest_df completed')
 
         return df
 
+    @transformation_timer
     def drop_nested_field(self, df: DataFrame, drop_field_name: str) -> DataFrame:
         def process(schema, prefix=""):
             exprs = []

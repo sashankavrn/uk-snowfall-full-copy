@@ -766,7 +766,7 @@
             "cdc_timestamp": "string",
             "configurationUpdatedAt": "string"
         },         
-        "primary_key": "restaurant_number"
+        "primary_key": "StoreDB"
 
     }
 }

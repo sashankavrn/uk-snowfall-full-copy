@@ -5,6 +5,7 @@ import json
 import zipfile
 import time
 import re
+import random
 from awsglue.utils import getResolvedOptions
 from pyspark.sql.utils import AnalysisException
 from snowfall_pipeline.common_utilities.snowfall_logger import SnowfallLogger
@@ -60,6 +61,34 @@ class AwsUtilities:
             self.logger.error(f"Error in get_workflow_properties: {e}")
             raise e
 
+    # def get_workflow_properties(self, key, id=None, name=None):
+    #     if id is None:
+    #         id = self.get_glue_env_var('WORKFLOW_RUN_ID')
+    #     if name is None:
+    #         name = self.get_glue_env_var('WORKFLOW_NAME')
+
+    #     retries = 0
+    #     max_retries = 5
+    #     base_delay = 1  # seconds
+
+    #     while retries < max_retries:
+    #         try:
+    #             glue_client = boto3.client('glue')
+    #             response = self.glue_client.get_workflow_run_properties(Name=name, RunId=id)
+    #             self.logger.info(
+    #                 f"Successfully retrieved workflow properties for the key {key} which is {response['RunProperties'][key]}")
+    #             return response['RunProperties'][key]
+    #         except ClientError as e:
+    #             if e.response['Error']['Code'] == 'ThrottlingException':
+    #                 delay = base_delay * (2 ** retries) + random.uniform(0, 1)
+    #                 self.logger.warning(f"Throttled on Glue API. Retrying in {delay:.2f}s...")
+    #                 time.sleep(delay)
+    #                 retries += 1
+    #             else:
+    #                 self.logger.error(f"Error in get_workflow_properties: {e}")
+    #                 raise
+    #     raise Exception("Max retries exceeded for get_workflow_properties")
+
     def get_workflow_run_data(self, id=None, name=None):
         """Retrieves data of a specific Glue workflow run.
 
@@ -86,6 +115,35 @@ class AwsUtilities:
         except Exception as e:
             self.logger.error(f"Error in get_workflow_run_data: {e}")
             raise e
+
+
+    # def get_workflow_run_data(self, id=None, name=None):
+    #     if id is None:
+    #         id = self.get_glue_env_var('WORKFLOW_RUN_ID')
+    #     if name is None:
+    #         name = self.get_glue_env_var('WORKFLOW_NAME')
+
+    #     retries = 0
+    #     max_retries = 5
+    #     base_delay = 1
+
+    #     while retries < max_retries:
+    #         try:
+    #             glue_client = boto3.client('glue')
+    #             response = self.glue_client.get_workflow_run(Name=name, RunId=id, IncludeGraph=False)
+    #             self.logger.info("Successfully retrieved workflow run data.")
+    #             return response['Run']
+    #         except ClientError as e:
+    #             if e.response['Error']['Code'] == 'ThrottlingException':
+    #                 delay = base_delay * (2 ** retries) + random.uniform(0, 1)
+    #                 self.logger.warning(f"Throttled on Glue API. Retrying in {delay:.2f}s...")
+    #                 time.sleep(delay)
+    #                 retries += 1
+    #             else:
+    #                 self.logger.error(f"Error in get_workflow_run_data: {e}")
+    #                 raise
+    #     raise Exception("Max retries exceeded for get_workflow_run_data")
+
 
     def get_files_in_s3_path(self, s3_path):
         """Lists files in a specified S3 path.
