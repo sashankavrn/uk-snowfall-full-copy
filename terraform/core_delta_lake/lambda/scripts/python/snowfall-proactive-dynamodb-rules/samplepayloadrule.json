@@ -1,15 +1,23 @@
 {
   "active": { "BOOL": true },
   "query": { "S": "WITH res as (\n    SELECT DISTINCT \"restaurant_number\"..." },
-  "incident_description": { "S": "Disk issue" },
-  "metric": { "S": "avg_disk" }
+  "incident_description": { "S": "Disk issue-3" },
+  "metric": { "S": "avg_ram" }
 }
 
 {
-  "active": { "BOOL": false },
+  "rule_id": { "S": "rule-12345" },
+  "active": { "BOOL": true },
+  "created_at": { "S": "2025-12-03T21:55:00Z" },
+  "incident_description": { "S": "Disk issue-3" },
   "query": { "S": "WITH res as (\n    SELECT DISTINCT \"restaurant_number\"..." },
-  "incident_description": { "S": "Disk issue" },
-  "metric": { "S": "avg_disk" }
+  "email_alert": { "BOOL": true },
+  "servicenow_alert": { "BOOL": false },
+  "proactive_script": { "BOOL": true },
+  "email_dl": { "S": "ops-team@example.com" },
+  "proactive_script_name": { "S": "disk_cleanup.sh" },
+  "metric": { "S": "avg_ram" }
 }
+
 
 // Any update on "incident_description", "metric" will create new rule , all other changes will only update the Rule 
