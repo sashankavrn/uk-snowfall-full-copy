@@ -1,101 +1,96 @@
 import boto3
 import os
+import json
+import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-def lambda_handler(event, context):
-    dynamodb = boto3.client('dynamodb', region_name=os.environ['DYNAMO_REGION'])
-    table_name = os.environ['RULES_TABLE']
+dynamodb = boto3.client("dynamodb")
+RULES_TABLE = os.environ["RULES_TABLE"]
 
-    # Timestamp for audit
+def find_existing_rule(incident_desc, metric):
+    print("Searching for existing rule by incident_description + metric")
+
+    response = dynamodb.scan(
+        TableName=RULES_TABLE,
+        FilterExpression="incident_description = :i AND metric = :m",
+        ExpressionAttributeValues={
+            ":i": {"S": incident_desc},
+            ":m": {"S": metric}
+        }
+    )
+
+    if response.get("Items"):
+        rule = response["Items"][0]
+        print(f"Existing rule found → rule_id = {rule['rule_id']['S']}")
+        return rule  # return full rule
+
+    print("No existing rule found.")
+    return None
+
+def create_rule(rule_item):
+    print("Creating new rule...")
+
+    rule_id = str(uuid.uuid4())
     timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
-    print(f"[INFO] Lambda execution started at {timestamp}")
 
-    query = """WITH res as (
-    SELECT DISTINCT "restaurant_number"
-    FROM "uk_snowfall_processed"."newrelic_digital_3po_foe_response"
-    WHERE cdc_timestamp = (SELECT max(cdc_timestamp) FROM "uk_snowfall_processed"."newrelic_digital_3po_foe_response")
-),
-ordcnt as (
-    SELECT
-        "restaurant_number",
-        "foe_response",   
-        "3po_response",
-        "3po_description",
-        sum("count") "count"
-    FROM "uk_snowfall_processed"."newrelic_digital_3po_foe_response"
-    WHERE 
-        cdc_timestamp = (SELECT max(cdc_timestamp) FROM "uk_snowfall_processed"."newrelic_digital_3po_foe_response")
-        and "3po_description" != 'Auto release is disabled for store'
-    GROUP BY 
-        "restaurant_number",
-        "foe_response",   
-        "3po_response",
-        "3po_description"
-    ORDER BY "count" DESC
-),
-toperr as (
-    SELECT 
-        "restaurant_number",
-        'Top error: FOE Error ' || cast("foe_response" as varchar) || ' | 3PO Error ' || cast("3po_response" as varchar) || ' ' || "3po_description" "message"
-    FROM (
-        SELECT 
-            *,
-            ROW_NUMBER() OVER (PARTITION BY restaurant_number ORDER BY "count" DESC) "rn"
-        FROM ordcnt
-        WHERE 
-            (foe_response != 0 OR "3po_response" != 1)
-            and "3po_description" != 'Auto release is disabled for store'
+    rule_item["rule_id"] = {"S": rule_id}
+    rule_item["created_at"] = {"S": timestamp}
+
+    dynamodb.put_item(
+        TableName=RULES_TABLE,
+        Item=rule_item
     )
-    WHERE rn = 1
-),
-errcnt as (
-    SELECT 
-        *,
-        cast(error_count as double) / order_count "error_percentage"
-    FROM (
-        SELECT 
-            res.restaurant_number,
-            (
-                SELECT sum("count") 
-                FROM ordcnt 
-                WHERE ordcnt.restaurant_number = res.restaurant_number
-            ) "order_count",
-            (
-                SELECT sum("count") 
-                FROM ordcnt 
-                WHERE 
-                    ordcnt.restaurant_number = res.restaurant_number
-                    and ("foe_response" != 0 or "3po_response" != 1)
-            ) "error_count"
-        FROM res
+
+    print(f"Rule created with rule_id = {rule_id}")
+    return {"message": "Rule created", "rule_id": rule_id}
+
+def update_rule(existing_rule_id, rule_item):
+    print(f"Updating rule: {existing_rule_id}")
+
+    timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
+
+    update_expr_parts = ["updated_at = :updated_at"]
+    expr_vals = {":updated_at": {"S": timestamp}}
+    expr_names = {}
+
+    for key, val in rule_item.items():
+        if key == "rule_id":  # cannot update PK
+            continue
+
+        expr_name = f"#{key}"
+        expr_val = f":{key}"
+
+        update_expr_parts.append(f"{expr_name} = {expr_val}")
+        expr_names[expr_name] = key
+        expr_vals[expr_val] = val
+
+    update_expression = "SET " + ", ".join(update_expr_parts)
+
+    response = dynamodb.update_item(
+        TableName=RULES_TABLE,
+        Key={"rule_id": {"S": existing_rule_id}},
+        UpdateExpression=update_expression,
+        ExpressionAttributeNames=expr_names,
+        ExpressionAttributeValues=expr_vals,
+        ReturnValues="ALL_NEW"
     )
-)
-SELECT 
-    errcnt.restaurant_number,
-    '[PROACTIVE] 3PO Error Rate ' || cast(round(error_percentage * 100, 0) as varchar) || '% | ' || toperr.message "message"
-FROM errcnt 
-LEFT JOIN toperr ON
-    toperr.restaurant_number = errcnt.restaurant_number
-WHERE error_percentage > 0.6
-ORDER BY error_percentage DESC
-    """
 
-    rule_item = {
-        'rule_id':              {'S': '9'},
-        'active':               {'BOOL': True},
-        'query':                {'S': query},
-        'database':             {'S': 'uk_snowfall_processed'},
-        'threshold':            {'S': '95'},
-        'incident_description': {'S': 'test - Disk usage above 90%'},
-        'metric':               {'S': 'average_disk_used_percent'},
-        'created_at':           {'S': timestamp}
-    }
+    print("Rule updated successfully")
+    return {"message": "Rule updated", "rule_id": existing_rule_id}
 
-    dynamodb.put_item(TableName=table_name, Item=rule_item)
+def lambda_handler(event, context):
+    print("Lambda invoked with event:")
+    print(event)
 
-    print(f"[INFO] Rule inserted at {timestamp}")
-    return {
-        'statusCode': 200,
-        'body': 'Rule inserted successfully'
-    }
+    # Event contains DynamoDB-format fields except rule_id
+    incident_desc = event["incident_description"]["S"]
+    metric = event["metric"]["S"]
+
+    existing = find_existing_rule(incident_desc, metric)
+
+    if existing:
+        existing_rule_id = existing["rule_id"]["S"]
+        return update_rule(existing_rule_id, event)
+
+    return create_rule(event)
