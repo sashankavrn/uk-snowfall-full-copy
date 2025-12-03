@@ -1,0 +1,15 @@
+{
+  "active": { "BOOL": true },
+  "query": { "S": "WITH res as (\n    SELECT DISTINCT \"restaurant_number\"..." },
+  "incident_description": { "S": "Disk issue" },
+  "metric": { "S": "avg_disk" }
+}
+
+{
+  "active": { "BOOL": false },
+  "query": { "S": "WITH res as (\n    SELECT DISTINCT \"restaurant_number\"..." },
+  "incident_description": { "S": "Disk issue" },
+  "metric": { "S": "avg_disk" }
+}
+
+// Any update on "incident_description", "metric" will create new rule , all other changes will only update the Rule 
