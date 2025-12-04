@@ -1,96 +1,81 @@
+
 import boto3
 import os
-import json
-import uuid
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 dynamodb = boto3.client("dynamodb")
 RULES_TABLE = os.environ["RULES_TABLE"]
+NUM_RULES = int(os.environ.get("NUM_RULES", "10"))   # number of rules to create
 
-def find_existing_rule(incident_desc, metric):
-    print("Searching for existing rule by incident_description + metric")
 
-    response = dynamodb.scan(
-        TableName=RULES_TABLE,
-        FilterExpression="incident_description = :i AND metric = :m",
-        ExpressionAttributeValues={
-            ":i": {"S": incident_desc},
-            ":m": {"S": metric}
-        }
-    )
+def get_existing_rule_ids():
+    """Return all existing rule_id values as a set of strings."""
+    response = dynamodb.scan(TableName=RULES_TABLE, ProjectionExpression="rule_id")
 
-    if response.get("Items"):
-        rule = response["Items"][0]
-        print(f"Existing rule found → rule_id = {rule['rule_id']['S']}")
-        return rule  # return full rule
+    rule_ids = {item["rule_id"]["S"] for item in response.get("Items", [])}
 
-    print("No existing rule found.")
-    return None
+    # Handle paginated scans
+    while "LastEvaluatedKey" in response:
+        response = dynamodb.scan(
+            TableName=RULES_TABLE,
+            ProjectionExpression="rule_id",
+            ExclusiveStartKey=response["LastEvaluatedKey"]
+        )
+        rule_ids.update(item["rule_id"]["S"] for item in response.get("Items", []))
 
-def create_rule(rule_item):
-    print("Creating new rule...")
+    return rule_ids
 
-    rule_id = str(uuid.uuid4())
-    timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
 
-    rule_item["rule_id"] = {"S": rule_id}
-    rule_item["created_at"] = {"S": timestamp}
+def build_rule_item(i):
+    """Build a placeholder rule item for rule i."""
+    created_at = datetime.now(ZoneInfo("Europe/London")).isoformat()
 
-    dynamodb.put_item(
-        TableName=RULES_TABLE,
-        Item=rule_item
-    )
+    return {
+        "rule_id": {"S": str(i)},
+        "active": {"BOOL": True},
+        "created_at": {"S": created_at},
+        "incident_description": {"S": f"your rule {i} incident description"},
+        "query": {"S": f"your rule {i} query"},
+        "email_alert": {"BOOL": True},
+        "servicenow_alert": {"BOOL": True},
+        "proactive_script": {"BOOL": True},
+        "email_dl": {"S": f"your rule {i} email_dl"},
+        "proactive_script_name": {"S": f"your rule {i} proactive_script_name"}
+    }
 
-    print(f"Rule created with rule_id = {rule_id}")
-    return {"message": "Rule created", "rule_id": rule_id}
 
-def update_rule(existing_rule_id, rule_item):
-    print(f"Updating rule: {existing_rule_id}")
+def create_rule(item):
+    dynamodb.put_item(TableName=RULES_TABLE, Item=item)
+    print(f"Created rule_id {item['rule_id']['S']}")
 
-    timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
-
-    update_expr_parts = ["updated_at = :updated_at"]
-    expr_vals = {":updated_at": {"S": timestamp}}
-    expr_names = {}
-
-    for key, val in rule_item.items():
-        if key == "rule_id":  # cannot update PK
-            continue
-
-        expr_name = f"#{key}"
-        expr_val = f":{key}"
-
-        update_expr_parts.append(f"{expr_name} = {expr_val}")
-        expr_names[expr_name] = key
-        expr_vals[expr_val] = val
-
-    update_expression = "SET " + ", ".join(update_expr_parts)
-
-    response = dynamodb.update_item(
-        TableName=RULES_TABLE,
-        Key={"rule_id": {"S": existing_rule_id}},
-        UpdateExpression=update_expression,
-        ExpressionAttributeNames=expr_names,
-        ExpressionAttributeValues=expr_vals,
-        ReturnValues="ALL_NEW"
-    )
-
-    print("Rule updated successfully")
-    return {"message": "Rule updated", "rule_id": existing_rule_id}
 
 def lambda_handler(event, context):
-    print("Lambda invoked with event:")
-    print(event)
+    print(f"NUM_RULES configured = {NUM_RULES}")
 
-    # Event contains DynamoDB-format fields except rule_id
-    incident_desc = event["incident_description"]["S"]
-    metric = event["metric"]["S"]
+    existing_ids = get_existing_rule_ids()
+    print(f"Existing rule_ids in DB → {existing_ids}")
 
-    existing = find_existing_rule(incident_desc, metric)
+    created = []
+    skipped = []
 
-    if existing:
-        existing_rule_id = existing["rule_id"]["S"]
-        return update_rule(existing_rule_id, event)
+    for i in range(1, NUM_RULES + 1):
+        rule_id = str(i)
 
-    return create_rule(event)
+        if rule_id in existing_ids:
+            skipped.append(rule_id)
+            continue
+
+        # Create missing rules
+        rule_item = build_rule_item(i)
+        create_rule(rule_item)
+        created.append(rule_id)
+
+    print("Completed rule initialization")
+
+    return {
+        "message": "Rule initialization complete",
+        "created_rule_ids": created,
+        "skipped_existing_rule_ids": skipped,
+        "total_required_rules": NUM_RULES
+    }

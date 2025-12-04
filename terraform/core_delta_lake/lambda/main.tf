@@ -1046,6 +1046,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_dynamodb_rules" {
     variables = {
       DYNAMO_REGION = "eu-central-1"
       RULES_TABLE   = "uk-snowfall-${var.environment}-incident-rules"
+      NUM_RULES = "10" 
     }
   }
 }
