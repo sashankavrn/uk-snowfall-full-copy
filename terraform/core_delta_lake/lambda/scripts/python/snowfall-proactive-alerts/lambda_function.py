@@ -38,7 +38,7 @@ def lambda_handler(event, context):
 
         athena_result = query_athena(
             rule['query'],
-            rule['database'],
+            'uk_snowfall_processed',
         )
 
         if athena_result and evaluate_rule(rule, athena_result):
