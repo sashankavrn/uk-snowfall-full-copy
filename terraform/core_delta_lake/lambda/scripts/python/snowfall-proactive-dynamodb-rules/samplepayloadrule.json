@@ -18,7 +18,12 @@
   "proactive_script_name": { "S": "disk_cleanup.sh" },
   "metric": { "S": "avg_ram" }
 }
+// sample queri
 
+SELECT 1 as "restaurant_number", '[PROACTIVE] Description' as "message"
+UNION ALL
+SELECT 15 as "restaurant_number", '[PROACTIVE] Description' as "message"
+// 
  query = """WITH res as (
     SELECT DISTINCT "restaurant_number"
     FROM "uk_snowfall_processed"."newrelic_digital_3po_foe_response"
@@ -195,3 +200,8 @@ ORDER BY error_percentage DESC
         'statusCode': 200,
         'body': 'Rule inserted successfully'
     }
+// 
+
+SELECT 1 as "restaurant_number", '[PROACTIVE] Description' as "message"
+UNION ALL
+SELECT 15 as "restaurant_number", '[PROACTIVE] Description' as "message"

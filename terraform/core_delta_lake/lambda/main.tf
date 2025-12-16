@@ -773,20 +773,20 @@ data "aws_s3_bucket" "service_agent_bucket" {
   bucket = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
   }
 
-# resource "aws_s3_bucket_notification" "service_agent_server_files_trigger" {
-#   bucket = data.aws_s3_bucket.service_agent_bucket.id
+resource "aws_s3_bucket_notification" "service_agent_server_files_trigger" {
+  bucket = data.aws_s3_bucket.service_agent_bucket.id
 
 
-#   lambda_function {
-#     lambda_function_arn = aws_lambda_function.service_agent_server_files.arn
-#     events              = ["s3:ObjectCreated:*"]
-#     filter_prefix       = "uploads/"
-#   }
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.service_agent_server_files.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "uploads/"
+  }
 
-#   depends_on = [
-#     aws_lambda_permission.allow_service_agent_s3_bucket
-#   ]
-# }
+  depends_on = [
+    aws_lambda_permission.allow_service_agent_s3_bucket
+  ]
+}
 
 
 ##########################################################################MERAKI-CLIENT-INFO-FETCH###################################################
@@ -815,7 +815,7 @@ resource "aws_lambda_function" "uk_snowfall_meraki_client_info_function" {
   tags             = var.resource_tags
   layers = [
     "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1",
-    "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:15"
+    "arn:aws:lambda:eu-central-1:770693421928:lm,ayer:Klayers-p312-requests:15"
   ]
   environment {
     variables = {
