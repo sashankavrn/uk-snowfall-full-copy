@@ -624,6 +624,19 @@ locals {
       trigger_type    = "SCHEDULED"
       schedule        = "cron(0 1 * * ? *)"
       reporting_date  = ""
+    },
+    "service_agent_server_files" = {
+      name            = "uk-snowfall-service-agent-server-files"
+      description     = "Workflow for the newrelic rmp device data"
+      dataset         = "service_agent_main_job"
+      group           = "processed"
+      trigger_name    = "uk-snowfall-service-agent-server-files-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 10
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(30 * * * ? *)"
+      reporting_date  = ""
     }
   }
 }
