@@ -744,7 +744,7 @@ data "archive_file" "service_agent_server_extract_script" {
 
 # Lambda Function to extract service agent server info from Athena
 resource "aws_lambda_function" "service_agent_server_extract_function" {
-  filename         = "${path.module}/scripts/zips/service-agent-server-extract.zip"
+  filename         = "${path.module}/scripts/zips/service-agent-server-list-extract.zip"
   function_name    = "uk-snowfall-service-agent-server-list-extract-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
