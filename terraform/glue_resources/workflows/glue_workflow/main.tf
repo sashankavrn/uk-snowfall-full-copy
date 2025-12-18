@@ -456,19 +456,6 @@ locals {
       schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
-    "service_agent_server_files" = {
-      name            = "uk-snowfall-service-agent-server-files"
-      description     = "Workflow for the newrelic rmp device data"
-      dataset         = "service_agent_server_files"
-      group           = "preparation"
-      trigger_name    = "uk-snowfall-service-agent-server-files-trigger"
-      max_concurrent  = 1
-      batch_size      = 100
-      batch_window    = 10
-      trigger_type    = "EVENT"
-      schedule        = null
-      reporting_date  = null
-    },
     "genesys_contact_settings" = {
       "name" = "uk-snowfall-genesys-contact-settings"
       "description" = "Workflow for Genesys Contact Center Settings data"
@@ -596,7 +583,7 @@ locals {
       "batch_size" = 100
       "batch_window" = 1
       "trigger_type" = "SCHEDULED"
-      "schedule" = "cron(0/15 * * * ? *)"
+      "schedule" = "cron(45 * * * ? *)"
       "reporting_date" = ""
     },
     "genesys_user_details" = {
