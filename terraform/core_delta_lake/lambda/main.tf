@@ -644,7 +644,7 @@ resource "aws_lambda_function" "uk_snowfall_service_agent_function" {
   runtime          = "python3.12"
   memory_size      = 1024
   timeout          = 120
-  description      = "Upload data to S3 using JWT authentication"
+  description      = "Upload data to S3 using JWT authentication via api"
   source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-upload-s3.zip")
   tags             = var.resource_tags
   layers = [  ]
@@ -667,7 +667,7 @@ resource "aws_lambda_permission" "allow_service_agent_bucket" {
 }
 
 
-############################################ SERVICE AGENT SERVER EXTRACT & UPLOAD TO S3 LAMBDA #############################################
+############################################ SERVICE AGENT SERVER LIST EXTRACT & UPLOAD TO S3 LAMBDA #############################################
 
 # Archive the Lambda script for extracting service agent server info
 data "archive_file" "service_agent_server_extract_script" {
@@ -679,14 +679,14 @@ data "archive_file" "service_agent_server_extract_script" {
 # Lambda Function to extract service agent server info from Athena
 resource "aws_lambda_function" "service_agent_server_extract_function" {
   filename         = "${path.module}/scripts/zips/service-agent-server-extract.zip"
-  function_name    = "uk-snowfall-service-agent-server-extract-${var.environment}"
+  function_name    = "uk-snowfall-service-agent-server-list-extract-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   memory_size      = 1024
   timeout          = 300
-  description      = "Extracts service agent server information from Athena and stores it in S3"
-  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-server-extract.zip")
+  description      = "Extracts service agent server list from Athena and stores it in S3 folder-server_list "
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-server-list-extract.zip")
   tags             = var.resource_tags
 
   environment {
@@ -724,7 +724,7 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_service_agent_server_
 
 }
 
-############################################ SERVICE AGENT SERVER FILES #############################################
+############################################ SERVICE AGENT SERVER FILES COPY TO RAW BUCKET  #############################################
 
 ## Archive the service-agent-server-files Python script
 data "archive_file" "service_agent_server_files" {
@@ -736,7 +736,7 @@ data "archive_file" "service_agent_server_files" {
 ## Lambda function - service-agent-server-files
 resource "aws_lambda_function" "service_agent_server_files" {
   filename         = data.archive_file.service_agent_server_files.output_path
-  function_name    = "uk-snowfall-service-agent-server-files-${var.environment}"
+  function_name    = "uk-snowfall-service-agent-server-files-copy-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
