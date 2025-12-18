@@ -738,8 +738,8 @@ resource "aws_s3_bucket_notification" "service_agent_server_files_trigger" {
 # Archive the Lambda script for extracting service agent server info
 data "archive_file" "service_agent_server_extract_script" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/service-agent-server-extract/"
-  output_path = "${path.module}/scripts/zips/service-agent-server-extract.zip"
+  source_dir  = "${path.module}/scripts/python/service-agent-server-list-extract/"
+  output_path = "${path.module}/scripts/zips/service-agent-server-list-extract.zip"
 }
 
 # Lambda Function to extract service agent server info from Athena
