@@ -1,5 +1,5 @@
 ############################################
-## PROACTIVE HEALING: API Gateway WebSocket
+## PROACTIVE HEALING: WebSocket API
 ############################################
 
 resource "aws_apigatewayv2_api" "uk_snowfall_proactive_healing_websocket_api" {
@@ -9,7 +9,7 @@ resource "aws_apigatewayv2_api" "uk_snowfall_proactive_healing_websocket_api" {
 }
 
 ############################################
-## PROACTIVE HEALING: WebSocket Routes
+## ROUTES
 ############################################
 
 resource "aws_apigatewayv2_route" "uk_snowfall_proactive_healing_connect_route" {
@@ -31,33 +31,33 @@ resource "aws_apigatewayv2_route" "uk_snowfall_proactive_healing_default_route" 
 }
 
 ############################################
-## PROACTIVE HEALING: Lambda Integrations
+## INTEGRATIONS (Using Passed‑In Lambda ARNs)
 ############################################
 
 resource "aws_apigatewayv2_integration" "uk_snowfall_proactive_healing_connect_integration" {
   api_id           = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
   integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.uk_snowfall_proactive_healing_connect.invoke_arn
+  integration_uri  = var.connect_lambda_arn
 }
 
 resource "aws_apigatewayv2_integration" "uk_snowfall_proactive_healing_disconnect_integration" {
   api_id           = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
   integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.uk_snowfall_proactive_healing_disconnect.invoke_arn
+  integration_uri  = var.disconnect_lambda_arn
 }
 
 resource "aws_apigatewayv2_integration" "uk_snowfall_proactive_healing_default_integration" {
   api_id           = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
   integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.uk_snowfall_proactive_healing_default.invoke_arn
+  integration_uri  = var.default_lambda_arn
 }
 
 ############################################
-## PROACTIVE HEALING: WebSocket Stage
+## STAGE
 ############################################
 
 resource "aws_apigatewayv2_stage" "uk_snowfall_proactive_healing_websocket_stage" {
   api_id      = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
-  name        = var.environment
+  name        = var.stage_name
   auto_deploy = true
 }
