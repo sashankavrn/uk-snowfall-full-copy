@@ -628,7 +628,7 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_digital_3po_
   source_arn    = aws_cloudwatch_event_rule.newrelic_digital_3po_foe_response_lambda_schedule.arn
 }
 
-############################################ SERVICE AGENT JWT/UPLOAD S3 LAMBDA #############################################
+############################################ SERVICE AGENT JWT/UPLOAD S3 LAMBDA VIA API#############################################
 
 data "archive_file" "service_agent_upload_s3" {
   type        = "zip"
@@ -1065,4 +1065,49 @@ resource "null_resource" "invoke_lambda_once" {
   }
 
   depends_on = [aws_lambda_function.uk_snowfall_proactive_dynamodb_rules]
+}
+
+
+##########################################
+## DynamoDB: WebSocket Connections Table for Poractive alearts 
+############################################
+resource "aws_dynamodb_table" "websocket_connections" {
+  name         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "restaurant_number"
+  range_key    = "device_id"
+
+  attribute {
+    name = "restaurant_number"
+    type = "S"
+  }
+
+  attribute {
+    name = "device_id"
+    type = "S"
+  }
+
+  tags = var.resource_tags
+}
+
+############################################
+## DynamoDB: WebSocket Connections Results
+############################################
+resource "aws_dynamodb_table" "websocket_connections_results" {
+  name         = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "result_id"
+  range_key    = "device_id"
+
+  attribute {
+    name = "result_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "device_id"
+    type = "S"
+  }
+
+  tags = var.resource_tags
 }
