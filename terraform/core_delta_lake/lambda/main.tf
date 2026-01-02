@@ -1195,7 +1195,7 @@ data "archive_file" "uk_snowfall_proactive_healing_default_handler" {
 resource "aws_lambda_function" "default_handler" {
   filename         = data.archive_file.uk_snowfall_proactive_healing_default_handler.output_path
   function_name    = "uk-snowfall-proactive-healing-default-${var.environment}"
-  role             = aws_iam_role.websocket_lambda_exec.arn
+  role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 29
@@ -1228,7 +1228,7 @@ data "archive_file" "uk_snowfall_proactive_healing_notifier_handler" {
 resource "aws_lambda_function" "notifier_handler" {
   filename         = data.archive_file.uk_snowfall_proactive_healing_notifier_handler.output_path
   function_name    = "uk-snowfall-proactive-healing-notifier-${var.environment}"
-  role             = aws_iam_role.websocket_lambda_exec.arn
+  role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 29
