@@ -1120,24 +1120,24 @@ resource "aws_dynamodb_table" "websocket_connections_results" {
 ############################################
 ## PROACTIVE HEALING: Archive Connect Handler Script
 ############################################
-data "archive_file" "uk_snowfall_proactive_healing_connect_handler" {
+data "archive_file" "uk_snowfall_proactive_healing_connect" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/snowfall-proactive-connect-handler/"
-  output_path = "${path.module}/scripts/zips/snowfall-proactive-connect-handler.zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-connect/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-connect.zip"
 }
 
 ############################################
 ## PROACTIVE HEALING: Lambda Connect Handler
 ############################################
-resource "aws_lambda_function" "connect_handler" {
-  filename         = data.archive_file.uk_snowfall_proactive_healing_connect_handler.output_path
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_connect" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_connect.output_path
   function_name    = "uk-snowfall-proactive-healing-connect-${var.environment}"
   role             =  var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 29
   description      = "Handles WebSocket $connect events for Snowfall Proactive Healing"
-  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_connect_handler.output_path)
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_connect.output_path)
   tags             = var.resource_tags
 
   environment {
@@ -1152,16 +1152,16 @@ resource "aws_lambda_function" "connect_handler" {
 ############################################
 ## PROACTIVE HEALING: Archive Disconnect Handler Script
 ############################################
-data "archive_file" "uk_snowfall_proactive_healing_disconnect_handler" {
+data "archive_file" "uk_snowfall_proactive_healing_disconnect" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/snowfall-proactive-disconnect-handler/"
-  output_path = "${path.module}/scripts/zips/snowfall-proactive-disconnect-handler.zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-disconnect/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-disconnect.zip"
 }
 
 ############################################
 ## PROACTIVE HEALING: Lambda Disconnect Handler
 ############################################
-resource "aws_lambda_function" "disconnect_handler" {
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_disconnect_handler" {
   filename         = data.archive_file.uk_snowfall_proactive_healing_disconnect_handler.output_path
   function_name    = "uk-snowfall-proactive-healing-disconnect-${var.environment}"
   role             =  var.role_assumed_arn
@@ -1183,17 +1183,17 @@ resource "aws_lambda_function" "disconnect_handler" {
 ############################################
 ## PROACTIVE HEALING: Archive Default Handler Script
 ############################################
-data "archive_file" "uk_snowfall_proactive_healing_default_handler" {
+data "archive_file" "uk_snowfall_proactive_healing_default" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/snowfall-proactive-default-handler/"
-  output_path = "${path.module}/scripts/zips/snowfall-proactive-default-handler.zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-default/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-default.zip"
 }
 
 ############################################
 ## PROACTIVE HEALING: Lambda Default Handler
 ############################################
-resource "aws_lambda_function" "default_handler" {
-  filename         = data.archive_file.uk_snowfall_proactive_healing_default_handler.output_path
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_default" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_default.output_path
   function_name    = "uk-snowfall-proactive-healing-default-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
@@ -1216,24 +1216,24 @@ resource "aws_lambda_function" "default_handler" {
 ############################################
 ## PROACTIVE HEALING: Archive Notifier Handler Script
 ############################################
-data "archive_file" "uk_snowfall_proactive_healing_notifier_handler" {
+data "archive_file" "uk_snowfall_proactive_healing_notifier" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/snowfall-proactive-notifier-handler/"
-  output_path = "${path.module}/scripts/zips/snowfall-proactive-notifier-handler.zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-notifier/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-notifier.zip"
 }
 
 ############################################
 ## PROACTIVE HEALING: Lambda Notifier Handler
 ############################################
-resource "aws_lambda_function" "notifier_handler" {
-  filename         = data.archive_file.uk_snowfall_proactive_healing_notifier_handler.output_path
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_notifier" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_notifier.output_path
   function_name    = "uk-snowfall-proactive-healing-notifier-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 29
   description      = "Sends messages to WebSocket clients for Snowfall Proactive Healing"
-  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_notifier_handler.output_path)
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_notifier.output_path)
   tags             = var.resource_tags
 
   environment {
