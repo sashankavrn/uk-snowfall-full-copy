@@ -60,7 +60,7 @@ module "lambda_module" {
   newrelic_5min_schedule = var.newrelic_5min_schedule
   newrelic_1am_schedule = var.newrelic_1am_schedule
   service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
-  websocket_endpoint = module.websocket_api_module.websocket_endpoint
+  # websocket_endpoint = module.websocket_api_module.websocket_endpoint
 
 }
 
