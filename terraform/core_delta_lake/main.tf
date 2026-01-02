@@ -95,5 +95,21 @@ module "api_module" {
   depends_on = [module.lambda_module]
 }
 
+module "websocket_api_module" {
+  source = "./websocketapi"
+
+  environment        = var.environment
+  resource_tags      = merge(var.resource_tags, { Environment = var.environment })
+  role_assumed_arn   = var.role_assumed_arn
+  stage_name         = var.stage_name
+  account_number     = var.account_number
+
+  connect_lambda_arn    = module.lambda_module.connect_lambda_arn
+  disconnect_lambda_arn = module.lambda_module.disconnect_lambda_arn
+  default_lambda_arn    = module.lambda_module.default_lambda_arn
+
+  depends_on = [module.lambda_module]
+}
+
 
 
