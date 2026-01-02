@@ -1111,3 +1111,136 @@ resource "aws_dynamodb_table" "websocket_connections_results" {
 
   tags = var.resource_tags
 }
+
+############################################
+## PROACTIVE HEALING LAMBDA FUNCTIONS
+############################################
+
+
+############################################
+## PROACTIVE HEALING: Archive Connect Handler Script
+############################################
+data "archive_file" "uk_snowfall_proactive_healing_connect_handler" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-connect-handler/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-connect-handler.zip"
+}
+
+############################################
+## PROACTIVE HEALING: Lambda Connect Handler
+############################################
+resource "aws_lambda_function" "connect_handler" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_connect_handler.output_path
+  function_name    = "uk-snowfall-proactive-healing-connect-${var.environment}"
+  role             = aws_iam_role.websocket_lambda_exec.arn
+  handler          = "websocket_connect.handler"
+  runtime          = "python3.12"
+  timeout          = 29
+  description      = "Handles WebSocket $connect events for Snowfall Proactive Healing"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_connect_handler.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      # TABLE_NAME = aws_dynamodb_table.websocket_connections.name
+      # JWT_SECRET = var.jwt_secret
+    }
+  }
+}
+
+
+############################################
+## PROACTIVE HEALING: Archive Disconnect Handler Script
+############################################
+data "archive_file" "uk_snowfall_proactive_healing_disconnect_handler" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-disconnect-handler/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-disconnect-handler.zip"
+}
+
+############################################
+## PROACTIVE HEALING: Lambda Disconnect Handler
+############################################
+resource "aws_lambda_function" "disconnect_handler" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_disconnect_handler.output_path
+  function_name    = "uk-snowfall-proactive-healing-disconnect-${var.environment}"
+  role             = aws_iam_role.websocket_lambda_exec.arn
+  handler          = "websocket_disconnect.handler"
+  runtime          = "python3.12"
+  timeout          = 29
+  description      = "Handles WebSocket $disconnect events for Snowfall Proactive Healing"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_disconnect_handler.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      # TABLE_NAME = aws_dynamodb_table.websocket_connections.name
+    }
+  }
+}
+
+
+############################################
+## PROACTIVE HEALING: Archive Default Handler Script
+############################################
+data "archive_file" "uk_snowfall_proactive_healing_default_handler" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-default-handler/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-default-handler.zip"
+}
+
+############################################
+## PROACTIVE HEALING: Lambda Default Handler
+############################################
+resource "aws_lambda_function" "default_handler" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_default_handler.output_path
+  function_name    = "uk-snowfall-proactive-healing-default-${var.environment}"
+  role             = aws_iam_role.websocket_lambda_exec.arn
+  handler          = "monitor_trigger.handler"
+  runtime          = "python3.12"
+  timeout          = 29
+  description      = "Handles default WebSocket route for Snowfall Proactive Healing"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_default_handler.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      # TABLE_NAME          = aws_dynamodb_table.websocket_connections.name
+      # RESULTS_TABLE_NAME  = aws_dynamodb_table.websocket_connections_results.name
+      # WEBSOCKET_ENDPOINT  = var.websocket_endpoint
+    }
+  }
+}
+
+
+############################################
+## PROACTIVE HEALING: Archive Notifier Handler Script
+############################################
+data "archive_file" "uk_snowfall_proactive_healing_notifier_handler" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-notifier-handler/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-notifier-handler.zip"
+}
+
+############################################
+## PROACTIVE HEALING: Lambda Notifier Handler
+############################################
+resource "aws_lambda_function" "notifier_handler" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_notifier_handler.output_path
+  function_name    = "uk-snowfall-proactive-healing-notifier-${var.environment}"
+  role             = aws_iam_role.websocket_lambda_exec.arn
+  handler          = "websocket_send.handler"
+  runtime          = "python3.12"
+  timeout          = 29
+  description      = "Sends messages to WebSocket clients for Snowfall Proactive Healing"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_notifier_handler.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      TABLE_NAME         = aws_dynamodb_table.websocket_connections.name
+      # WEBSOCKET_ENDPOINT = var.websocket_endpoint
+    }
+  }
+}
+
