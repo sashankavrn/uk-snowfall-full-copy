@@ -1132,8 +1132,8 @@ data "archive_file" "uk_snowfall_proactive_healing_connect_handler" {
 resource "aws_lambda_function" "connect_handler" {
   filename         = data.archive_file.uk_snowfall_proactive_healing_connect_handler.output_path
   function_name    = "uk-snowfall-proactive-healing-connect-${var.environment}"
-  role             = aws_iam_role.websocket_lambda_exec.arn
-  handler          = "websocket_connect.handler"
+  role             =  var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 29
   description      = "Handles WebSocket $connect events for Snowfall Proactive Healing"
@@ -1164,8 +1164,8 @@ data "archive_file" "uk_snowfall_proactive_healing_disconnect_handler" {
 resource "aws_lambda_function" "disconnect_handler" {
   filename         = data.archive_file.uk_snowfall_proactive_healing_disconnect_handler.output_path
   function_name    = "uk-snowfall-proactive-healing-disconnect-${var.environment}"
-  role             = aws_iam_role.websocket_lambda_exec.arn
-  handler          = "websocket_disconnect.handler"
+  role             =  var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 29
   description      = "Handles WebSocket $disconnect events for Snowfall Proactive Healing"
@@ -1196,7 +1196,7 @@ resource "aws_lambda_function" "default_handler" {
   filename         = data.archive_file.uk_snowfall_proactive_healing_default_handler.output_path
   function_name    = "uk-snowfall-proactive-healing-default-${var.environment}"
   role             = aws_iam_role.websocket_lambda_exec.arn
-  handler          = "monitor_trigger.handler"
+  handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 29
   description      = "Handles default WebSocket route for Snowfall Proactive Healing"
@@ -1229,7 +1229,7 @@ resource "aws_lambda_function" "notifier_handler" {
   filename         = data.archive_file.uk_snowfall_proactive_healing_notifier_handler.output_path
   function_name    = "uk-snowfall-proactive-healing-notifier-${var.environment}"
   role             = aws_iam_role.websocket_lambda_exec.arn
-  handler          = "websocket_send.handler"
+  handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 29
   description      = "Sends messages to WebSocket clients for Snowfall Proactive Healing"
