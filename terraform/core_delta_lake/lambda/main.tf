@@ -1132,7 +1132,7 @@ data "archive_file" "uk_snowfall_proactive_healing_connect" {
 resource "aws_lambda_function" "uk_snowfall_proactive_healing_connect" {
   filename         = data.archive_file.uk_snowfall_proactive_healing_connect.output_path
   function_name    = "uk-snowfall-proactive-healing-connect-${var.environment}"
-  role             =  var.role_assumed_arn
+  role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 29
@@ -1161,15 +1161,15 @@ data "archive_file" "uk_snowfall_proactive_healing_disconnect" {
 ############################################
 ## PROACTIVE HEALING: Lambda Disconnect Handler
 ############################################
-resource "aws_lambda_function" "uk_snowfall_proactive_healing_disconnect_handler" {
-  filename         = data.archive_file.uk_snowfall_proactive_healing_disconnect_handler.output_path
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_disconnect" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_disconnect.output_path
   function_name    = "uk-snowfall-proactive-healing-disconnect-${var.environment}"
-  role             =  var.role_assumed_arn
+  role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 29
   description      = "Handles WebSocket $disconnect events for Snowfall Proactive Healing"
-  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_disconnect_handler.output_path)
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_disconnect.output_path)
   tags             = var.resource_tags
 
   environment {
@@ -1200,7 +1200,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_default" {
   runtime          = "python3.12"
   timeout          = 29
   description      = "Handles default WebSocket route for Snowfall Proactive Healing"
-  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_default_handler.output_path)
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_default.output_path)
   tags             = var.resource_tags
 
   environment {
@@ -1218,8 +1218,8 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_default" {
 ############################################
 data "archive_file" "uk_snowfall_proactive_healing_notifier" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/snowfall-proactive-notifier/"
-  output_path = "${path.module}/scripts/zips/snowfall-proactive-notifier.zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-notifier/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-notifier.zip"
 }
 
 ############################################
@@ -1238,9 +1238,8 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_notifier" {
 
   environment {
     variables = {
-      TABLE_NAME         = aws_dynamodb_table.websocket_connections.name
+      TABLE_NAME = aws_dynamodb_table.websocket_connections.name
       # WEBSOCKET_ENDPOINT = var.websocket_endpoint
     }
   }
 }
-
