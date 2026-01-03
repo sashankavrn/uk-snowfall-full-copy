@@ -33,14 +33,14 @@ output "ods_user_data_to_datashare_permission" {
   description = "Permission ID allowing the raw bucket to invoke the ods_user_data_to_datashare Lambda function"
 }
 
-output "connect_lambda_arn" {
-  value = aws_lambda_function.uk_snowfall_proactive_healing_connect.invoke_arn
-}
+# output "connect_lambda_arn" {
+#   value = aws_lambda_function.uk_snowfall_proactive_healing_connect.invoke_arn
+# }
 
-output "disconnect_lambda_arn" {
-  value = aws_lambda_function.uk_snowfall_proactive_healing_disconnect.invoke_arn
-}
+# output "disconnect_lambda_arn" {
+#   value = aws_lambda_function.uk_snowfall_proactive_healing_disconnect.invoke_arn
+# }
 
-output "default_lambda_arn" {
-  value = aws_lambda_function.uk_snowfall_proactive_healing_default.invoke_arn
-}
+# output "default_lambda_arn" {
+#   value = aws_lambda_function.uk_snowfall_proactive_healing_default.invoke_arn
+# }
