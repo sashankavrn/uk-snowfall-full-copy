@@ -12,7 +12,7 @@ output "proactive_healing_websocket_stage_name" {
   value       = aws_apigatewayv2_stage.uk_snowfall_proactive_healing_websocket_stage.name
 }
 
-output "websocket_endpoint" {
+output "proactive_healing_websocket_api_endpoint" {
   description = "The WebSocket API endpoint URL for Proactive Healing"
   value       = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.api_endpoint
 }
