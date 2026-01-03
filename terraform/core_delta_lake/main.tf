@@ -60,7 +60,7 @@ module "lambda_module" {
   newrelic_5min_schedule = var.newrelic_5min_schedule
   newrelic_1am_schedule = var.newrelic_1am_schedule
   service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
-  websocket_endpoint = module.websocket_api_module.proactive_healing_websocket_api_id
+  websocket_endpoint = module.websocket_api_module.proactive_healing_websocket_api_endpoint
 }   
 
 # Triggering the SNS Module, will have to change to fix endpoint as email
