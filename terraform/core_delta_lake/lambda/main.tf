@@ -1236,7 +1236,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_notifier" {
   environment {
     variables = {
       TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections"
-      # WEBSOCKET_ENDPOINT = var.websocket_endpoint
+      WEBSOCKET_ENDPOINT = var.websocket_endpoint
     }
   }
 }
