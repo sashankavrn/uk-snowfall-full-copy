@@ -10,7 +10,7 @@ import base64
 import os
 
 # === CONFIG ===
-WS_URL = "wss://rxzavnsfd3.execute-api.eu-west-2.amazonaws.com/dev"
+WS_URL = "wss://rxzavnsfd3.execute-api.eu-central-1.amazonaws.com/dev"
 RESTAURANT_NUMBER = "12"
 DEVICE_ID = "device-001"
 MACHINE_NAME = "POS-01"
