@@ -174,10 +174,14 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "tech360_encryptio
 resource "aws_s3_object" "datashare_tech360_ncr_folders" {
   for_each = {
     incident             = "ncr_service_now/incident/"
-    test = "ncr_service_now/test/"
     # problem_record       = "ncr_service_now/problem_record/"
     # service_now_case     = "ncr_service_now/service_case/"
     # incident_task        = "ncr_service_now/incident_task/"
+    # incident_sla          = "ncr_service_now/incident_sla/"
+    # account               = "ncr_service_now/account/"
+    # problem_task          = "ncr_service_now/problem_task/"
+    # worknotes             ="ncr_service_now/worknotes/"
+
   }
 
   bucket                 = aws_s3_bucket.datashare_tech360_bucket.id
