@@ -1,111 +1,112 @@
-
-"fileMappings": [
-  {
-    "fileName": "ncr_service_now/change_request/",
-    "destinationPath": "ncr_service_now/change_request/"
-  },
-  {
-    "fileName": "ncr_service_now/incident/",
-    "destinationPath": "ncr_service_now/incident/"
-  },
-  {
-    "fileName": "ncr_service_now/problem_record/",
-    "destinationPath": "ncr_service_now/problem_record/"
-  },
-  {
-    "fileName": "ncr_service_now/service_case/",
-    "destinationPath": "ncr_service_now/service_case/"
-  },
-  {
-    "fileName": "ncr_service_now/incident_task/",
-    "destinationPath": "ncr_service_now/incident_task/"
-  },
-  {
-    "fileName": "ncr_service_now/knowledge_base/",
-    "destinationPath": "ncr_service_now/knowledge_base/"
-  },
-  {
-    "fileName": "ncr_service_now/knowledge/",
-    "destinationPath": "ncr_service_now/knowledge/"
-  },
-  {
-    "fileName": "ncr_service_now/knowledge_feedback/",
-    "destinationPath": "ncr_service_now/knowledge_feedback/"
-  },
-  {
-    "fileName": "ncr_service_now/knowledge_use/",
-    "destinationPath": "ncr_service_now/knowledge_use/"
-  },
-  {
-    "fileName": "ncr_service_now/worknotes/",
-    "destinationPath": "ncr_service_now/worknotes/"
-  },
-  {
-    "fileName": "ncr_service_now/incident_sla/",
-    "destinationPath": "ncr_service_now/incident_sla/"
-  },
-  {
-    "fileName": "ncr_service_now/account/",
-    "destinationPath": "ncr_service_now/account/"
-  },
-  {
-    "fileName": "ncr_service_now/problem_task/",
-    "destinationPath": "ncr_service_now/problem_task/"
-  },
-  {
-    "fileName": "genesys/contact_center_settings/",
-    "destinationPath": "genesys/contact_center_settings/"
-  },
-  {
-    "fileName": "genesys/conversation_attributes/",
-    "destinationPath": "genesys/conversation_attributes/"
-  },
-  {
-    "fileName": "genesys/conversations_detail/",
-    "destinationPath": "genesys/conversations_detail/"
-  },
-  {
-    "fileName": "genesys/conversations/",
-    "destinationPath": "genesys/conversations/"
-  },
-  {
-    "fileName": "genesys/primary_presence/",
-    "destinationPath": "genesys/primary_presence/"
-  },
-  {
-    "fileName": "genesys/queue_abandons/",
-    "destinationPath": "genesys/queue_abandons/"
-  },
-  {
-    "fileName": "genesys/queue_configuration/",
-    "destinationPath": "genesys/queue_configuration/"
-  },
-  {
-    "fileName": "genesys/routing_status/",
-    "destinationPath": "genesys/routing_status/"
-  },
-  {
-    "fileName": "genesys/queue_interval_history/",
-    "destinationPath": "genesys/queue_interval_history/"
-  },
-  {
-    "fileName": "genesys/session_summary/",
-    "destinationPath": "genesys/session_summary/"
-  },
-  {
-    "fileName": "genesys/user_details/",
-    "destinationPath": "genesys/user_details/"
-  },
-  {
-    "fileName": "genesys/user_status_interval_history/",
-    "destinationPath": "genesys/user_status_interval_history/"
-  },
-  {
-    "fileName": "gcc/",
-    "destinationPath": "gcc/"
-  },
-  {
-    "fileName": "happysignals/",
-    "destinationPath": "happysignals/"
-  }
-]
+{
+  "fileMappings": [
+    {
+      "fileName": "ncr_service_now/change_request/",
+      "destinationPath": "ncr_service_now/change_request/"
+    },
+    {
+      "fileName": "ncr_service_now/incident/",
+      "destinationPath": "ncr_service_now/incident/"
+    },
+    {
+      "fileName": "ncr_service_now/problem_record/",
+      "destinationPath": "ncr_service_now/problem_record/"
+    },
+    {
+      "fileName": "ncr_service_now/service_case/",
+      "destinationPath": "ncr_service_now/service_case/"
+    },
+    {
+      "fileName": "ncr_service_now/incident_task/",
+      "destinationPath": "ncr_service_now/incident_task/"
+    },
+    {
+      "fileName": "ncr_service_now/knowledge_base/",
+      "destinationPath": "ncr_service_now/knowledge_base/"
+    },
+    {
+      "fileName": "ncr_service_now/knowledge/",
+      "destinationPath": "ncr_service_now/knowledge/"
+    },
+    {
+      "fileName": "ncr_service_now/knowledge_feedback/",
+      "destinationPath": "ncr_service_now/knowledge_feedback/"
+    },
+    {
+      "fileName": "ncr_service_now/knowledge_use/",
+      "destinationPath": "ncr_service_now/knowledge_use/"
+    },
+    {
+      "fileName": "ncr_service_now/worknotes/",
+      "destinationPath": "ncr_service_now/worknotes/"
+    },
+    {
+      "fileName": "ncr_service_now/incident_sla/",
+      "destinationPath": "ncr_service_now/incident_sla/"
+    },
+    {
+      "fileName": "ncr_service_now/account/",
+      "destinationPath": "ncr_service_now/account/"
+    },
+    {
+      "fileName": "ncr_service_now/problem_task/",
+      "destinationPath": "ncr_service_now/problem_task/"
+    },
+    {
+      "fileName": "genesys/contact_center_settings/",
+      "destinationPath": "genesys/contact_center_settings/"
+    },
+    {
+      "fileName": "genesys/conversation_attributes/",
+      "destinationPath": "genesys/conversation_attributes/"
+    },
+    {
+      "fileName": "genesys/conversations_detail/",
+      "destinationPath": "genesys/conversations_detail/"
+    },
+    {
+      "fileName": "genesys/conversations/",
+      "destinationPath": "genesys/conversations/"
+    },
+    {
+      "fileName": "genesys/primary_presence/",
+      "destinationPath": "genesys/primary_presence/"
+    },
+    {
+      "fileName": "genesys/queue_abandons/",
+      "destinationPath": "genesys/queue_abandons/"
+    },
+    {
+      "fileName": "genesys/queue_configuration/",
+      "destinationPath": "genesys/queue_configuration/"
+    },
+    {
+      "fileName": "genesys/routing_status/",
+      "destinationPath": "genesys/routing_status/"
+    },
+    {
+      "fileName": "genesys/queue_interval_history/",
+      "destinationPath": "genesys/queue_interval_history/"
+    },
+    {
+      "fileName": "genesys/session_summary/",
+      "destinationPath": "genesys/session_summary/"
+    },
+    {
+      "fileName": "genesys/user_details/",
+      "destinationPath": "genesys/user_details/"
+    },
+    {
+      "fileName": "genesys/user_status_interval_history/",
+      "destinationPath": "genesys/user_status_interval_history/"
+    },
+    {
+      "fileName": "gcc/",
+      "destinationPath": "gcc/"
+    },
+    {
+      "fileName": "happysignals/",
+      "destinationPath": "happysignals/"
+    }
+  ]
+}
