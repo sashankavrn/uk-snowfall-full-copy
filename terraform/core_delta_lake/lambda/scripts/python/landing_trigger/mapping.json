@@ -1,112 +1,196 @@
 {
-  "fileMappings": [
-    {
-      "fileName": "ncr_service_now/change_request/",
-      "destinationPath": "ncr_service_now/change_request/"
-    },
-    {
-      "fileName": "ncr_service_now/incident/",
-      "destinationPath": "ncr_service_now/incident/"
-    },
-    {
-      "fileName": "ncr_service_now/problem_record/",
-      "destinationPath": "ncr_service_now/problem_record/"
-    },
-    {
-      "fileName": "ncr_service_now/service_case/",
-      "destinationPath": "ncr_service_now/service_case/"
-    },
-    {
-      "fileName": "ncr_service_now/incident_task/",
-      "destinationPath": "ncr_service_now/incident_task/"
-    },
-    {
-      "fileName": "ncr_service_now/knowledge_base/",
-      "destinationPath": "ncr_service_now/knowledge_base/"
-    },
-    {
-      "fileName": "ncr_service_now/knowledge/",
-      "destinationPath": "ncr_service_now/knowledge/"
-    },
-    {
-      "fileName": "ncr_service_now/knowledge_feedback/",
-      "destinationPath": "ncr_service_now/knowledge_feedback/"
-    },
-    {
-      "fileName": "ncr_service_now/knowledge_use/",
-      "destinationPath": "ncr_service_now/knowledge_use/"
-    },
-    {
-      "fileName": "ncr_service_now/worknotes/",
-      "destinationPath": "ncr_service_now/worknotes/"
-    },
-    {
-      "fileName": "ncr_service_now/incident_sla/",
-      "destinationPath": "ncr_service_now/incident_sla/"
-    },
-    {
-      "fileName": "ncr_service_now/account/",
-      "destinationPath": "ncr_service_now/account/"
-    },
-    {
-      "fileName": "ncr_service_now/problem_task/",
-      "destinationPath": "ncr_service_now/problem_task/"
-    },
-    {
-      "fileName": "genesys/contact_center_settings/",
-      "destinationPath": "genesys/contact_center_settings/"
-    },
-    {
-      "fileName": "genesys/conversation_attributes/",
-      "destinationPath": "genesys/conversation_attributes/"
-    },
-    {
-      "fileName": "genesys/conversations_detail/",
-      "destinationPath": "genesys/conversations_detail/"
-    },
-    {
-      "fileName": "genesys/conversations/",
-      "destinationPath": "genesys/conversations/"
-    },
-    {
-      "fileName": "genesys/primary_presence/",
-      "destinationPath": "genesys/primary_presence/"
-    },
-    {
-      "fileName": "genesys/queue_abandons/",
-      "destinationPath": "genesys/queue_abandons/"
-    },
-    {
-      "fileName": "genesys/queue_configuration/",
-      "destinationPath": "genesys/queue_configuration/"
-    },
-    {
-      "fileName": "genesys/routing_status/",
-      "destinationPath": "genesys/routing_status/"
-    },
-    {
-      "fileName": "genesys/queue_interval_history/",
-      "destinationPath": "genesys/queue_interval_history/"
-    },
-    {
-      "fileName": "genesys/session_summary/",
-      "destinationPath": "genesys/session_summary/"
-    },
-    {
-      "fileName": "genesys/user_details/",
-      "destinationPath": "genesys/user_details/"
-    },
-    {
-      "fileName": "genesys/user_status_interval_history/",
-      "destinationPath": "genesys/user_status_interval_history/"
-    },
-    {
-      "fileName": "gcc/",
-      "destinationPath": "gcc/"
-    },
-    {
-      "fileName": "happysignals/",
-      "destinationPath": "happysignals/"
-    }
-  ]
+    "fileMappings": [
+        {
+            "fileName": "service_now/UK-SNowFall-ServiceNow-Incident-Intraday",
+            "destinationPath": "service_now/incident/intraday"
+        },
+        {
+            "fileName": "service_now/UK-SNowFall-ServiceNow-Incident-Daily",
+            "destinationPath": "service_now/incident/daily"
+        },
+        {
+            "fileName": "service_now/UK-SNowFall-ServiceNow-ChangeRequest",
+            "destinationPath": "service_now/change_request"
+        },
+        {
+            "fileName": "service_now/UK-SNowFall-ServiceNow-Location",
+            "destinationPath": "service_now/location"
+        },
+        {
+            "fileName": "service_now/UK-SNowFall-ServiceNow-ProblemRecord",
+            "destinationPath": "service_now/problem_record"
+        },
+        {
+            "fileName": "service_now/UK-SNowFall-ServiceNow-ServiceRequest",
+            "destinationPath": "service_now/service_request"
+        },
+        {
+            "fileName": "connect",
+            "destinationPath": "amazon_connect"
+        },
+        {
+            "fileName": "service_now/UK-SNowFall-ServiceNow-ServiceOffering",
+            "destinationPath": "service_now/service_offering"
+        },
+        {
+            "fileName": "service_now/UK-SNowFall-ServiceNow-SysUser",
+            "destinationPath": "service_now/sys_user"
+        },
+        {
+            "fileName": "service_now/UK-SNowFall-ServiceNow-Sys-User-Group",
+            "destinationPath": "service_now/sys_user_group"
+        },
+        {
+            "fileName": "ods/ODS_SNOWFALL_TRADING_HOURS",
+            "destinationPath": "ods/trading_hours"
+        },
+        {
+            "fileName": "ods/ODS_SNOWFALL_LOCATION_AND_HIERARCY",
+            "destinationPath": "ods/location_hierarchy"
+        },
+        {
+            "fileName": "ods/ODS_SNOWFALL_ADJ_TRADING_HOURS",
+            "destinationPath": "ods/adj_trading_hours"
+        },
+        {
+            "fileName": "ods/ODS_HIERARCY_EMP_SNOWFALL_NCR",
+            "destinationPath": "ods/user_data"
+        },
+        {
+            "fileName": "restaurant_config",
+            "destinationPath": "restaurant_config"
+        },
+        {
+            "fileName": "meraki/client_info",
+            "destinationPath": "meraki/client_info"
+        },
+        {
+            "fileName": "meraki/device_info",
+            "destinationPath": "meraki/device_info"
+        },
+        {
+            "fileName": "newrelic/newrelic_rmp_device_info",
+            "destinationPath": "newrelic/newrelic_rmp_device_info"
+        },
+        {
+            "fileName": "newrelic/newrelic_rmp_network_info",
+            "destinationPath": "newrelic/newrelic_rmp_network_info"
+        },
+        {
+            "fileName": "newrelic/newrelic_rmp_network_info_daily_aggregate",
+            "destinationPath": "newrelic/newrelic_rmp_network_info_daily_aggregate"
+        },
+        {
+            "fileName": "newrelic/newrelic_rmp_device_metrics",
+            "destinationPath": "newrelic/newrelic_rmp_device_metrics"
+        },
+        {
+            "fileName": "newrelic/newrelic_rmp_process_info",
+            "destinationPath": "newrelic/newrelic_rmp_process_info"
+        },
+        {
+            "fileName": "newrelic/newrelic_digital_gma_foe_response",
+            "destinationPath": "newrelic/newrelic_digital_gma_foe_response"
+        },        
+        {
+            "fileName": "newrelic/newrelic_digital_3po_foe_response",
+            "destinationPath": "newrelic/newrelic_digital_3po_foe_response"
+        },
+        {
+            "fileName": "ncr_service_now/worknotes",
+            "destinationPath": "ncr_service_now/worknotes"
+        },    
+        {
+            "fileName": "ncr_service_now/service_case",
+            "destinationPath": "ncr_service_now/service_case"
+        },
+        {
+            "fileName": "ncr_service_now/incident_task",
+            "destinationPath": "ncr_service_now/incident_task"
+        },
+        {
+            "fileName": "ncr_service_now/incident",
+            "destinationPath": "ncr_service_now/incident"
+        },
+        {
+            "fileName": "ncr_service_now/problem_record",
+            "destinationPath": "ncr_service_now/problem_record"
+        },
+        {
+            "fileName": "ncr_service_now/change_request",
+            "destinationPath": "ncr_service_now/change_request"
+        },
+        {
+            "fileName": "ncr_service_now/knowledge_base",
+            "destinationPath": "ncr_service_now/knowledge_base"
+        },
+        {
+            "fileName": "ncr_service_now/knowledge_use",
+            "destinationPath": "ncr_service_now/knowledge_use"
+        },
+        {
+            "fileName": "ncr_service_now/knowledge_feedback",
+            "destinationPath": "ncr_service_now/knowledge_feedback"
+        },
+        {
+            "fileName": "ncr_service_now/knowledge",
+            "destinationPath": "ncr_service_now/knowledge"
+        },
+        {
+            "fileName": "genesys/contact_center_settings",
+            "destinationPath": "genesys/contact_center_settings"
+        },
+        {
+            "fileName": "genesys/conversation_attributes",
+            "destinationPath": "genesys/conversation_attributes"
+        },
+        {
+            "fileName": "genesys/conversations_detail",
+            "destinationPath": "genesys/conversations_detail"
+        },
+        {
+            "fileName": "genesys/conversations",
+            "destinationPath": "genesys/conversations"
+        },
+        {
+            "fileName": "genesys/primary_presence",
+            "destinationPath": "genesys/primary_presence"
+        },
+        {
+            "fileName": "genesys/queue_abandons",
+            "destinationPath": "genesys/queue_abandons"
+        },
+        {
+            "fileName": "genesys/queue_configuration",
+            "destinationPath": "genesys/queue_configuration"
+        },
+        {
+            "fileName": "genesys/routing_status",
+            "destinationPath": "genesys/routing_status"
+        },
+        {
+            "fileName": "genesys/queue_interval_history",
+            "destinationPath": "genesys/queue_interval_history"
+        },
+        {
+            "fileName": "genesys/session_summary",
+            "destinationPath": "genesys/session_summary"
+        },
+        {
+            "fileName": "genesys/user_details",
+            "destinationPath": "genesys/user_details"
+        },
+        {
+            "fileName": "genesys/user_status_interval_history",
+            "destinationPath": "genesys/user_status_interval_history"
+        },
+        {
+            "fileName": "gcc/",
+            "destinationPath": "gcc/"
+        },
+        {
+            "fileName": "happysignals",
+            "destinationPath": "happysignals"
+        }
+    ]
 }
