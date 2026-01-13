@@ -1,101 +1,81 @@
+
 import boto3
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-def lambda_handler(event, context):
-    dynamodb = boto3.client('dynamodb', region_name=os.environ['DYNAMO_REGION'])
-    table_name = os.environ['RULES_TABLE']
+dynamodb = boto3.client("dynamodb")
+RULES_TABLE = os.environ["RULES_TABLE"]
+NUM_RULES = int(os.environ.get("NUM_RULES", "10"))   # number of rules to create
 
-    # Timestamp for audit
-    timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
-    print(f"[INFO] Lambda execution started at {timestamp}")
 
-    query = """WITH res as (
-    SELECT DISTINCT "restaurant_number"
-    FROM "uk_snowfall_processed"."newrelic_digital_3po_foe_response"
-    WHERE cdc_timestamp = (SELECT max(cdc_timestamp) FROM "uk_snowfall_processed"."newrelic_digital_3po_foe_response")
-),
-ordcnt as (
-    SELECT
-        "restaurant_number",
-        "foe_response",   
-        "3po_response",
-        "3po_description",
-        sum("count") "count"
-    FROM "uk_snowfall_processed"."newrelic_digital_3po_foe_response"
-    WHERE 
-        cdc_timestamp = (SELECT max(cdc_timestamp) FROM "uk_snowfall_processed"."newrelic_digital_3po_foe_response")
-        and "3po_description" != 'Auto release is disabled for store'
-    GROUP BY 
-        "restaurant_number",
-        "foe_response",   
-        "3po_response",
-        "3po_description"
-    ORDER BY "count" DESC
-),
-toperr as (
-    SELECT 
-        "restaurant_number",
-        'Top error: FOE Error ' || cast("foe_response" as varchar) || ' | 3PO Error ' || cast("3po_response" as varchar) || ' ' || "3po_description" "message"
-    FROM (
-        SELECT 
-            *,
-            ROW_NUMBER() OVER (PARTITION BY restaurant_number ORDER BY "count" DESC) "rn"
-        FROM ordcnt
-        WHERE 
-            (foe_response != 0 OR "3po_response" != 1)
-            and "3po_description" != 'Auto release is disabled for store'
-    )
-    WHERE rn = 1
-),
-errcnt as (
-    SELECT 
-        *,
-        cast(error_count as double) / order_count "error_percentage"
-    FROM (
-        SELECT 
-            res.restaurant_number,
-            (
-                SELECT sum("count") 
-                FROM ordcnt 
-                WHERE ordcnt.restaurant_number = res.restaurant_number
-            ) "order_count",
-            (
-                SELECT sum("count") 
-                FROM ordcnt 
-                WHERE 
-                    ordcnt.restaurant_number = res.restaurant_number
-                    and ("foe_response" != 0 or "3po_response" != 1)
-            ) "error_count"
-        FROM res
-    )
-)
-SELECT 
-    errcnt.restaurant_number,
-    '[PROACTIVE] 3PO Error Rate ' || cast(round(error_percentage * 100, 0) as varchar) || '% | ' || toperr.message "message"
-FROM errcnt 
-LEFT JOIN toperr ON
-    toperr.restaurant_number = errcnt.restaurant_number
-WHERE error_percentage > 0.6
-ORDER BY error_percentage DESC
-    """
+def get_existing_rule_ids():
+    """Return all existing rule_id values as a set of strings."""
+    response = dynamodb.scan(TableName=RULES_TABLE, ProjectionExpression="rule_id")
 
-    rule_item = {
-        'rule_id':              {'S': '9'},
-        'active':               {'BOOL': True},
-        'query':                {'S': query},
-        'database':             {'S': 'uk_snowfall_processed'},
-        'threshold':            {'S': '95'},
-        'incident_description': {'S': 'test - Disk usage above 90%'},
-        'metric':               {'S': 'average_disk_used_percent'},
-        'created_at':           {'S': timestamp}
+    rule_ids = {item["rule_id"]["S"] for item in response.get("Items", [])}
+
+    # Handle paginated scans
+    while "LastEvaluatedKey" in response:
+        response = dynamodb.scan(
+            TableName=RULES_TABLE,
+            ProjectionExpression="rule_id",
+            ExclusiveStartKey=response["LastEvaluatedKey"]
+        )
+        rule_ids.update(item["rule_id"]["S"] for item in response.get("Items", []))
+
+    return rule_ids
+
+
+def build_rule_item(i):
+    """Build a placeholder rule item for rule i."""
+    created_at = datetime.now(ZoneInfo("Europe/London")).isoformat()
+
+    return {
+        "rule_id": {"S": str(i)},
+        "active": {"BOOL": True},
+        "created_at": {"S": created_at},
+        "incident_description": {"S": f"your rule {i} incident description"},
+        "query": {"S": f"your rule {i} query"},
+        "email_alert": {"BOOL": True},
+        "servicenow_alert": {"BOOL": True},
+        "proactive_script": {"BOOL": True},
+        "email_dl": {"S": f"your rule {i} email_dl"},
+        "proactive_script_name": {"S": f"your rule {i} proactive_script_name"}
     }
 
-    dynamodb.put_item(TableName=table_name, Item=rule_item)
 
-    print(f"[INFO] Rule inserted at {timestamp}")
+def create_rule(item):
+    dynamodb.put_item(TableName=RULES_TABLE, Item=item)
+    print(f"Created rule_id {item['rule_id']['S']}")
+
+
+def lambda_handler(event, context):
+    print(f"NUM_RULES configured = {NUM_RULES}")
+
+    existing_ids = get_existing_rule_ids()
+    print(f"Existing rule_ids in DB → {existing_ids}")
+
+    created = []
+    skipped = []
+
+    for i in range(1, NUM_RULES + 1):
+        rule_id = str(i)
+
+        if rule_id in existing_ids:
+            skipped.append(rule_id)
+            continue
+
+        # Create missing rules
+        rule_item = build_rule_item(i)
+        create_rule(rule_item)
+        created.append(rule_id)
+
+    print("Completed rule initialization")
+
     return {
-        'statusCode': 200,
-        'body': 'Rule inserted successfully'
+        "message": "Rule initialization complete",
+        "created_rule_ids": created,
+        "skipped_existing_rule_ids": skipped,
+        "total_required_rules": NUM_RULES
     }

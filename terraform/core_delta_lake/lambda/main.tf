@@ -210,7 +210,7 @@ resource "aws_lambda_permission" "allow_landing_newrelic_bucket" {
 resource "aws_cloudwatch_event_rule" "newrelic_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-fetch-device-schedule"
   description         = "Triggers the Lambda function every hour"
- schedule_expression = "cron(0 1 * * ? *)"  # Runs at 1 AM UTC every day
+ schedule_expression = var.newrelic_1am_schedule #"cron(0 1 * * ? *)"  # Runs at 1:01,2:01.. AM UTC every day
 }
 
 # Add Lambda as the Target of the Event Rule
@@ -260,7 +260,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_metrics_function" {
       DATASHARE_BUCKET = "eu-central1-${var.environment}-uk-snowfall-datashare-processed-${var.account_number}"
       TARGET_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
       SNS_TOPIC_ARN = var.sns_topic_arn
-      
+
     }
   }
 }
@@ -271,7 +271,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_metrics_function" {
 resource "aws_cloudwatch_event_rule" "newrelic_metrics_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-device-metrics-schedule"
   description         = "Triggers the New Relic device metrics Lambda every 10 minutes"
-  schedule_expression = "rate(10 minutes)"
+  schedule_expression = var.newrelic_10min_schedule #"rate(10 minutes)"
 }
 
 # Add Lambda as the target of the Event Rule
@@ -330,7 +330,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_process_info_function" {
 resource "aws_cloudwatch_event_rule" "newrelic_process_info_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-process-info-schedule"
   description         = "Triggers the New Relic process info Lambda every 10 minutes"
-  schedule_expression = "rate(10 minutes)"   #  "rate(10 minutes)"
+  schedule_expression = var.newrelic_10min_schedule   #  "rate(10 minutes)"
 }
 
 # Add Lambda as the target of the Event Rule
@@ -397,7 +397,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_network_info_function" {
 resource "aws_cloudwatch_event_rule" "newrelic_network_info_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-network-info-schedule"
   description         = "Triggers the New Relic network info Lambda every 10 minutes"
-  schedule_expression = "rate(10 minutes)"
+  schedule_expression = var.newrelic_10min_schedule #"rate(10 minutes)"
 }
 
 ###########################################################################
@@ -468,7 +468,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_network_info_daily_aggregat
 resource "aws_cloudwatch_event_rule" "newrelic_network_info_daily_aggregate_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-network-info-daily-aggregate-schedule"
   description         = "Triggers the New Relic daily aggregate network info Lambda at 1 AM UTC"
-  schedule_expression = "cron(0 1 * * ? *)"
+  schedule_expression = var.newrelic_1am_schedule #"cron(0 1 * * ? *)"
 }
 
 ###########################################################################
@@ -546,7 +546,7 @@ resource "aws_lambda_permission" "allow_landing_newrelic_digital_gma_foe_respons
 resource "aws_cloudwatch_event_rule" "newrelic_digital_gma_foe_response_lambda_schedule" {
   name                = "uk-snowfall-newrelic-digital-gma-foe-response-schedule"
   description         = "Triggers the Lambda function every hour at 5 minutes past the hour"
-  schedule_expression = "cron(5 * * * ? *)"
+  schedule_expression = var.newrelic_5min_schedule #"cron(5 * * * ? *)"
 }
 
 resource "aws_cloudwatch_event_target" "invoke_newrelic_digital_gma_foe_response_lambda" {
@@ -610,7 +610,7 @@ resource "aws_lambda_permission" "allow_landing_newrelic_digital_3po_foe_respons
 resource "aws_cloudwatch_event_rule" "newrelic_digital_3po_foe_response_lambda_schedule" {
   name                = "uk-snowfall-newrelic-digital-3po-foe-response-schedule"
   description         = "Triggers the Lambda function every hour at 5 minutes past the hour"
-  schedule_expression = "cron(5 * * * ? *)"
+  schedule_expression = var.newrelic_5min_schedule #"cron(5 * * * ? *)"
 }
 
 
@@ -629,6 +629,7 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_digital_3po_
 }
 
 ############################################ SERVICE AGENT JWT/UPLOAD S3 LAMBDA #############################################
+############################################ SERVICE AGENT JWT/UPLOAD S3 LAMBDA VIA API#############################################
 
 data "archive_file" "service_agent_upload_s3" {
   type        = "zip"
@@ -644,7 +645,7 @@ resource "aws_lambda_function" "uk_snowfall_service_agent_function" {
   runtime          = "python3.12"
   memory_size      = 1024
   timeout          = 120
-  description      = "Upload data to S3 using JWT authentication"
+  description      = "Upload data to S3 using JWT authentication via api"
   source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-upload-s3.zip")
   tags             = var.resource_tags
   layers = [  ]
@@ -667,26 +668,92 @@ resource "aws_lambda_permission" "allow_service_agent_bucket" {
 }
 
 
-############################################ SERVICE AGENT SERVER EXTRACT & UPLOAD TO S3 LAMBDA #############################################
+# ############################################ SERVICE AGENT SERVER FILES COPY TO RAW BUCKET  #############################################
 
-# Archive the Lambda script for extracting service agent server info
-data "archive_file" "service_agent_server_extract_script" {
+# ## Archive the service-agent-server-files Python script
+data "archive_file" "service_agent_server_files" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/service-agent-server-extract/"
-  output_path = "${path.module}/scripts/zips/service-agent-server-extract.zip"
+  source_dir  = "${path.module}/scripts/python/service-agent-server-files/"
+  output_path = "${path.module}/scripts/zips/service-agent-server-files.zip"
 }
 
-# Lambda Function to extract service agent server info from Athena
-resource "aws_lambda_function" "service_agent_server_extract_function" {
-  filename         = "${path.module}/scripts/zips/service-agent-server-extract.zip"
-  function_name    = "uk-snowfall-service-agent-server-extract-${var.environment}"
+## Lambda function - service-agent-server-files
+resource "aws_lambda_function" "service_agent_server_files" {
+  filename         = data.archive_file.service_agent_server_files.output_path
+  function_name    = "uk-snowfall-service-agent-server-files-copy-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   memory_size      = 1024
   timeout          = 300
-  description      = "Extracts service agent server information from Athena and stores it in S3"
-  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-server-extract.zip")
+  description      = "Triggered by S3 to copy files from uploads/ to service-agent-server-files/"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-server-files.zip")
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      SOURCE_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+## Adding permissions for lambda
+resource "aws_lambda_permission" "allow_service_agent_s3_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.service_agent_server_files.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.service_agent_bucket_arn
+  depends_on    = [
+    var.service_agent_bucket_arn,
+    aws_lambda_function.service_agent_server_files
+  ]
+}
+
+
+data "aws_s3_bucket" "service_agent_bucket" {
+  bucket = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+  }
+
+resource "aws_s3_bucket_notification" "service_agent_server_files_trigger" {
+  bucket = data.aws_s3_bucket.service_agent_bucket.id
+
+
+  lambda_function {
+    lambda_function_arn = aws_lambda_function.service_agent_server_files.arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "uploads/"
+  }
+
+  depends_on = [
+    aws_lambda_permission.allow_service_agent_s3_bucket
+  ]
+}
+
+
+
+############################################ SERVICE AGENT SERVER LIST EXTRACT  #############################################
+
+# Archive the Lambda script for extracting service agent server info
+data "archive_file" "service_agent_server_extract_script" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/service-agent-server-list-extract/"
+  output_path = "${path.module}/scripts/zips/service-agent-server-list-extract.zip"
+}
+
+# Lambda Function to extract service agent server info from Athena
+resource "aws_lambda_function" "service_agent_server_extract_function" {
+  filename         = "${path.module}/scripts/zips/service-agent-server-list-extract.zip"
+  function_name    = "uk-snowfall-service-agent-server-list-extract-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 300
+  description      = "Extracts service agent server list from Athena and stores it in S3 folder-server_list "
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-server-list-extract.zip")
   tags             = var.resource_tags
 
   environment {
@@ -724,69 +791,6 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_service_agent_server_
 
 }
 
-############################################ SERVICE AGENT SERVER FILES #############################################
-
-## Archive the service-agent-server-files Python script
-data "archive_file" "service_agent_server_files" {
-  type        = "zip"
-  source_dir  = "${path.module}/scripts/python/service-agent-server-files/"
-  output_path = "${path.module}/scripts/zips/service-agent-server-files.zip"
-}
-
-## Lambda function - service-agent-server-files
-resource "aws_lambda_function" "service_agent_server_files" {
-  filename         = data.archive_file.service_agent_server_files.output_path
-  function_name    = "uk-snowfall-service-agent-server-files-${var.environment}"
-  role             = var.role_assumed_arn
-  handler          = "lambda_function.lambda_handler"
-  runtime          = "python3.12"
-  memory_size      = 1024
-  timeout          = 300
-  description      = "Triggered by S3 to copy files from uploads/ to service-agent-server-files/"
-  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-server-files.zip")
-  tags             = var.resource_tags
-
-  environment {
-    variables = {
-      SOURCE_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
-      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
-      SNS_TOPIC_ARN = var.sns_topic_arn
-    }
-  }
-}
-
-## Adding permissions for lambda
-resource "aws_lambda_permission" "allow_service_agent_s3_bucket" {
-  statement_id  = "AllowExecutionFromS3Bucket"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.service_agent_server_files.arn
-  principal     = "s3.amazonaws.com"
-  source_arn    = var.service_agent_bucket_arn
-  depends_on    = [
-    var.service_agent_bucket_arn,
-    aws_lambda_function.service_agent_server_files
-  ]
-}
-
-
-data "aws_s3_bucket" "service_agent_bucket" {
-  bucket = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
-  }
-
-# resource "aws_s3_bucket_notification" "service_agent_server_files_trigger" {
-#   bucket = data.aws_s3_bucket.service_agent_bucket.id
-
-
-#   lambda_function {
-#     lambda_function_arn = aws_lambda_function.service_agent_server_files.arn
-#     events              = ["s3:ObjectCreated:*"]
-#     filter_prefix       = "uploads/"
-#   }
-
-#   depends_on = [
-#     aws_lambda_permission.allow_service_agent_s3_bucket
-#   ]
-# }
 
 
 ##########################################################################MERAKI-CLIENT-INFO-FETCH###################################################
@@ -984,38 +988,38 @@ resource "aws_lambda_permission" "uk_snowfall_allow_eventbridge_to_invoke_alerts
 
 
 
-# ############################################
-# ## DynamoDB: Incident Rules Table
-# ############################################
-# resource "aws_dynamodb_table" "uk_snowfall_incident_rules" {
-#   name         = "uk-snowfall-${var.environment}-incident-rules"
-#   billing_mode = "PAY_PER_REQUEST"
-#   hash_key     = "rule_id"
+############################################
+## DynamoDB: Incident Rules Table
+############################################
+resource "aws_dynamodb_table" "uk_snowfall_incident_rules" {
+  name         = "uk-snowfall-${var.environment}-incident-rules"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "rule_id"
 
-#   attribute {
-#     name = "rule_id"
-#     type = "S"
-#   }
+  attribute {
+    name = "rule_id"
+    type = "S"
+  }
 
-#   tags = var.resource_tags
-# }
+  tags = var.resource_tags
+}
 
 
 
-# ############################################
-# ## DynamoDB: ServiceNow Tickets Table
-# ############################################
-# resource "aws_dynamodb_table" "uk_snowfall_service_now_tickets" {
-#   name         = "uk-snowfall-${var.environment}-service-now-tickets"
-#   billing_mode = "PAY_PER_REQUEST"
-#   hash_key     = "ticket_id"
+############################################
+## DynamoDB: ServiceNow Tickets Table
+############################################
+resource "aws_dynamodb_table" "uk_snowfall_service_now_tickets" {
+  name         = "uk-snowfall-${var.environment}-service-now-tickets"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "ticket_id"
 
-#   attribute {
-#     name = "ticket_id"
-#     type = "S"
-#   }
-#   tags = var.resource_tags
-# }
+  attribute {
+    name = "ticket_id"
+    type = "S"
+  }
+  tags = var.resource_tags
+}
 
 
 ############################################
@@ -1046,6 +1050,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_dynamodb_rules" {
     variables = {
       DYNAMO_REGION = "eu-central-1"
       RULES_TABLE   = "uk-snowfall-${var.environment}-incident-rules"
+      NUM_RULES = "10" 
     }
   }
 }
@@ -1061,4 +1066,177 @@ resource "null_resource" "invoke_lambda_once" {
   }
 
   depends_on = [aws_lambda_function.uk_snowfall_proactive_dynamodb_rules]
+}
+
+
+############################################
+## DynamoDB: WebSocket Connections Table
+############################################
+resource "aws_dynamodb_table" "websocket_connections" {
+  name         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "restaurant_number"
+  range_key    = "device_id"
+
+  attribute {
+    name = "restaurant_number"
+    type = "S"
+  }
+
+  attribute {
+    name = "device_id"
+    type = "S"
+  }
+
+  tags = var.resource_tags
+}
+
+############################################
+## DynamoDB: WebSocket Connections Results
+############################################
+resource "aws_dynamodb_table" "websocket_connections_results" {
+  name         = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "result_id"
+  range_key    = "device_id"
+
+  attribute {
+    name = "result_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "device_id"
+    type = "S"
+  }
+
+  tags = var.resource_tags
+}
+
+############################################
+## PROACTIVE HEALING LAMBDA FUNCTIONS
+############################################
+
+############################################
+## Archive: Connect Handler
+############################################
+data "archive_file" "uk_snowfall_proactive_healing_connect" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-connect/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-connect.zip"
+}
+
+############################################
+## Lambda: Connect Handler
+############################################
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_connect" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_connect.output_path
+  function_name    = "uk-snowfall-proactive-healing-connect-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  timeout          = 29
+  description      = "Handles WebSocket $connect events for Snowfall Proactive Healing"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_connect.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections"
+      # JWT_SECRET = var.jwt_secret
+    }
+  }
+}
+
+############################################
+## Archive: Disconnect Handler
+############################################
+data "archive_file" "uk_snowfall_proactive_healing_disconnect" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-disconnect/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-disconnect.zip"
+}
+
+############################################
+## Lambda: Disconnect Handler
+############################################
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_disconnect" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_disconnect.output_path
+  function_name    = "uk-snowfall-proactive-healing-disconnect-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  timeout          = 29
+  description      = "Handles WebSocket $disconnect events for Snowfall Proactive Healing"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_disconnect.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections"
+    }
+  }
+}
+
+############################################
+## Archive: Default Handler
+############################################
+data "archive_file" "uk_snowfall_proactive_healing_default" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-default/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-default.zip"
+}
+
+############################################
+## Lambda: Default Handler
+############################################
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_default" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_default.output_path
+  function_name    = "uk-snowfall-proactive-healing-default-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  timeout          = 29
+  description      = "Handles default WebSocket route for Snowfall Proactive Healing"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_default.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
+      RESULTS_TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
+      WEBSOCKET_ENDPOINT = var.websocket_endpoint
+    }
+  }
+}
+
+############################################
+## Archive: Notifier Handler
+############################################
+data "archive_file" "uk_snowfall_proactive_healing_notifier" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-notifier/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-notifier.zip"
+}
+
+############################################
+## Lambda: Notifier Handler
+############################################
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_notifier" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_notifier.output_path
+  function_name    = "uk-snowfall-proactive-healing-notifier-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  timeout          = 29
+  description      = "Sends messages to WebSocket clients for Snowfall Proactive Healing"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_notifier.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections"
+      WEBSOCKET_ENDPOINT = var.websocket_endpoint
+    }
+  }
 }

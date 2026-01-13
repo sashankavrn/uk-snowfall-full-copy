@@ -478,7 +478,7 @@ resource "aws_s3_object" "serverlist_folder" {
 
 resource "aws_s3_bucket_notification" "service_agent_enabling_event_bridge_notification" {
   bucket = aws_s3_bucket.service_agent_bucket.bucket
-  eventbridge = true
+  eventbridge = false
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "service_agent_lifecycle_rules" {

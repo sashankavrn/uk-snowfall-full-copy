@@ -38,14 +38,14 @@ def lambda_handler(event, context):
 
         athena_result = query_athena(
             rule['query'],
-            rule['database'],
+            'uk_snowfall_processed',
         )
 
         if athena_result and evaluate_rule(rule, athena_result):
             print(f"[INFO] Rule {rule['rule_id']} violated. Checking tickets...")
             if not ticket_exists(rule['rule_id']):
                 print("[INFO] No existing ticket found. Creating new ticket...")
-                create_ticket(rule)
+                create_ticket(rule, athena_result)
             else:
                 print("[INFO] Ticket already exists. Skipping...")
         else:
@@ -77,12 +77,15 @@ def query_athena(athena_query, database):
         results = athena.get_query_results(QueryExecutionId=query_execution_id)
         rows = results['ResultSet']['Rows']
         print(f"[INFO] Athena returned {len(rows)} rows")
+
         if len(rows) > 1:
             last_row = rows[1]['Data']
+            print(rows)
             record = {
                 'restaurant_number': last_row[0]['VarCharValue'],
                 'message': last_row[1]['VarCharValue']
             }
+
             return record
     return None
 
@@ -97,10 +100,13 @@ def ticket_exists(rule_id):
     print("length"), len(response.get('Items'))
     return len(response.get('Items', [])) > 0
 
-def create_ticket(rule):
+def create_ticket(rule, athena_result):
+    print(athena_result)
     ticket_id = f"INC{int(time.time())}"
     timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
     item = {
+        'restaurent number': athena_result['restaurant_number'],
+        'message': athena_result['message'],
         'ticket_id': ticket_id,
         'rule_id': rule['rule_id'],
         'status': 'OPEN',
@@ -108,14 +114,15 @@ def create_ticket(rule):
     }
     tickets_table.put_item(Item=item)
     print(f"[INFO] Ticket created: {ticket_id} at {timestamp}")
-    send_snsnotification(rule, item)
+    send_snsnotification(rule, item, athena_result)
 
 
-def send_snsnotification(rule, item):
+def send_snsnotification(rule, item, rows):
     # Format message for email
     subject = f"Proactive alerts : {rule['incident_description']}"
     message = json.dumps(item, indent=2)
-
+    print(message)
+    
     # Publish to SNS
     response = sns_client.publish(
         TopicArn=os.environ["SNS_TOPIC_ARN"],
