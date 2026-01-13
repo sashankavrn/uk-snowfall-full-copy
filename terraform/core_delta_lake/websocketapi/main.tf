@@ -52,6 +52,16 @@ resource "aws_apigatewayv2_integration" "uk_snowfall_proactive_healing_default_i
   integration_uri  = var.default_lambda_arn
 }
 
+############################################
+## STAGE
+############################################
+
+resource "aws_apigatewayv2_stage" "uk_snowfall_proactive_healing_websocket_stage" {
+  api_id      = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
+  name        = var.stage_name
+  auto_deploy = true
+}
+
 # ############################################
 # ## CLOUDWATCH LOG GROUP
 # ############################################
