@@ -1,3 +1,17 @@
+data "aws_lambda_function" "proactive_healing_connect" {
+  function_name = "uk-snowfall-proactive-healing-connect-${var.environment}"
+}
+
+
+resource "aws_lambda_permission" "api_gateway" {
+   statement_id  = "AllowExecutionFromAPIGateway"
+   action        = "lambda:InvokeFunction"
+   function_name = data.aws_lambda_function.proactive_healing_connect.function_name
+   principal     = "apigateway.amazonaws.com"
+   source_arn    = "${aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.execution_arn}/*/*"
+}
+
+
 ############################################
 ## PROACTIVE HEALING: WebSocket API
 ############################################
