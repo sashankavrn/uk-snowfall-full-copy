@@ -62,36 +62,36 @@ resource "aws_apigatewayv2_stage" "uk_snowfall_proactive_healing_websocket_stage
   auto_deploy = true
 }
 
-# ############################################
-# ## CLOUDWATCH LOG GROUP
-# ############################################
+############################################
+## CLOUDWATCH LOG GROUP
+############################################
 
-# resource "aws_cloudwatch_log_group" "uk_snowfall_proactive_healing_websocket_logs" {
-#   name              = "/aws/apigatewayv2/uk-snowfall-proactive-healing-websocket-${var.environment}"
-#   retention_in_days = 30
-# }
+resource "aws_cloudwatch_log_group" "uk_snowfall_proactive_healing_websocket_logs" {
+  name              = "/aws/apigatewayv2/uk-snowfall-proactive-healing-websocket-${var.environment}"
+  retention_in_days = 30
+}
 
-# ############################################
-# ## STAGE (WITH CLOUDWATCH LOGGING)
-# ############################################
+############################################
+## STAGE (WITH CLOUDWATCH LOGGING)
+############################################
 
-# resource "aws_apigatewayv2_stage" "uk_snowfall_proactive_healing_websocket_stage" {
-#   api_id      = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
-#   name        = var.stage_name
-#   auto_deploy = true
+resource "aws_apigatewayv2_stage" "uk_snowfall_proactive_healing_websocket_stage" {
+  api_id      = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
+  name        = var.stage_name
+  auto_deploy = true
 
-#   access_log_settings {
-#     destination_arn = aws_cloudwatch_log_group.uk_snowfall_proactive_healing_websocket_logs.arn
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.uk_snowfall_proactive_healing_websocket_logs.arn
 
-#     format = jsonencode({
-#       requestId         = "$context.requestId"
-#       eventType         = "$context.eventType"
-#       routeKey          = "$context.routeKey"
-#       status            = "$context.status"
-#       integrationStatus = "$context.integrationStatus"
-#       connectionId      = "$context.connectionId"
-#       requestTime       = "$context.requestTime"
-#       errorMessage      = "$context.error.message"
-#     })
-#   }
-# }
+    format = jsonencode({
+      requestId         = "$context.requestId"
+      eventType         = "$context.eventType"
+      routeKey          = "$context.routeKey"
+      status            = "$context.status"
+      integrationStatus = "$context.integrationStatus"
+      connectionId      = "$context.connectionId"
+      requestTime       = "$context.requestTime"
+      errorMessage      = "$context.error.message"
+    })
+  }
+}
