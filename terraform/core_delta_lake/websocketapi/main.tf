@@ -1,16 +1,50 @@
+############################################
+## CONNECT LAMBDA
+############################################
+
 data "aws_lambda_function" "proactive_healing_connect" {
   function_name = "uk-snowfall-proactive-healing-connect-${var.environment}"
 }
 
-
-resource "aws_lambda_permission" "api_gateway" {
-   statement_id  = "AllowExecutionFromAPIGateway"
-   action        = "lambda:InvokeFunction"
-   function_name = data.aws_lambda_function.proactive_healing_connect.function_name
-   principal     = "apigateway.amazonaws.com"
-   source_arn    = "${aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.execution_arn}/*/*"
+resource "aws_lambda_permission" "api_gateway_connect" {
+  statement_id  = "AllowConnectExecution"
+  action        = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.proactive_healing_connect.arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.execution_arn}/*"
 }
 
+############################################
+## DISCONNECT LAMBDA
+############################################
+
+data "aws_lambda_function" "proactive_healing_disconnect" {
+  function_name = "uk-snowfall-proactive-healing-disconnect-${var.environment}"
+}
+
+resource "aws_lambda_permission" "api_gateway_disconnect" {
+  statement_id  = "AllowDisconnectExecution"
+  action        = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.proactive_healing_disconnect.arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.execution_arn}/*"
+}
+
+############################################
+## DEFAULT LAMBDA
+############################################
+
+data "aws_lambda_function" "proactive_healing_default" {
+  function_name = "uk-snowfall-proactive-healing-default-${var.environment}"
+}
+
+resource "aws_lambda_permission" "api_gateway_default" {
+  statement_id  = "AllowDefaultExecution"
+  action        = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.proactive_healing_default.arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.execution_arn}/*"
+}
 
 ############################################
 ## PROACTIVE HEALING: WebSocket API
