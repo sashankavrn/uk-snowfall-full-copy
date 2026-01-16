@@ -8,7 +8,7 @@ resource "aws_apigatewayv2_api" "uk_snowfall_proactive_healing_websocket_api" {
   route_selection_expression = "$request.body.action"
 }
 
-resource "aws_apigateway_account" "gateway_account" {
+resource "aws_api_gateway_account" "gateway_account" {
   cloudwatch_role_arn = "arn:aws:iam::295446674139:role/UK-MKT-DEV-GLUE-ROLE-CASE12585936411"
 }
 
