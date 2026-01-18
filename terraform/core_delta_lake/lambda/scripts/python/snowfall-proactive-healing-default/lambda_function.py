@@ -9,7 +9,7 @@ from datetime import datetime
 # Initialize AWS clients
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['TABLE_NAME'])
-apigw = boto3.client('apigatewaymanagementapi', endpoint_url=os.environ['WS_ENDPOINT'])
+apigw = boto3.client('apigatewaymanagementapi', endpoint_url=os.environ['WEBSOCKET_ENDPOINT'])
 
 def lambda_handler(event, context):
     print("=== Lambda Triggered: Send Script to WebSocket Client ===")
