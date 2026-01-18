@@ -77,6 +77,27 @@ resource "aws_apigatewayv2_api" "uk_snowfall_proactive_healing_websocket_api" {
   route_selection_expression = "$request.body.action"
 }
 
+
+############################################
+## API Gateway Authorizer: JWT (WebSocket)
+############################################
+resource "aws_apigatewayv2_authorizer" "uk_snowfall_proactive_healing_websocket_jwt_authorizer" {
+  api_id           = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
+  authorizer_type  = "REQUEST"
+  authorizer_uri   = aws_lambda_function.uk_snowfall_proactive_healing_jwt_authorizer.invoke_arn
+  identity_sources = ["route.request.header.Authorization"]
+  name             = "uk-snowfall-proactive-healing-jwt-authorizer-${var.environment}"
+
+#   depends_on = [
+#     aws_lambda_permission.uk_snowfall_proactive_healing_api_gateway_jwt_authorizer
+#   ]
+}
+
+
+
+
+
+
 # resource "aws_api_gateway_account" "gateway_account" {
 #   cloudwatch_role_arn = "arn:aws:iam::295446674139:role/UK-MKT-DEV-GLUE-ROLE-CASE12585936411"
 # }
@@ -90,6 +111,8 @@ resource "aws_apigatewayv2_route" "uk_snowfall_proactive_healing_connect_route" 
   api_id    = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
   route_key = "$connect"
   target    = "integrations/${aws_apigatewayv2_integration.uk_snowfall_proactive_healing_connect_integration.id}"
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.uk_snowfall_proactive_healing_jwt_authorizer.id
 }
 
 resource "aws_apigatewayv2_route" "uk_snowfall_proactive_healing_disconnect_route" {
