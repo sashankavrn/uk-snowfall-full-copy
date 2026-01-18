@@ -1249,8 +1249,8 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_notifier" {
 ############################################
 data "archive_file" "uk_snowfall_proactive_healing_jwt_authorizer" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/uk-snowfall-proactive-healing-jwt-authorizer/"
-  output_path = "${path.module}/scripts/zips/uk-snowfall-proactive-healing-jwt-authorizer.zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-jwt-authorizer/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-jwt-authorizer.zip"
 }
 
 ############################################
