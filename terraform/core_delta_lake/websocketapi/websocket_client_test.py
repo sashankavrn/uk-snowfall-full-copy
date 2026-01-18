@@ -8,12 +8,18 @@ import subprocess
 import tempfile
 import base64
 import os
+import jwt
+
 
 # === CONFIG ===
-WS_URL = "wss://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev"
+WS_URL = "wss://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev/"
 RESTAURANT_NUMBER = "12"
 DEVICE_ID = "device-001"
-MACHINE_NAME = "POS-01"
+MACHINE_NAME = "UK00054GSC02"
+
+JWT_SECRET = os.environ.get("JWT_SECRET")
+JWT_ALGORITHM = "HS256"
+JWT_TTL_SECONDS = 300  # 5 minutes
 
 # === GLOBAL FLAGS ===
 running = True
@@ -167,6 +173,21 @@ def signal_handler(sig, frame):
     finally:
         sys.exit(0)
 
+def generate_jwt(machine_name):
+    """
+    Generate a short-lived JWT for WebSocket authentication
+    """
+    payload = {
+        "machine_name": machine_name,
+        "iat": int(time.time()),
+        "exp": int(time.time()) + JWT_TTL_SECONDS,
+    }
+
+    JWT_SECRET = "Snow4all@2025"
+
+    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    return token
+
 
 if __name__ == "__main__":
     websocket.enableTrace(False)
@@ -175,14 +196,23 @@ if __name__ == "__main__":
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
+    MACHINE_NAME = "UK00054GSC02"
+
+    # Generate JWT
+    JWT_TOKEN = generate_jwt(MACHINE_NAME)
+
     url = f"{WS_URL}?restaurantnumber={RESTAURANT_NUMBER}&deviceid={DEVICE_ID}&machine={MACHINE_NAME}"
+
+    headers = [f"Authorization: Bearer {JWT_TOKEN}"]
+
     ws_app = websocket.WebSocketApp(
         url,
+        header=headers,
         on_open=on_open,
         on_message=on_message,
         on_error=on_error,
         on_close=on_close,
     )
 
-    print("🚀 Connecting to WebSocket...")
+    print("🚀 Connecting to WebSocket with generated JWT...")
     ws_app.run_forever(ping_interval=60, ping_timeout=10)

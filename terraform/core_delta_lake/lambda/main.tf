@@ -1240,3 +1240,53 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_notifier" {
     }
   }
 }
+
+
+
+
+############################################
+## Archive: JWT Authorizer (Proactive Healing)
+############################################
+data "archive_file" "uk_snowfall_proactive_healing_jwt_authorizer" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/uk-snowfall-proactive-healing-jwt-authorizer/"
+  output_path = "${path.module}/scripts/zips/uk-snowfall-proactive-healing-jwt-authorizer.zip"
+}
+
+############################################
+## Lambda: JWT Authorizer (Proactive Healing)
+############################################
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_jwt_authorizer" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_jwt_authorizer.output_path
+  function_name    = "uk-snowfall-proactive-healing-jwt-authorizer-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  timeout          = 10
+  description      = "JWT authorizer for Snowfall Proactive Healing APIs/WebSocket"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_jwt_authorizer.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+
+############################################
+## Permissions: Allow  Lambda to read from s3
+############################################
+resource "aws_lambda_permission" "allow_proactive_healing_jwt_authorizer_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_proactive_healing_jwt_authorizer.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.service_agent_bucket_arn
+  depends_on    = [
+    aws_lambda_function.uk_snowfall_proactive_healing_jwt_authorizer
+  ]
+}
+
