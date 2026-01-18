@@ -61,7 +61,7 @@ def generate_policy(principal_id, effect, resource, context):
     }
 
 
-def handler(event, context):
+def lambda_handler(event, context):
     try:
 
         params = event.get("queryStringParameters") or {}
