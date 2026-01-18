@@ -84,7 +84,7 @@ resource "aws_apigatewayv2_api" "uk_snowfall_proactive_healing_websocket_api" {
 resource "aws_apigatewayv2_authorizer" "uk_snowfall_proactive_healing_websocket_jwt_authorizer" {
   api_id           = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
   authorizer_type  = "REQUEST"
-  authorizer_uri   = aws_lambda_function.uk_snowfall_proactive_healing_jwt_authorizer.invoke_arn
+  authorizer_uri   = aws_lambda_function.proactive_healing_jwt_authorizer.invoke_arn
   identity_sources = ["route.request.header.Authorization"]
   name             = "uk-snowfall-proactive-healing-jwt-authorizer-${var.environment}"
 
@@ -112,7 +112,7 @@ resource "aws_apigatewayv2_route" "uk_snowfall_proactive_healing_connect_route" 
   route_key = "$connect"
   target    = "integrations/${aws_apigatewayv2_integration.uk_snowfall_proactive_healing_connect_integration.id}"
   authorization_type = "CUSTOM"
-  authorizer_id      = aws_apigatewayv2_authorizer.uk_snowfall_proactive_healing_jwt_authorizer.id
+  authorizer_id      = aws_apigatewayv2_authorizer.proactive_healing_jwt_authorizer.id
 }
 
 resource "aws_apigatewayv2_route" "uk_snowfall_proactive_healing_disconnect_route" {
