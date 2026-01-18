@@ -11,7 +11,7 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['TABLE_NAME'])
 apigw = boto3.client('apigatewaymanagementapi', endpoint_url=os.environ['WS_ENDPOINT'])
 
-def handler(event, context):
+def lambda_handler(event, context):
     print("=== Lambda Triggered: Send Script to WebSocket Client ===")
     print("Incoming event:", json.dumps(event, indent=2))
 

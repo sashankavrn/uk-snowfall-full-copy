@@ -5,7 +5,7 @@ from datetime import datetime
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ.get("TABLE_NAME"))
 
-def handler(event, context):
+def lambda_handler(event, context):
     print(event)
     connection_id = event["requestContext"]["connectionId"]
     params = event.get("queryStringParameters") or {}
