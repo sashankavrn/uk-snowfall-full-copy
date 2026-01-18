@@ -46,6 +46,27 @@ resource "aws_lambda_permission" "api_gateway_default" {
   source_arn    = "${aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.execution_arn}/*"
 }
 
+
+############################################
+## JWT AUTHORIZER LAMBDA 
+############################################
+
+data "aws_lambda_function" "proactive_healing_jwt_authorizer" {
+  function_name = "uk-snowfall-proactive-healing-jwt-authorizer-${var.environment}"
+}
+
+############################################
+## Permission: Allow API Gateway to Invoke JWT Authorizer
+############################################
+resource "aws_lambda_permission" "api_gateway_jwt_authorizer" {
+  statement_id  = "AllowJWTAuthorizerExecution"
+  action        = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.proactive_healing_jwt_authorizer.arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.execution_arn}/*"
+}
+
+
 ############################################
 ## PROACTIVE HEALING: WebSocket API
 ############################################

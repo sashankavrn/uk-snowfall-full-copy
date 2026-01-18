@@ -17,7 +17,7 @@ RESTAURANT_NUMBER = "12"
 DEVICE_ID = "device-001"
 MACHINE_NAME = "UK00054GSC02"
 
-JWT_SECRET = os.environ.get("JWT_SECRET")
+JWT_SECRET = os.environ.get("JWT_SECRET", "Snow4all@2025")
 JWT_ALGORITHM = "HS256"
 JWT_TTL_SECONDS = 300  # 5 minutes
 
