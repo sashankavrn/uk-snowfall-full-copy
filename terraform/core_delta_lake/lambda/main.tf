@@ -660,10 +660,10 @@ resource "aws_lambda_function" "uk_snowfall_service_agent_authorizer_function" {
 resource "aws_lambda_permission" "allow_service_agent_bucket_auth" {
   statement_id  = "AllowExecutionFromS3Bucket"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.uk_snowfall_service_agent_function.arn
+  function_name = aws_lambda_function.uk_snowfall_service_agent_authorizer_function.arn
   principal     = "s3.amazonaws.com"
   source_arn    = var.service_agent_bucket_arn
-  depends_on    = [aws_lambda_function.uk_snowfall_service_agent_function]
+  
 }
 
 
