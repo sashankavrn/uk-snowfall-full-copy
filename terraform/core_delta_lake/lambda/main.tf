@@ -628,7 +628,35 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_digital_3po_
   source_arn    = aws_cloudwatch_event_rule.newrelic_digital_3po_foe_response_lambda_schedule.arn
 }
 
-############################################ SERVICE AGENT JWT/UPLOAD S3 LAMBDA #############################################
+############################################ SERVICE AGENT LAMBDAS  #############################################
+
+data "archive_file" "service_agent_upload_s3_jwt_authorizer" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/service-agent-upload-s3-jwt-authorizer/"
+  output_path = "${path.module}/scripts/zips/service-agent-upload-s3-jwt-authorizer.zip"
+}
+
+resource "aws_lambda_function" "uk_snowfall_service_agent_function" {
+  filename         = "${path.module}/scripts/zips/service-agent-upload-s3-jwt-authorizer.zip"
+  function_name    = "uk-snowfall-service-agent-upload-s3-jwt-authorizer-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 120
+  description      = "Upload data to S3 using JWT authentication via API"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-upload-s3-jwt-authorizer.zip")
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+
 ############################################ SERVICE AGENT JWT/UPLOAD S3 LAMBDA VIA API#############################################
 
 data "archive_file" "service_agent_upload_s3" {
