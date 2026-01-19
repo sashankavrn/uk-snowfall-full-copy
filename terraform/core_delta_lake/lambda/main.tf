@@ -657,7 +657,7 @@ resource "aws_lambda_function" "uk_snowfall_service_agent_authorizer_function" {
 }
 
 ## Adding permissions for lambda upload data 
-resource "aws_lambda_permission" "allow_service_agent_bucket" {
+resource "aws_lambda_permission" "allow_service_agent_bucket_auth" {
   statement_id  = "AllowExecutionFromS3Bucket"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.uk_snowfall_service_agent_function.arn
