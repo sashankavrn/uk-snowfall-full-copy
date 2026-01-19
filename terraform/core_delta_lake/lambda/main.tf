@@ -636,7 +636,7 @@ data "archive_file" "service_agent_upload_s3_jwt_authorizer" {
   output_path = "${path.module}/scripts/zips/service-agent-upload-s3-jwt-authorizer.zip"
 }
 
-resource "aws_lambda_function" "uk_snowfall_service_agent_function" {
+resource "aws_lambda_function" "uk_snowfall_service_agent_authorizer_function" {
   filename         = "${path.module}/scripts/zips/service-agent-upload-s3-jwt-authorizer.zip"
   function_name    = "uk-snowfall-service-agent-upload-s3-jwt-authorizer-${var.environment}"
   role             = var.role_assumed_arn
