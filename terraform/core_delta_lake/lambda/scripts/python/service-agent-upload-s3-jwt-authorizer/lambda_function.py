@@ -1,143 +1,145 @@
-import json
-import jwt
 import boto3
+import base64
 import os
+import jwt
+import json
 import csv
 from io import StringIO
+from datetime import datetime
+from pathlib import Path
+import re
 
-# AWS clients
-s3 = boto3.client("s3")
-secretsmanager = boto3.client("secretsmanager")
+s3 = boto3.client('s3')
+secretsmanager = boto3.client('secretsmanager')
 
-# Environment variables
-# BUCKET = os.environ.get("BUCKET_NAME", "staging")
-# SERVER_LIST_KEY = "serverlist/List of Restaurant Servers.csv"
-# SECRET_NAME = os.environ.get("SECRET_NAME", "UK_SNOWFALL")
-# SECRET_KEY = os.environ.get("SECRET_KEY", "JWT_SECRET")
-JWT_ALGORITHM = "HS256"
+# Environment Variables
 BUCKET = os.environ.get('TARGET_BUCKET')  # Updated here
 SERVER_LIST_KEY = 'server_list/List of Restaurant Servers.csv'
 SECRET_NAME = 'uk-snowfall-service-agent'
 SECRET_KEY = 'uk-snowfall-service-agent-key'
 
+ALLOWED_EXTENSIONS = ('.xml', '.csv')
+ALLOWED_CONTENT_TYPES = ('text/xml', 'application/xml', 'text/csv', 'application/csv')
 
 def get_jwt_secret():
-    """
-    Fetch JWT secret from Secrets Manager
-    """
-    response = secretsmanager.get_secret_value(SecretId=SECRET_NAME)
-    secret_dict = json.loads(response["SecretString"])
-    return secret_dict[SECRET_KEY]
-
+    try:
+        response = secretsmanager.get_secret_value(SecretId=SECRET_NAME)
+        secret_dict = json.loads(response['SecretString'])
+        return secret_dict[SECRET_KEY]
+    except Exception as e:
+        raise Exception(f"Error retrieving JWT secret: {str(e)}")
 
 def load_allowed_machines_from_s3():
-    """
-    Load allowed machine names from S3 CSV
-    """
-    response = s3.get_object(Bucket=BUCKET, Key=SERVER_LIST_KEY)
-    csv_data = response["Body"].read().decode("utf-8")
-    csv_reader = csv.DictReader(StringIO(csv_data))
+    try:
+        response = s3.get_object(Bucket=BUCKET, Key=SERVER_LIST_KEY)
+        csv_data = response['Body'].read().decode('utf-8')
+        csv_reader = csv.DictReader(StringIO(csv_data))
+        server_names = {row['server_name'].strip() for row in csv_reader if 'server_name' in row and row['server_name'].strip()}
+        return server_names
+    except Exception as e:
+        raise Exception(f"Failed to load allowed machines from S3: {str(e)}")
 
-    return {
-        row["server_name"].strip()
-        for row in csv_reader
-        if row.get("server_name") and row["server_name"].strip()
-    }
-
-def generate_policy(principal_id, effect, resource, context):
-    return {
-        "principalId": principal_id,
-        "policyDocument": {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Action": "execute-api:Invoke",
-                    "Effect": effect,
-                    "Resource": resource
-                }
-            ]
-        },
-        "context": context
-    }
-
+def extract_filename(content_disposition):
+    if "filename=" in content_disposition:
+        parts = content_disposition.split("filename=")
+        filename = parts[1].strip().strip('"').strip("'")
+        return filename
+    return None
 
 def lambda_handler(event, context):
     try:
-
-        params = event.get("queryStringParameters") or {}
-        restaurant_number = params.get("restaurantnumber", "unknown")
-        device_id = params.get("deviceid", "unknown")
-        # machine_name = params.get("machine", "unknown")
-
-        # -----------------------------
-        # 1. Read Authorization header
-        # -----------------------------
-        headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
+        headers = {k.lower(): v for k, v in event.get("headers", {}).items()}
         auth_header = headers.get("authorization", "")
 
         if not auth_header.startswith("Bearer "):
-            return {"isAuthorized": False}
+            return {
+                "statusCode": 401,
+                "body": "Unauthorized: Missing or invalid Authorization header"
+            }
 
-        token = auth_header.replace("Bearer ", "").strip()
-        print(token)
+        token = auth_header.split("Bearer ")[1].strip()
+        JWT_SECRET = get_jwt_secret()
 
-        # -----------------------------
-        # 2. Decode JWT using secret
-        # -----------------------------
-        jwt_secret = get_jwt_secret()
+        try:
+            decoded_payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            return {"statusCode": 401, "body": "Unauthorized: Token has expired"}
+        except jwt.InvalidTokenError as e:
+            return {"statusCode": 401, "body": f"Unauthorized: Invalid token - {str(e)}"}
 
-        decoded = jwt.decode(
-            token,
-            jwt_secret,
-            algorithms=[JWT_ALGORITHM]
+        machine_name = decoded_payload.get("machine")
+        if not machine_name:
+            return {"statusCode": 403, "body": "Forbidden: JWT token missing 'machine' field"}
+
+        ALLOWED_MACHINES = load_allowed_machines_from_s3()
+        if machine_name not in ALLOWED_MACHINES:
+            return {
+                "statusCode": 403,
+                "body": f"Forbidden: Machine '{machine_name}' is not authorized"
+            }
+
+        content_disposition = headers.get("content-disposition", "")
+        filename = extract_filename(content_disposition)
+
+        if not filename:
+            return {
+                "statusCode": 400,
+                "body": "Missing filename. Please include 'Content-Disposition' header with 'filename='."
+            }
+
+        if not filename.lower().endswith(ALLOWED_EXTENSIONS):
+            return {
+                "statusCode": 400,
+                "body": "Invalid file type. Only .xml and .csv files are allowed."
+            }
+
+        content_type = headers.get("content-type", "").lower()
+        if content_type not in ALLOWED_CONTENT_TYPES:
+            return {
+                "statusCode": 400,
+                "body": f"Invalid content-type '{content_type}'. Only XML and CSV types are allowed."
+            }
+
+        body = event['body']
+        if event.get("isBase64Encoded", False):
+            body = base64.b64decode(body)
+        else:
+            body = body.encode('utf-8')
+
+        # Parse filename and derive folder name
+        file_stem = Path(filename).stem  # Removes the extension
+        # Step 1: Remove patterns like `_123_`, `_123`, `123_`, or just `123`
+        step1 = re.sub(r'(_)?\d+(_)?', lambda m: '_' if m.group(1) and m.group(2) else '', file_stem)
+
+        # Step 2: Remove leading special characters (non-alphabetic)
+        folder_name = re.sub(r'^[^a-zA-Z]+', '', step1)
+
+        # Step 3: Replace dots with _
+        folder_name = folder_name.replace('.', '_')
+
+         # Step 4: Replace - with _
+        folder_name = folder_name.replace('-', '_')
+
+        # folder_name = re.sub(r'[^a-zA-Z0-9_]', '_', file_stem)  # Replace non-alphanumeric chars with "_"
+
+        # Construct the S3 key with the folder inside machine_name
+        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        s3_key = f"uploads/{folder_name}/{machine_name}/{timestamp}_{filename}"
+
+        s3.put_object(
+            Bucket=BUCKET,
+            Key=s3_key,
+            Body=body,
+            ContentType=content_type
         )
 
-        print(decoded)
-
-        # -----------------------------
-        # 3. Validate required claims
-        # -----------------------------
-        machine = decoded.get("machine_name")
-
-        if not machine:
-            print("Missing required JWT claims")
-            return {"isAuthorized": False}
-
-        # -----------------------------
-        # 4. Validate machine against S3
-        # -----------------------------
-        allowed_machines = load_allowed_machines_from_s3()
-
-        if machine not in allowed_machines:
-            print(f"Machine '{machine}' not in allowed list")
-            return {"isAuthorized": False}
-
-        # -----------------------------
-        # 5. PASS CONTEXT TO NEXT LAMBDA
-        # -----------------------------
-        print("restaurant_number: ",restaurant_number)
-        print("machine: ",machine)
-        print("device_id: ",device_id)
-        auth_context = {
-            "machine": str(machine),
-            "restaurant_number": str(restaurant_number),
-            "device_id": str(device_id)
+        return {
+            "statusCode": 200,
+            "body": f"File '{filename}' uploaded successfully to '{s3_key}'"
         }
-        return generate_policy(
-            principal_id=machine,
-            effect="Allow",
-            resource=event["methodArn"],
-            context=auth_context
-        )
-
-    except jwt.ExpiredSignatureError:
-        print("JWT expired")
-        return {"isAuthorized": False}
-
-    except jwt.InvalidTokenError as e:
-        print("Invalid JWT:", str(e))
-        return {"isAuthorized": False}
 
     except Exception as e:
-        print("Authorizer error:", str(e))
-        return {"isAuthorized": False}
+        return {
+            "statusCode": 500,
+            "body": f"Internal server error: {str(e)}"
+        }
