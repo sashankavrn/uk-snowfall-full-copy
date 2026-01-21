@@ -62,7 +62,6 @@ def generate_policy(principal_id, effect, resource, context):
 
 
 def lambda_handler(event, context):
-    print(event)
     try:
         print(event)
         params = event.get("queryStringParameters") or {}
@@ -74,7 +73,7 @@ def lambda_handler(event, context):
         # 1. Read Authorization header
         # -----------------------------
         headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
-        auth_header = headers.get("authorizationToken", "")
+        auth_header = headers.get("authorization", "")
 
         if not auth_header.startswith("Bearer "):
             return {"isAuthorized": False}
