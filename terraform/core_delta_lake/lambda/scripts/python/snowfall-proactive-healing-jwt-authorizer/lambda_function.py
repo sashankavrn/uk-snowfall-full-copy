@@ -63,7 +63,7 @@ def generate_policy(principal_id, effect, resource, context):
 
 def lambda_handler(event, context):
     try:
-
+        print(event)
         params = event.get("queryStringParameters") or {}
         restaurant_number = params.get("restaurantnumber", "unknown")
         device_id = params.get("deviceid", "unknown")
