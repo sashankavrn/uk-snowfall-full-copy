@@ -201,9 +201,7 @@ def lambda_handler(event, context):
         # ----------------------------------------------------
         auth_ctx = event.get("requestContext", {}).get("authorizer", {})
         machine_name = auth_ctx.get("machine")
-        restaurant_number = auth_ctx.get("restaurant_number")
-        device_id = auth_ctx.get("device_id")
-
+    
         if not machine_name:
             return {"statusCode": 400, "body": "Missing machine context from authorizer"}
 

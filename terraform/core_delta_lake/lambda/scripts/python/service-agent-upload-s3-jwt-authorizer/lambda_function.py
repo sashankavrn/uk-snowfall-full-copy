@@ -111,13 +111,9 @@ def lambda_handler(event, context):
         # -----------------------------
         # 5. PASS CONTEXT TO NEXT LAMBDA
         # -----------------------------
-        print("restaurant_number: ",restaurant_number)
         print("machine: ",machine)
-        print("device_id: ",device_id)
         auth_context = {
-            "machine": str(machine),
-            "restaurant_number": str(restaurant_number),
-            "device_id": str(device_id)
+            "machine": str(machine)
         }
         return generate_policy(
             principal_id=machine,
