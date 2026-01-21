@@ -277,8 +277,6 @@ def lambda_handler(event, context):
                 "message": "File uploaded successfully",
                 "filename": filename,
                 "machine": machine_name,
-                "restaurant_number": restaurant_number,
-                "device_id": device_id,
                 "s3_key": s3_key
             })
         }

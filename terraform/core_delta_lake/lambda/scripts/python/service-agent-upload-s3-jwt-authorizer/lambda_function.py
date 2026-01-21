@@ -93,7 +93,7 @@ def lambda_handler(event, context):
         # -----------------------------
         # 3. Validate required claims
         # -----------------------------
-        machine = decoded.get("machine_name")
+        machine = decoded.get("machine")
 
         if not machine:
             print("Missing required JWT claims")
