@@ -65,16 +65,11 @@ def lambda_handler(event, context):
     print(event)
     try:
         print("inside try")
-        params = event.get("queryStringParameters") or {}
-        restaurant_number = params.get("restaurantnumber", "unknown")
-        device_id = params.get("deviceid", "unknown")
-        # machine_name = params.get("machine", "unknown")
-
+        
         # -----------------------------
         # 1. Read Authorization header
         # -----------------------------
-        headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
-        auth_header = headers.get("authorizationToken", "")
+        auth_header = event.get("authorizationToken", "")
 
         if not auth_header.startswith("Bearer "):
             return {"isAuthorized": False}
