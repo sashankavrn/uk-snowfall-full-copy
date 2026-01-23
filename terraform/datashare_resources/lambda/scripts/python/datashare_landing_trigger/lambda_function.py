@@ -68,11 +68,12 @@ def lambda_handler(event, context):
             for page in paginator.paginate(Bucket=LANDING_BUCKET, Prefix=prefix):
                 contents = page.get("Contents", [])
 
+                # FIX: exact folder match (prevents incident_sla → incident)
                 data_files = [
                     obj["Key"] for obj in contents
                     if not obj["Key"].endswith("/")
                     and "_PLACEHOLDER" not in obj["Key"]
-                    and obj["Key"].startswith(prefix + "/")
+                    and obj["Key"].split("/")[0:len(prefix.split("/"))] == prefix.split("/")
                 ]
 
                 if not data_files:
