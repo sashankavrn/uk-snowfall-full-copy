@@ -25,10 +25,6 @@
       "destinationPath": "ncr_service_now/service_case/"
     },
     {
-      "fileName": "ncr_service_now/incident_task/",
-      "destinationPath": "ncr_service_now/incident_task/"
-    },
-    {
       "fileName": "ncr_service_now/knowledge_base/",
       "destinationPath": "ncr_service_now/knowledge_base/"
     },
