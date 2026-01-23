@@ -78,6 +78,7 @@ resource "aws_s3_object" "landing_folder" {
       newrelic_digital_3po_foe_response= "newrelic/newrelic_digital_3po_foe_response/"
       ncr_change_request      = "ncr_service_now/change_request/"
       ncr_incident     = "ncr_service_now/incident/"
+      ncr_incident_sla    = "ncr_service_now/incident_sla/"
       ncr_problem_record      = "ncr_service_now/problem_record/"
       ncr_service_now_case    = "ncr_service_now/service_case/"
       ncr_incident_task       = "ncr_service_now/incident_task/"
