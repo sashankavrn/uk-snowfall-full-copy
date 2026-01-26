@@ -5,10 +5,6 @@
       "destinationPath": "ncr_service_now/change_request/"
     },
     {
-      "fileName": "ncr_service_now/incident_sla/",
-      "destinationPath": "ncr_service_now/incident_sla/"
-    },
-    {
       "fileName": "ncr_service_now/incident_task/",
       "destinationPath": "ncr_service_now/incident_task/"
     },
@@ -43,10 +39,6 @@
     {
       "fileName": "ncr_service_now/worknotes/",
       "destinationPath": "ncr_service_now/worknotes/"
-    },
-    {
-      "fileName": "ncr_service_now/account/",
-      "destinationPath": "ncr_service_now/account/"
     },
     {
       "fileName": "ncr_service_now/problem_task/",
