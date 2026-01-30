@@ -1245,40 +1245,40 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_default" {
     variables = {
       TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
       RESULTS_TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
-      WEBSOCKET_ENDPOINT = var.websocket_endpoint
-      # NEED TO CHNAGE THIS TO https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev
+      WEBSOCKET_ENDPOINT = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev"
+      # NEED TO CHNAGE THIS TO var.websocket_endpoint https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev
     }
   }
 }
 
 ############################################
-## Archive: Notifier Handler
+## Archive: Monitor Handler
 ############################################
-data "archive_file" "uk_snowfall_proactive_healing_notifier" {
+data "archive_file" "uk_snowfall_proactive_healing_monitor" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-notifier/"
-  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-notifier.zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-monitor/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-monitor.zip"
 }
 
 ############################################
-## Lambda: Notifier Handler
+## Lambda: Monitor Handler
 ############################################
-resource "aws_lambda_function" "uk_snowfall_proactive_healing_notifier" {
-  filename         = data.archive_file.uk_snowfall_proactive_healing_notifier.output_path
-  function_name    = "uk-snowfall-proactive-healing-notifier-${var.environment}"
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_monitor" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_monitor.output_path
+  function_name    = "uk-snowfall-proactive-healing-monitor-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 29
-  description      = "Sends messages to WebSocket clients for Snowfall Proactive Healing"
-  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_notifier.output_path)
+  description      = "Monitors Snowfall Proactive Healing and triggers notifier workflows"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_monitor.output_path)
   tags             = var.resource_tags
 
   environment {
     variables = {
-      TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections"
-      WEBSOCKET_ENDPOINT = var.websocket_endpoint  
-      # NEED TO CHNAGE THIS TO https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/
+      TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
+      WEBSOCKET_ENDPOINT = var.websocket_endpoint
+      # If needed, override with: https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/
     }
   }
 }
