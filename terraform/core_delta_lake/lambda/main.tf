@@ -997,6 +997,8 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
       ATHENA_REGION    = "eu-central-1"
       ATHENA_OUTPUT_S3 = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
       SNS_TOPIC_ARN    = var.sns_topic_arn
+      WEBSOCKET_ENDPOINT = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev"
+      TABLE_NAME="uk-snowfall-${var.environment}-proactive-websocket-connections"
     }
   }
 }
@@ -1244,7 +1246,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_default" {
       TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
       RESULTS_TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
       WEBSOCKET_ENDPOINT = var.websocket_endpoint
-      # NEED TO CHNAGE THIS TO https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/
+      # NEED TO CHNAGE THIS TO https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev
     }
   }
 }

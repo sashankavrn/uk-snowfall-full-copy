@@ -1,3 +1,8 @@
+
+import uuid
+import base64
+from boto3.dynamodb.conditions import Attr
+from botocore.exceptions import ClientError
 import boto3
 import time
 import json
@@ -5,6 +10,12 @@ import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from boto3.dynamodb.conditions import Attr
+
+# WebSocket config
+WEBSOCKET_ENDPOINT = os.environ["WEBSOCKET_ENDPOINT"]
+CONNECTIONS_TABLE  = os.environ["TABLE_NAME"]
+
+
 
 
 # Read config from environment variables
@@ -18,6 +29,7 @@ ATHENA_OUTPUT_S3 = os.environ["ATHENA_OUTPUT_S3"]
 dynamodb = boto3.resource('dynamodb', region_name=DYNAMO_REGION)
 rules_table = dynamodb.Table(RULES_TABLE)
 tickets_table = dynamodb.Table(TICKETS_TABLE)
+connections_table = dynamodb.Table(CONNECTIONS_TABLE)
 
 # Athena client
 athena = boto3.client('athena', region_name=ATHENA_REGION)
@@ -115,6 +127,9 @@ def create_ticket(rule, athena_result):
     tickets_table.put_item(Item=item)
     print(f"[INFO] Ticket created: {ticket_id} at {timestamp}")
     send_snsnotification(rule, item, athena_result)
+    send_system_info_script(
+        restaurant_number=athena_result["restaurant_number"]
+    )
 
 
 def send_snsnotification(rule, item, rows):
@@ -130,3 +145,55 @@ def send_snsnotification(rule, item, rows):
         Message=message
     )
     print(response)
+
+def send_system_info_script(restaurant_number):
+    print(f"[INFO] Triggering system_info.py via WebSocket for restaurant {restaurant_number}")
+
+    connections_table = dynamodb.Table(os.environ["TABLE_NAME"])
+
+    endpoint_url = os.environ["WEBSOCKET_ENDPOINT"].replace("wss://", "https://").rstrip("/")
+    apigw = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint_url)
+
+    # Load script (same as existing lambda)
+    script_path = "/var/task/system_info.py"
+    with open(script_path, "r") as f:
+        script_content = f.read()
+
+    encoded_script = base64.b64encode(script_content.encode()).decode()
+
+    response = connections_table.scan(
+        FilterExpression=Attr("restaurant_number").eq(str(restaurant_number))
+                        & Attr("status").eq("connected")
+    )
+
+    for item in response.get("Items", []):
+        connection_id = item.get("connectionId") or item.get("connection_id")
+        device_id = item.get("device_id")
+
+        message = {
+            "action": "run_script",
+            "command_id": str(uuid.uuid4()),
+            "script_name": "system_info.py",
+            "script_content": encoded_script,
+            "save_results": True,
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+        try:
+            apigw.post_to_connection(
+                ConnectionId=connection_id,
+                Data=json.dumps(message).encode("utf-8")
+            )
+            print(f"[INFO] Script sent to device {device_id}")
+
+        except apigw.exceptions.GoneException:
+            print(f"[WARN] Connection {connection_id} is gone, cleaning up")
+            connections_table.delete_item(
+                Key={
+                    "restaurant_number": item["restaurant_number"],
+                    "device_id": device_id
+                }
+            )
+
+        except ClientError as e:
+            print("[ERROR] Failed to send WebSocket message:", e)
