@@ -365,6 +365,19 @@ locals {
       schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
+    "ncr_service_now_problem_task" = {
+      name            = "uk-snowfall-ncr-service-now-problem-task"
+      description     = "Workflow for the NCR ServiceNow Problem task data"
+      dataset         = "ncr_service_now_problem_task"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-problem-task-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(45 * * * ? *)"
+      reporting_date  = ""
+    },
     "ncr_service_now_change_request" = {
       name            = "uk-snowfall-ncr-service-now-change-request"
       description     = "Workflow for the NCR ServiceNow Change Request data"

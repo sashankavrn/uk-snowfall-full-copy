@@ -117,6 +117,10 @@
             "destinationPath": "ncr_service_now/incident"
         },
         {
+            "fileName": "ncr_service_now/problem_task",
+            "destinationPath": "ncr_service_now/problem_task"
+        },
+        {
             "fileName": "ncr_service_now/problem_record",
             "destinationPath": "ncr_service_now/problem_record"
         },
