@@ -105,6 +105,10 @@
             "destinationPath": "ncr_service_now/service_case"
         },
         {
+            "fileName": "ncr_service_now/incident_sla",
+            "destinationPath": "ncr_service_now/incident_sla"
+        },
+        {
             "fileName": "ncr_service_now/incident_task",
             "destinationPath": "ncr_service_now/incident_task"
         },
@@ -185,7 +189,7 @@
             "destinationPath": "genesys/user_status_interval_history"
         },
         {
-            "fileName": "gcc/",
+            "fileName": "gcc",
             "destinationPath": "gcc"
         },
         {
