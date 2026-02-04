@@ -780,6 +780,35 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_incident_task_event_targ
   role_arn = var.role_assumed_arn
 }
 
+###################################### NCR ServiceNow Incident SLA ##############################################
+
+resource "aws_cloudwatch_event_rule" "ncr_service_now_incident_sla_event_rule" {
+  name        = "uk-snowfall-ncr-service-now-incident-sla-trigger-rule"
+  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [ {
+        "prefix": "ncr_service_now/incident_sla/"
+      } ]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "ncr_service_now_incident_sla_event_target" {
+  rule     = aws_cloudwatch_event_rule.ncr_service_now_incident_sla_event_rule.name
+  arn      = local.workflow_trigger_arns["ncr_service_now_incident_sla"]
+  role_arn = var.role_assumed_arn
+}
+
 ###################################### NCR ServiceNow Worknotes ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_worknotes_event_rule" {

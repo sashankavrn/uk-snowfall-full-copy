@@ -417,6 +417,19 @@ locals {
       schedule        = "cron(45 * * * ? *)" # offset to avoid overlap with incident
       reporting_date  = ""
     },
+    "ncr_service_now_incident_sla" = {
+      name            = "uk-snowfall-ncr-service-now-incident-sla"
+      description     = "Workflow for the NCR ServiceNow Incident SLA data"
+      dataset         = "ncr_service_now_incident_sla"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-ncr-service-now-incident-sla-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(45 * * * ? *)"
+      reporting_date  = ""
+    }
     "ncr_service_now_knowledge_base" = {
       name            = "uk-snowfall-ncr-service-now-knowledge-base"
       description     = "Workflow for the NCR ServiceNow Knowledge Base data"
