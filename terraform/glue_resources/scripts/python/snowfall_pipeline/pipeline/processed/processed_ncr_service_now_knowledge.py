@@ -21,12 +21,13 @@ class ProcessedNcrServiceNowKnowledge(TransformBase):
         Transform the given DataFrame.
 
         This method executes the following steps:
-        1. Decode HTML entities
-        2. Remove HTML tags
-        3. Splits datetime column
-        4. Filters passed records
-        5. Drops unnecessary columns
-        6. Change column names and schema.
+        1. Check if DataFrame is empty
+        2. Decode HTML entities
+        3. Remove HTML tags
+        4. Splits datetime column
+        5. Filters passed records
+        6. Drops unnecessary columns
+        7. Change column names and schema.
 
         Parameters:
         - df (DataFrame): Input DataFrame.
@@ -34,21 +35,25 @@ class ProcessedNcrServiceNowKnowledge(TransformBase):
         Returns:
         - DataFrame: Transformed DataFrame.
         """
-
-
-        # Step 1: Decode HTML entities in specified columns
+        # Step 1: Check if DataFrame is empty
+        if not df.head(1):
+            self.logger.warning(f"No data found in source '{self.file_path}'. Skipping transformation and exiting workflow.")
+            self.sns_trigger = False  # Prevent SNS alert
+            return None
+        
+        # Step 2: Decode HTML entities in specified columns
         df = self.html_entity_decoder(df, self.pipeline_config.get('html_entity_columns'))
 
-        # Step 2: Remove HTML tags from specified string columns
+        # Step 3: Remove HTML tags from specified string columns
         df = self.strip_html_tags (df, self.pipeline_config.get('html_tag_columns'))
 
-        # Step 3: Splits datetime column
+        # Step 4: Splits datetime column
         df = self.split_datetime_column(df,self.pipeline_config.get('process_timestamp'))
 
-        # Step 4: Filters passed records
+        # Step 5: Filters passed records
         df = self.filter_quality_result(df,partition_column_drop=['sys_created_year','sys_created_month'])
 
-        # Step 5: Drops unnecessary columns
+        # Step 6: Drops unnecessary columns
         df = self.drop_columns_for_processed(df)
 
         column_mapping = {
@@ -124,49 +129,53 @@ class ProcessedNcrServiceNowKnowledge(TransformBase):
             'sys_created_month': ('sys_created_month', 'Integer')
         }
 
-        # Step 6: Changes column names and schema
+        # Step 7: Changes column names and schema
         df = self.change_column_names_and_schema(df, column_mapping)
 
         return df
 
     def save_data(self, df):
-            """
-            Save DataFrame to an S3 location and create/update a Delta table if needed.
+        """
+        Save DataFrame to an S3 location and create/update a Delta table if needed.
 
-            Parameters:
-            - df (DataFrame): Input DataFrame to be saved.
+        Parameters:
+        - df (DataFrame): Input DataFrame to be saved.
 
-            """
-            # Define the S3 save path
-            save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
+        """
+        # Check if the DataFrame is None (i.e., no data was returned or it was empty and skipped during transformation)
+        if df is None:
+            self.logger.info(f"No data to save for '{self.file_path}'. Workflow completed without processing.")
+            return
 
-            # Check if Delta table needs to be created
-            if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
-                self.athena_trigger = True
-                
-            # Determine whether to create or merge to the Delta table
-            if self.athena_trigger:
-                # Create the Delta table
-                df.write.format("delta").mode("overwrite") \
-                .partitionBy('sys_created_year','sys_created_month') \
-                .save(save_output_path)
-                
-            else:
-                # Append the Delta table
-                df.write.format("delta").mode("append") \
-                .save(save_output_path)
+        # Define the S3 save path
+        save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
 
-                # Vacuum the table
-                self.vacuum_table(save_output_path,48)
-
-            if not self.aws_instance.athena_table_exists('processed', 'ncr_service_now_knowledge'):
-                # Execute Athena query to create the table
-                self.aws_instance.create_athena_delta_table('processed', 'ncr_service_now_knowledge', save_output_path, self.athena_output_path)
-
-            # If error detected from DQ failing then will raise
-            if self.sns_trigger:
-                message = "Records in the error folder that have failed transformation"
-                self.aws_instance.send_sns_message(message)
-
+        # Check if Delta table needs to be created
+        if DeltaTable.isDeltaTable(self.spark,save_output_path) is False:
+            self.athena_trigger = True
             
-            self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
+        # Determine whether to create or merge to the Delta table
+        if self.athena_trigger:
+            # Create the Delta table
+            df.write.format("delta").mode("overwrite") \
+            .partitionBy('sys_created_year','sys_created_month') \
+            .save(save_output_path)
+            
+        else:
+            # Append the Delta table
+            df.write.format("delta").mode("append") \
+            .save(save_output_path)
+
+            # Vacuum the table
+            self.vacuum_table(save_output_path,48)
+
+        if not self.aws_instance.athena_table_exists('processed', 'ncr_service_now_knowledge'):
+            # Execute Athena query to create the table
+            self.aws_instance.create_athena_delta_table('processed', 'ncr_service_now_knowledge', save_output_path, self.athena_output_path)
+
+        # If error detected from DQ failing then will raise
+        if self.sns_trigger:
+            message = "Records in the error folder that have failed transformation"
+            self.aws_instance.send_sns_message(message)
+
+        self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')

@@ -45,7 +45,7 @@ class TransformBase:
         group (str) : Group name pulled from glue workflow propeties
     """
 
-    def __init__(self,spark,sc,glueContext):
+    def __init__(self,spark,sc,glueContext, dataset=None, group=None):
         self.logger = SnowfallLogger.get_logger()
         self.spark = spark
         self.sc = sc
@@ -66,8 +66,11 @@ class TransformBase:
         self.processed_bucket_name = f"eu-central1-{self.environment}-uk-snowfall-processed-{self.account_number}"
         self.semantic_bucket_name = f"eu-central1-{self.environment}-uk-snowfall-semantic-{self.account_number}"
         self.athena_output_path = f"eu-central1-{self.environment}-uk-snowfall-athena-{self.account_number}/"
-        self.datasets = self.aws_instance.get_workflow_properties('DATASET')
-        self.group = self.aws_instance.get_workflow_properties('GROUP')
+        self.dataset = dataset
+        self.group = group
+        if not self.dataset:
+            self.datasets = self.aws_instance.get_workflow_properties('DATASET')
+            self.group = self.aws_instance.get_workflow_properties('GROUP')
         self.schema_changed = False
         
 
@@ -95,11 +98,13 @@ class TransformBase:
         except Exception as e:
             if 'Preparation' in self.__class__.__name__:
                 for i in self.list_of_files:
-                    self.aws_instance.move_s3_object(self.raw_bucket_name, i, f"error/{i}") 
-                self.aws_instance.send_sns_message(e)
+                    self.aws_instance.move_s3_object(self.raw_bucket_name, i, f"error/{i}")
+                if self.dataset != 'service_agent_worker_job':
+                    self.aws_instance.send_sns_message(e)
                 raise e
             else:
-                self.aws_instance.send_sns_message(e)
+                if self.dataset != 'service_agent_worker_job':
+                    self.aws_instance.send_sns_message(e)
                 raise e
 
 
@@ -435,7 +440,7 @@ class TransformBase:
         Parameters:
             bucket_name (str): The name of the S3 bucket.
             file_path (str): The path to the file in the S3 bucket.
-            file_format (str, optional): The format of the file to read. Supported formats: 'json', 'csv','delta'. Defaults to 'json'.
+            file_format (str, optional): The format of the file to read. Supported formats: 'json', 'csv','delta', 'xml. Defaults to 'json'.
             appflow_config (str, optional): If there is an appflow config, it is passed in to get rows extracted. Defaults to None.
             multiline_json (bool, optional): Whether the JSON file is multiline. When set to `True`, each line in the JSON file is treated as a separate JSON object. Defaults to `False`.
 
@@ -456,13 +461,19 @@ class TransformBase:
                 source_df = self.spark.read.json(f"s3://{bucket_name}/{file_path}/")
 
         elif file_format == 'csv':
-            source_df = self.spark.read.csv(f"s3://{bucket_name}/{file_path}/", header=True)
+            #source_df = self.spark.read.csv(f"s3://{bucket_name}/{file_path}/", header=True)
+            
+            source_df = self.spark.read.format("csv") \
+                .option("header", "true") \
+                .option("recursiveFileLookup", "true") \
+                .load(f"s3://{bucket_name}/{file_path}/")
+
 
         elif file_format == 'parquet':
             source_df = self.spark.read.parquet(f"s3://{bucket_name}/{file_path}/")
 
         elif file_format == 'xml':
-            source_df = self.spark.read.format("xml").option("rowTag", row_tag).load(f"s3://{bucket_name}/{file_path}/")
+            source_df = self.spark.read.format("xml").option("rowTag", row_tag).load(f"s3://{bucket_name}/{file_path}/*/*.xml")
 
         elif file_format == 'delta':
 
@@ -1085,20 +1096,22 @@ class TransformBase:
             self.logger.info('Delta table overwritten with new schema.')
         else:
             self.logger.info('Delta table is not overwritten, no column data types has been changed or column is not present in table .')
-
+    
+    @transformation_timer
     def explode_df(self, df):
         for (name, dtype) in df.dtypes:
             if "array" in dtype:
                 df = df.withColumn(name, F.explode(name))
         return df
 
-
+    @transformation_timer
     def is_flat(self, df):
         for (_, dtype) in df.dtypes:
             if "array" in dtype or "struct" in dtype:
                 return False
         return True
 
+    @transformation_timer
     def flatten_schema(self, schema, prefix=None):
         fields = []
         for field in schema.fields:
@@ -1109,15 +1122,17 @@ class TransformBase:
                 fields.append(name)
         return fields
 
+    @transformation_timer
     def flatten_nest_df(self, df):
         fields = self.flatten_schema(df.schema)
         new_fields = [item.replace(".", "_").replace(":", "_") for item in fields]
         df = df.select(fields).toDF(*new_fields)
 
-        print('flatten_nest_df completed')
+        self.logger.info('flatten_nest_df completed')
 
         return df
 
+    @transformation_timer
     def drop_nested_field(self, df: DataFrame, drop_field_name: str) -> DataFrame:
         def process(schema, prefix=""):
             exprs = []
