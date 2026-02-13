@@ -10,6 +10,7 @@ from awsglue.utils import getResolvedOptions
 from pyspark.sql.utils import AnalysisException
 from snowfall_pipeline.common_utilities.snowfall_logger import SnowfallLogger
 from botocore.exceptions import ClientError
+from botocore.config import Config
 
 
 class AwsUtilities:
@@ -52,7 +53,7 @@ class AwsUtilities:
             name = self.get_glue_env_var('WORKFLOW_NAME')
 
         try:
-            glue_client = boto3.client('glue')
+            glue_client = boto3.client('glue', config=Config(retries={"mode": "standard", "max_attempts": 10}))
             response = glue_client.get_workflow_run_properties(Name=name, RunId=id)
             self.logger.info(
                 f"Successfully retrieved workflow properties for the key {key} which is {response['RunProperties'][key]}")
@@ -60,34 +61,6 @@ class AwsUtilities:
         except Exception as e:
             self.logger.error(f"Error in get_workflow_properties: {e}")
             raise e
-
-    # def get_workflow_properties(self, key, id=None, name=None):
-    #     if id is None:
-    #         id = self.get_glue_env_var('WORKFLOW_RUN_ID')
-    #     if name is None:
-    #         name = self.get_glue_env_var('WORKFLOW_NAME')
-
-    #     retries = 0
-    #     max_retries = 5
-    #     base_delay = 1  # seconds
-
-    #     while retries < max_retries:
-    #         try:
-    #             glue_client = boto3.client('glue')
-    #             response = self.glue_client.get_workflow_run_properties(Name=name, RunId=id)
-    #             self.logger.info(
-    #                 f"Successfully retrieved workflow properties for the key {key} which is {response['RunProperties'][key]}")
-    #             return response['RunProperties'][key]
-    #         except ClientError as e:
-    #             if e.response['Error']['Code'] == 'ThrottlingException':
-    #                 delay = base_delay * (2 ** retries) + random.uniform(0, 1)
-    #                 self.logger.warning(f"Throttled on Glue API. Retrying in {delay:.2f}s...")
-    #                 time.sleep(delay)
-    #                 retries += 1
-    #             else:
-    #                 self.logger.error(f"Error in get_workflow_properties: {e}")
-    #                 raise
-    #     raise Exception("Max retries exceeded for get_workflow_properties")
 
     def get_workflow_run_data(self, id=None, name=None):
         """Retrieves data of a specific Glue workflow run.
@@ -102,48 +75,20 @@ class AwsUtilities:
         Raises:
             Exception: If an error occurs during the API call.
         """
+                
         if id is None:
             id = self.get_glue_env_var('WORKFLOW_RUN_ID')
         if name is None:
             name = self.get_glue_env_var('WORKFLOW_NAME')
 
         try:
-            glue_client = boto3.client('glue')
+            glue_client = boto3.client('glue', config=Config(retries={"mode": "standard", "max_attempts": 10}))
             response = glue_client.get_workflow_run(Name=name, RunId=id, IncludeGraph=False)
             self.logger.info("Successfully retrieved workflow run data.")
             return response['Run']
         except Exception as e:
             self.logger.error(f"Error in get_workflow_run_data: {e}")
             raise e
-
-
-    # def get_workflow_run_data(self, id=None, name=None):
-    #     if id is None:
-    #         id = self.get_glue_env_var('WORKFLOW_RUN_ID')
-    #     if name is None:
-    #         name = self.get_glue_env_var('WORKFLOW_NAME')
-
-    #     retries = 0
-    #     max_retries = 5
-    #     base_delay = 1
-
-    #     while retries < max_retries:
-    #         try:
-    #             glue_client = boto3.client('glue')
-    #             response = self.glue_client.get_workflow_run(Name=name, RunId=id, IncludeGraph=False)
-    #             self.logger.info("Successfully retrieved workflow run data.")
-    #             return response['Run']
-    #         except ClientError as e:
-    #             if e.response['Error']['Code'] == 'ThrottlingException':
-    #                 delay = base_delay * (2 ** retries) + random.uniform(0, 1)
-    #                 self.logger.warning(f"Throttled on Glue API. Retrying in {delay:.2f}s...")
-    #                 time.sleep(delay)
-    #                 retries += 1
-    #             else:
-    #                 self.logger.error(f"Error in get_workflow_run_data: {e}")
-    #                 raise
-    #     raise Exception("Max retries exceeded for get_workflow_run_data")
-
 
     def get_files_in_s3_path(self, s3_path):
         """Lists files in a specified S3 path.
@@ -252,6 +197,7 @@ class AwsUtilities:
             )
             self.logger.info(f"Message sent to SNS topic: {topic_arn}")
             return response
+        
         except Exception as e:
             self.logger.error(f"Error sending message to SNS topic: {e}")
             return None
@@ -403,6 +349,8 @@ class AwsUtilities:
             if status == 'SUCCEEDED':
                 return True
             elif status in ['FAILED', 'CANCELLED']:
+                reason = response['QueryExecution']['Status'].get('StateChangeReason', 'No reason returned')
+                self.logger.error(f"Athena query failed: {reason}")
                 return False
             if time.time() - start_time > 50:
                 raise TimeoutError("Query execution timed out")
@@ -527,3 +475,41 @@ class AwsUtilities:
             return False
         except ClientError as e:
             raise RuntimeError(f"Error checking table existence: {e}")
+        
+    def delete_athena_table(self, database, table_name):
+        """
+        Delete a table by removing it from the AWS Glue Data Catalog.
+
+        Parameters:
+        - database (str): Logical layer name ('raw', 'preparation', 'processed', 'semantic').
+        - table_name (str): Table to delete.
+        """
+
+        # Map environment to real Athena schema names
+        databases = {
+            'raw': 'uk_snowfall_raw',
+            'preparation': 'uk_snowfall_preparation',
+            'processed': 'uk_snowfall_processed',
+            'semantic': 'uk_snowfall_semantic'
+        }
+
+        full_database_name = databases.get(database)
+        if full_database_name is None:
+            self.logger.error("No matching database name found")
+            raise Exception("No matching database name found")
+
+        # Directly delete from AWS Glue Catalog (no DROP TABLE in Athena)
+        try:
+            glue = boto3.client("glue")
+            glue.delete_table(
+                DatabaseName=full_database_name,
+                Name=table_name
+            )
+            self.logger.info(f"Deleted table '{table_name}' from Glue Catalog (database: {full_database_name}).")
+
+        except glue.exceptions.EntityNotFoundException:
+            self.logger.warning(f"Table '{table_name}' does not exist in Glue Catalog (database: {full_database_name}).")
+
+        except Exception as e:
+            self.logger.error(f"Error deleting table from Glue Catalog: {str(e)}")
+            raise

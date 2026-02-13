@@ -3,7 +3,7 @@ from snowfall_pipeline.common_utilities.decorators import transformation_timer
 from delta.tables import DeltaTable
 from datetime import datetime
 
-class ProcessedStoreDbConfig(TransformBase):
+class ProcessedServiceAgentWorkerJob(TransformBase):
 
     def __init__(self, spark, sc, glueContext, dataset=None, sub_dataset=None, extension=None):
         super().__init__(spark, sc, glueContext, dataset, 'processed')
@@ -14,6 +14,7 @@ class ProcessedStoreDbConfig(TransformBase):
         self.file_path = f"service_agent_server_files/uploads/{sub_dataset}"
 
     def get_data(self):
+        return None
         df = self.read_data_from_s3(self.preparation_bucket_name,self.file_path,'delta')
         return df
 
@@ -31,6 +32,8 @@ class ProcessedStoreDbConfig(TransformBase):
         - DataFrame: Transformed DataFrame.
         """
 
+        return None
+
         # Step 1: Drops unnecessary columns
         df = self.drop_columns_for_processed(df)
 
@@ -44,6 +47,11 @@ class ProcessedStoreDbConfig(TransformBase):
             - df (DataFrame): Input DataFrame to be saved.
 
             """
+
+            if df is None:
+                self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
+                return
+            
             # Define the S3 save path
             save_output_path = f"s3://{self.processed_bucket_name}/{self.file_path}/"
 

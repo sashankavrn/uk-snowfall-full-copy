@@ -98,11 +98,13 @@ class TransformBase:
         except Exception as e:
             if 'Preparation' in self.__class__.__name__:
                 for i in self.list_of_files:
-                    self.aws_instance.move_s3_object(self.raw_bucket_name, i, f"error/{i}") 
-                self.aws_instance.send_sns_message(e)
+                    self.aws_instance.move_s3_object(self.raw_bucket_name, i, f"error/{i}")
+                if self.dataset != 'service_agent_worker_job':
+                    self.aws_instance.send_sns_message(e)
                 raise e
             else:
-                self.aws_instance.send_sns_message(e)
+                if self.dataset != 'service_agent_worker_job':
+                    self.aws_instance.send_sns_message(e)
                 raise e
 
 
@@ -438,7 +440,7 @@ class TransformBase:
         Parameters:
             bucket_name (str): The name of the S3 bucket.
             file_path (str): The path to the file in the S3 bucket.
-            file_format (str, optional): The format of the file to read. Supported formats: 'json', 'csv','delta'. Defaults to 'json'.
+            file_format (str, optional): The format of the file to read. Supported formats: 'json', 'csv','delta', 'xml. Defaults to 'json'.
             appflow_config (str, optional): If there is an appflow config, it is passed in to get rows extracted. Defaults to None.
             multiline_json (bool, optional): Whether the JSON file is multiline. When set to `True`, each line in the JSON file is treated as a separate JSON object. Defaults to `False`.
 

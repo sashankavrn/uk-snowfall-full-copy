@@ -1,5 +1,6 @@
 import importlib
 import sys
+import os
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
 from awsglue.job import Job
@@ -59,7 +60,7 @@ def main():
     extension=None
     sub_dataset=None
     try:
-        args = getResolvedOptions(sys.argv, ['GROUP', 'DATASET', 'SUB_DATASET', 'EXTENSION'])
+        args = getResolvedOptions(sys.argv, ['GROUP', 'DATASET', 'SUB_DATASET', 'EXTENSION', 'JOB_NAME'])
         group = args.get('GROUP')
         dataset = args.get('DATASET')
         sub_dataset = args.get('SUB_DATASET')
