@@ -68,24 +68,6 @@ def lambda_handler(event, context):
             ConnectionId=connection_id, Data=json.dumps({"message": "pong"})
         )
 
-    elif action == "trigger_script":
-        restaurant_number = body["restaurant_number"]
-        script_name = body.get("script_name", "cleanup.ps1")
-
-        response = table.query(
-            KeyConditionExpression=Key("restaurant_number").eq(restaurant_number)
-        )
-
-        for item in response.get("Items", []):
-            target_conn = item["connectionId"]
-            device_id = item["device_id"]
-            msg = {
-                "type": "script_trigger",
-                "restaurant_number": restaurant_number,
-                "device_id": device_id,
-                "script_name": script_name,
-            }
-            apigw.post_to_connection(ConnectionId=target_conn, Data=json.dumps(msg))
 
     elif action == "save_results":
         restaurant_number = body.get("restaurant_number")

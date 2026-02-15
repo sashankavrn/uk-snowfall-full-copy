@@ -169,12 +169,14 @@ def send_system_info_script(restaurant_number):
     for item in response.get("Items", []):
         connection_id = item.get("connectionId") or item.get("connection_id")
         device_id = item.get("device_id")
-
+        script_name = "health_check.py"
+        folder_path = "C:\\GITHUB2025\\agent-scripts\\"
+        script_path = folder_path + script_name
         message = {
-            "action": "run_script",
             "command_id": str(uuid.uuid4()),
-            "script_name": "system_info.py",
-            "script_content": encoded_script,
+            "script_name": script_name,
+            "action": "trigger_script",
+            "script_path": script_path,
             "save_results": True,
             "timestamp": datetime.utcnow().isoformat(),
         }
