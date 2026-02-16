@@ -85,7 +85,7 @@ class PreparationServiceAgentWorkerJob(TransformBase):
         df = df.withColumn("restaurant_number", F.regexp_extract(F.col("host_name"), r"^[A-Za-z]{2}(\d{5})", 1).cast("int"))
 
         # Step 8: Extract last three letters and two digits from host_name as device
-        df = df.withColumn("device", F.regexp_extract(F.col("host_name"), r"([A-Za-z]{3}\d{2})$", 1))
+        df = df.withColumn("device_name", F.regexp_extract(F.col("host_name"), r"([A-Za-z]{3}\d{2})$", 1))
 
         # Step 9: Remove trailing whitespaces
         df = self.remove_trailing_whitespace(df)
