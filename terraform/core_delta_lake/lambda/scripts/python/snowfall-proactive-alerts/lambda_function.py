@@ -147,29 +147,25 @@ def send_snsnotification(rule, item, rows):
     print(response)
 
 def send_system_info_script(restaurant_number):
-    print(f"[INFO] Triggering system_info.py via WebSocket for restaurant {restaurant_number}")
+    print(f"[INFO] Triggering script via WebSocket for restaurant {restaurant_number}")
 
     connections_table = dynamodb.Table(os.environ["TABLE_NAME"])
 
     endpoint_url = os.environ["WEBSOCKET_ENDPOINT"].replace("wss://", "https://").rstrip("/")
     apigw = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint_url)
 
-    # Load script (same as existing lambda)
-    script_path = "/var/task/system_info.py"
-    with open(script_path, "r") as f:
-        script_content = f.read()
-
-    encoded_script = base64.b64encode(script_content.encode()).decode()
 
     response = connections_table.scan(
         FilterExpression=Attr("restaurant_number").eq(str(restaurant_number))
                         & Attr("status").eq("connected")
     )
 
+    print(response)
+
     for item in response.get("Items", []):
         connection_id = item.get("connectionId") or item.get("connection_id")
         device_id = item.get("device_id")
-        script_name = "health_check.py"
+        script_name = "test.ps1"
         folder_path = "C:\\GITHUB2025\\agent-scripts\\"
         script_path = folder_path + script_name
         message = {

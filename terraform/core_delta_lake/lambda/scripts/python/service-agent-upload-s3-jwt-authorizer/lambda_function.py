@@ -10,10 +10,6 @@ s3 = boto3.client("s3")
 secretsmanager = boto3.client("secretsmanager")
 
 # Environment variables
-# BUCKET = os.environ.get("BUCKET_NAME", "staging")
-# SERVER_LIST_KEY = "serverlist/List of Restaurant Servers.csv"
-# SECRET_NAME = os.environ.get("SECRET_NAME", "UK_SNOWFALL")
-# SECRET_KEY = os.environ.get("SECRET_KEY", "JWT_SECRET")
 JWT_ALGORITHM = "HS256"
 BUCKET = os.environ.get('TARGET_BUCKET')  # Updated here
 SERVER_LIST_KEY = 'server_list/List of Restaurant Servers.csv'
