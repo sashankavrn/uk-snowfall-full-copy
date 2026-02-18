@@ -44,3 +44,14 @@ output "disconnect_lambda_arn" {
 output "default_lambda_arn" {
   value = aws_lambda_function.uk_snowfall_proactive_healing_default.invoke_arn
 }
+
+output "service_agent_upload_s3_arn" {
+  value       = aws_lambda_function.uk_snowfall_service_agent_function.arn
+  description = "ARN of the upload Lambda"
+}
+
+output "service_agent_upload_s3_jwt_authorizer_arn" {
+  value       = aws_lambda_function.uk_snowfall_service_agent_authorizer.arn
+  description = "ARN of the JWT authorizer Lambda"
+}
+
