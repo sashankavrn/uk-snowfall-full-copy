@@ -44,26 +44,7 @@ module "s3_module_main" {
   ods_user_data_lambda_permission = module.lambda_module.ods_user_data_to_datashare_permission
 }
 
-# Triggering the Lambda module
-module "lambda_module" {
-  source             = "./lambda"
-  environment        = var.environment
-  resource_tags      = merge(var.resource_tags, { Environment = var.environment })
-  role_assumed_arn   = var.role_assumed_arn
-  landing_bucket_arn = module.s3_module_main.landing_bucket_arn
-  raw_bucket_arn = module.s3_module_main.raw_bucket_arn
-  sns_topic_arn      = module.sns_module.snowfall_topic_arn
-  account_number     = var.account_number
-  artifact_bucket_arn = module.s3_module_main.artifact_bucket_bucket_arn
-  meraki_schedule = var.meraki_schedule
-  newrelic_10min_schedule = var.newrelic_10min_schedule
-  newrelic_5min_schedule = var.newrelic_5min_schedule
-  newrelic_1am_schedule = var.newrelic_1am_schedule
-  service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
-  websocket_endpoint = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com"
-  # websocket_endpoint = module.websocket_api_module.proactive_healing_websocket_api_endpoint #CHNAGE THISN TO HTTPS https://obeggrryoa.execute-api.eu-central-1.amazonaws.com
 
-}   
 
 
 
@@ -94,11 +75,35 @@ module "api_module" {
   resource_tags           = merge(var.resource_tags, { Environment = var.environment })
   role_assumed_arn        = var.role_assumed_arn
   account_number          = var.account_number
-  service_agent_func_arn = module.lambda_module.service_agent_arn
   stage_name = var.stage_name
+  # # NEW — pass the Lambda ARNs
+  # service_agent_func_arn = var.service_agent_arn
+  service_agent_upload_s3_arn             = module.lambda_module.service_agent_upload_s3_arn
+  service_agent_upload_s3_jwt_authorizer_arn = module.lambda_module.service_agent_upload_s3_jwt_authorizer_arn
   
   depends_on = [module.lambda_module]
 }
+
+# Triggering the Lambda module
+module "lambda_module" {
+  source             = "./lambda"
+  environment        = var.environment
+  resource_tags      = merge(var.resource_tags, { Environment = var.environment })
+  role_assumed_arn   = var.role_assumed_arn
+  landing_bucket_arn = module.s3_module_main.landing_bucket_arn
+  raw_bucket_arn = module.s3_module_main.raw_bucket_arn
+  sns_topic_arn      = module.sns_module.snowfall_topic_arn
+  account_number     = var.account_number
+  artifact_bucket_arn = module.s3_module_main.artifact_bucket_bucket_arn
+  meraki_schedule = var.meraki_schedule
+  newrelic_10min_schedule = var.newrelic_10min_schedule
+  newrelic_5min_schedule = var.newrelic_5min_schedule
+  newrelic_1am_schedule = var.newrelic_1am_schedule
+  service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
+  websocket_endpoint = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com"
+  # websocket_endpoint = module.websocket_api_module.proactive_healing_websocket_api_endpoint #CHNAGE THISN TO HTTPS https://obeggrryoa.execute-api.eu-central-1.amazonaws.com
+
+}   
 
 # module "websocket_api_module" {
 #   source = "./websocketapi"
@@ -115,6 +120,7 @@ module "api_module" {
 
 #    depends_on = [module.lambda_module]
 # }
+
 
 
 
