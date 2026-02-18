@@ -6,7 +6,7 @@ from boto3.dynamodb.conditions import Key
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ.get('TABLE_NAME', 'dev_websocket_connections'))
 
-def handler(event, context):
+def lambda_handler(event, context):
     print("Disconnect event:", event)
 
     connection_id = event['requestContext']['connectionId']

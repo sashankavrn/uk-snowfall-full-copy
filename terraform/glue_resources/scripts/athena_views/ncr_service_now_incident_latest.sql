@@ -5,7 +5,7 @@ CREATE OR REPLACE VIEW "uk_snowfall_semantic"."ncr_service_now_incident_latest" 
 WITH latest_incidents AS (
     SELECT 
         *,
-        ROW_NUMBER() OVER (PARTITION BY incident_number ORDER BY sys_updated_timestamp_utc DESC) As row_num
+        ROW_NUMBER() OVER (PARTITION BY incident_number ORDER BY sys_updated_timestamp_utc DESC, cdc_timestamp_utc DESC) As row_num
     FROM "uk_snowfall_processed"."ncr_service_now_incident"
 )
 SELECT 

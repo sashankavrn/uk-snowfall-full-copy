@@ -628,7 +628,45 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_newrelic_digital_3po_
   source_arn    = aws_cloudwatch_event_rule.newrelic_digital_3po_foe_response_lambda_schedule.arn
 }
 
-############################################ SERVICE AGENT JWT/UPLOAD S3 LAMBDA #############################################
+############################################ SERVICE AGENT LAMBDAS  #############################################
+
+data "archive_file" "service_agent_upload_s3_jwt_authorizer" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/service-agent-upload-s3-jwt-authorizer/"
+  output_path = "${path.module}/scripts/zips/service-agent-upload-s3-jwt-authorizer.zip"
+}
+
+resource "aws_lambda_function" "uk_snowfall_service_agent_authorizer_function" {
+  filename         = "${path.module}/scripts/zips/service-agent-upload-s3-jwt-authorizer.zip"
+  function_name    = "uk-snowfall-service-agent-upload-s3-jwt-authorizer-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 1024
+  timeout          = 120
+  description      = "Upload data to S3 using JWT authentication via API"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-upload-s3-jwt-authorizer.zip")
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+## Adding permissions for lambda upload data 
+resource "aws_lambda_permission" "allow_service_agent_bucket_auth" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_service_agent_authorizer_function.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.service_agent_bucket_arn
+  
+}
+
+
 ############################################ SERVICE AGENT JWT/UPLOAD S3 LAMBDA VIA API#############################################
 
 data "archive_file" "service_agent_upload_s3" {
@@ -959,6 +997,8 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
       ATHENA_REGION    = "eu-central-1"
       ATHENA_OUTPUT_S3 = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
       SNS_TOPIC_ARN    = var.sns_topic_arn
+      WEBSOCKET_ENDPOINT = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev"
+      TABLE_NAME="uk-snowfall-${var.environment}-proactive-websocket-connections"
     }
   }
 }
@@ -1205,38 +1245,91 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_default" {
     variables = {
       TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
       RESULTS_TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
-      WEBSOCKET_ENDPOINT = var.websocket_endpoint
+      WEBSOCKET_ENDPOINT = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev"
+      # NEED TO CHNAGE THIS TO var.websocket_endpoint https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev
     }
   }
 }
 
 ############################################
-## Archive: Notifier Handler
+## Archive: Monitor Handler
 ############################################
-data "archive_file" "uk_snowfall_proactive_healing_notifier" {
+data "archive_file" "uk_snowfall_proactive_healing_monitor" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-notifier/"
-  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-notifier.zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-monitor/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-monitor.zip"
 }
 
 ############################################
-## Lambda: Notifier Handler
+## Lambda: Monitor Handler
 ############################################
-resource "aws_lambda_function" "uk_snowfall_proactive_healing_notifier" {
-  filename         = data.archive_file.uk_snowfall_proactive_healing_notifier.output_path
-  function_name    = "uk-snowfall-proactive-healing-notifier-${var.environment}"
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_monitor" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_monitor.output_path
+  function_name    = "uk-snowfall-proactive-healing-monitor-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 29
-  description      = "Sends messages to WebSocket clients for Snowfall Proactive Healing"
-  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_notifier.output_path)
+  description      = "Monitors Snowfall Proactive Healing and triggers notifier workflows"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_monitor.output_path)
   tags             = var.resource_tags
 
   environment {
     variables = {
-      TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections"
+      TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
       WEBSOCKET_ENDPOINT = var.websocket_endpoint
+      STALE_TIMEOUT = "30m"
+      # If needed, override with: https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/
     }
   }
 }
+
+
+
+
+############################################
+## Archive: JWT Authorizer (Proactive Healing)
+############################################
+data "archive_file" "uk_snowfall_proactive_healing_jwt_authorizer" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-healing-jwt-authorizer/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-healing-jwt-authorizer.zip"
+}
+
+############################################
+## Lambda: JWT Authorizer (Proactive Healing)
+############################################
+resource "aws_lambda_function" "uk_snowfall_proactive_healing_jwt_authorizer" {
+  filename         = data.archive_file.uk_snowfall_proactive_healing_jwt_authorizer.output_path
+  function_name    = "uk-snowfall-proactive-healing-jwt-authorizer-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  timeout          = 10
+  description      = "JWT authorizer for Snowfall Proactive Healing APIs/WebSocket"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_jwt_authorizer.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+
+############################################
+## Permissions: Allow  Lambda to read from s3
+############################################
+resource "aws_lambda_permission" "allow_proactive_healing_jwt_authorizer_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_proactive_healing_jwt_authorizer.arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.service_agent_bucket_arn
+  depends_on    = [
+    aws_lambda_function.uk_snowfall_proactive_healing_jwt_authorizer
+  ]
+}
+

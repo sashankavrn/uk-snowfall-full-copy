@@ -140,7 +140,19 @@ dq_rules = {
         IsComplete "number",
         IsComplete "sys_created_on"
     ]""",
+    "ncr_service_now_incident_sla":"""Rules = [
+        ColumnCount <= 55,
+        RowCount > 0,
+        IsComplete "sla_id",
+        IsComplete "sys_created_on"
+    ]""",
         "ncr_service_now_problem_record": """Rules = [
+        ColumnCount <= 210,
+        RowCount > 0,
+        IsComplete "number",
+        IsComplete "sys_created_on"
+    ]""",
+        "ncr_service_now_problem_task": """Rules = [
         ColumnCount <= 210,
         RowCount > 0,
         IsComplete "number",

@@ -9,103 +9,101 @@ from datetime import datetime
 # Initialize AWS clients
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['TABLE_NAME'])
-apigw = boto3.client('apigatewaymanagementapi', endpoint_url=os.environ['WS_ENDPOINT'])
+apigw = boto3.client('apigatewaymanagementapi', endpoint_url=os.environ['WEBSOCKET_ENDPOINT'])
+results_table = dynamodb.Table(os.environ.get("RESULTS_TABLE_NAME", "WebSocketResults"))
 
-def handler(event, context):
-    print("=== Lambda Triggered: Send Script to WebSocket Client ===")
-    print("Incoming event:", json.dumps(event, indent=2))
 
-    # Extract parameters from event or environment
-    device_id =  'device-001' # event.get("device_id")
-    restaurant_number = '12' # event.get("restaurant_number") 
-    script_name = event.get("script_name", "system_info.py")
-    save_results = event.get("save_results", True)
 
-    if not device_id or not restaurant_number:
-        print("Missing 'device_id' or 'restaurant_number'")
-        return {"statusCode": 400, "body": "Missing required parameters"}
-
-    print(f"Target device_id: {device_id}")
-    print(f"Restaurant number: {restaurant_number}")
-    print(f"Requested script: {script_name}")
-    print(f"Save results flag: {save_results}")
-
-    # Step 1 — Read Python script content
-    script_path = f"/var/task/{script_name}"
+def lambda_handler(event, context):
     try:
-        with open(script_path, "r") as f:
-            script_content = f.read()
-        print(f"Successfully read script file: {script_path} (length={len(script_content)} bytes)")
-    except FileNotFoundError:
-        print(f"Script not found at path: {script_path}")
-        return {"statusCode": 404, "body": f"Script {script_name} not found"}
-    except Exception as e:
-        print("Error reading script file:", str(e))
-        print(traceback.format_exc())
-        return {"statusCode": 500, "body": "Error reading script"}
+        body = json.loads(event.get("body", "{}"))
+    except json.JSONDecodeError:
+        body = {}
 
-    encoded_script = base64.b64encode(script_content.encode()).decode()
-    print("Script successfully base64-encoded")
+    print("Incoming event:", json.dumps(event))
 
-    # Step 2 — Fetch connection ID from DynamoDB
-    try:
-        print(f"Looking up device_id={device_id}, restaurant_number={restaurant_number} in DynamoDB table={os.environ['TABLE_NAME']}")
-        resp = table.get_item(
-            Key={
+    connection_id = event["requestContext"]["connectionId"]
+    endpoint_url = os.environ["WEBSOCKET_ENDPOINT"]
+    apigw = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint_url)
+
+    action = body.get("action", "heartbeat")
+
+    if action == "register":
+        restaurant_number = body["restaurant_number"]
+        device_id = body["device_id"]
+        machine_name = body.get("machine", "unknown")
+
+        table.put_item(
+            Item={
                 "restaurant_number": restaurant_number,
-                "device_id": device_id
+                "device_id": device_id,
+                "connectionId": connection_id,
+                "machineName": machine_name,
+                "last_seen": datetime.utcnow().isoformat(),
+                "status": "connected",
             }
         )
-    except Exception as e:
-        print(f"DynamoDB get_item failed: {e}")
-        print(traceback.format_exc())
-        return {"statusCode": 500, "body": "DynamoDB query failed"}
 
-    if "Item" not in resp:
-        print(f"Device {device_id} not found in DynamoDB (possibly disconnected)")
-        return {"statusCode": 404, "body": f"Device {device_id} not found or disconnected"}
+        apigw.post_to_connection(
+            ConnectionId=connection_id,
+            Data=json.dumps({"message": f"✅ Registered {device_id} successfully!"}),
+        )
 
-    item = resp["Item"]
-    connection_id = item.get("connection_id") or item.get("connectionId")
-    print(f"Found active connectionId: {connection_id}")
+    elif action == "heartbeat":
+        restaurant_number = body["restaurant_number"]
+        device_id = body["device_id"]
 
-    # Step 3 — Construct WebSocket payload
-    command_id = str(uuid.uuid4())
-    message = {
-        "action": "run_script",
-        "command_id": command_id,
-        "script_name": script_name,
-        "script_content": encoded_script,
-        "save_results": save_results,
-        "timestamp": datetime.utcnow().isoformat(),
-    }
-    print("Prepared WebSocket payload:", json.dumps(message)[:400], "...")
+        table.update_item(
+            Key={"restaurant_number": restaurant_number, "device_id": device_id},
+            UpdateExpression="SET last_seen = :t, #s = :s",
+            ExpressionAttributeNames={"#s": "status"},
+            ExpressionAttributeValues={
+                ":t": datetime.utcnow().isoformat(),
+                ":s": "connected",
+            },
+        )
 
-    # Step 4 — Send message via API Gateway
-    try:
-        print("🚀 Sending script to WebSocket client...")
-        apigw.post_to_connection(ConnectionId=connection_id, Data=json.dumps(message))
-        print(f"Successfully sent script '{script_name}' to device '{device_id}'")
-        result = "success"
-    except Exception as e:
-        print("Error sending message via WebSocket:", str(e))
-        print(traceback.format_exc())
-        result = "error"
+        print(f"💓 Heartbeat received from {device_id}")
+        apigw.post_to_connection(
+            ConnectionId=connection_id, Data=json.dumps({"message": "pong"})
+        )
 
-    # Step 5 — Return structured Lambda response
-    response_payload = {
-        "device_id": device_id,
-        "restaurant_number": restaurant_number,
-        "script_name": script_name,
-        "command_id": command_id,
-        "save_results": save_results,
-        "result": result,
-        "timestamp": datetime.utcnow().isoformat(),
-    }
 
-    print("=== Lambda Execution Complete ===")
-    print("Response:", json.dumps(response_payload, indent=2))
-    return {
-        "statusCode": 200 if result == "success" else 500,
-        "body": json.dumps(response_payload),
-    }
+    elif action == "save_results":
+        restaurant_number = body.get("restaurant_number")
+        device_id = body.get("device_id")
+        command_id = body.get("command_id", "unknown")
+        script_name = body.get("script_name", "unknown")
+        result_output = body.get("result_output", "")
+        stderr = body.get("stderr", "")
+        execution_status = body.get("execution_status", "success")
+        timestamp = datetime.utcnow().isoformat()
+
+        print(f"💾 Saving results for {device_id}, command_id={command_id}")
+
+        results_table.put_item(
+            Item={
+                "restaurant_number": restaurant_number,
+                "result_id": command_id,
+                "device_id": device_id,
+                "stderr": stderr,
+                "script_name": script_name,
+                "result_output": result_output,
+                "execution_status": execution_status,
+                "saved_at": timestamp,
+            }
+        )
+
+        print(f"✅ Results saved successfully for {device_id}")
+        apigw.post_to_connection(
+            ConnectionId=connection_id,
+            Data=json.dumps({"message": f"✅ Results saved for {device_id} ({script_name})"}),
+        )
+
+    else:
+        apigw.post_to_connection(
+            ConnectionId=connection_id,
+            Data=json.dumps({"message": "Unknown action"}),
+        )
+
+    return {"statusCode": 200, "body": "Processed successfully"}
