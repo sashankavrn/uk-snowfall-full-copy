@@ -1245,7 +1245,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_default" {
     variables = {
       TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
       RESULTS_TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
-      WEBSOCKET_ENDPOINT = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev"
+      # WEBSOCKET_ENDPOINT = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev" for reelase-12 fix cycle 
       # NEED TO CHNAGE THIS TO var.websocket_endpoint https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev
     }
   }
