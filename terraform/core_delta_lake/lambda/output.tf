@@ -46,7 +46,7 @@ output "service_agent_upload_s3_jwt_authorizer_arn" {
   value = aws_lambda_function.uk_snowfall_service_agent_authorizer_function.arn
 }
 
-output "service_agent_upload_s3_lambda_arn" {
+output "service_agent_upload_s3_arn" {
   value = aws_lambda_function.uk_snowfall_service_agent_function.arn
 }
 
