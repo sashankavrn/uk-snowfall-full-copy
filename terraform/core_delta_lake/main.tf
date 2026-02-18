@@ -60,9 +60,12 @@ module "lambda_module" {
   newrelic_5min_schedule = var.newrelic_5min_schedule
   newrelic_1am_schedule = var.newrelic_1am_schedule
   service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
-  websocket_endpoint = module.websocket_api_module.proactive_healing_websocket_api_endpoint #CHNAGE THISN TO HTTPS https://obeggrryoa.execute-api.eu-central-1.amazonaws.com
+  websocket_endpoint = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com"
+  # websocket_endpoint = module.websocket_api_module.proactive_healing_websocket_api_endpoint #CHNAGE THISN TO HTTPS https://obeggrryoa.execute-api.eu-central-1.amazonaws.com
 
 }   
+
+
 
 # Triggering the SNS Module, will have to change to fix endpoint as email
 module "sns_module" {
