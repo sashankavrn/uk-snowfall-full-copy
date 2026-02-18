@@ -66,5 +66,6 @@ variable "not_prod_email" {
   default     = "snowfall.engineering.dev@uk.mcd.com"
 }
 
-# variable "service_agent_upload_s3_arn" {}
-# variable "service_agent_upload_s3_jwt_authorizer_arn" {}
+variable "service_agent_upload_s3_arn" {}
+variable "service_agent_upload_s3_jwt_authorizer_arn" {}
+# variable "service_agent_arn"{}
