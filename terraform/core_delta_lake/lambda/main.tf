@@ -1277,7 +1277,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_monitor" {
   environment {
     variables = {
       TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
-      WEBSOCKET_ENDPOINT = var.websocket_endpoint
+      # WEBSOCKET_ENDPOINT = var.websocket_endpoint
       STALE_TIMEOUT = "30m"
       # If needed, override with: https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/
     }

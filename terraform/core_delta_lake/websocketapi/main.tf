@@ -88,9 +88,9 @@ resource "aws_apigatewayv2_authorizer" "uk_snowfall_proactive_healing_websocket_
   identity_sources = ["route.request.header.Authorization"]
   name             = "uk-snowfall-proactive-healing-jwt-authorizer-${var.environment}"
 
-   depends_on = [
-     aws_lambda_permission.uk_snowfall_proactive_healing_api_gateway_jwt_authorizer
-   ]
+  #  depends_on = [
+  #    aws_lambda_permission.uk_snowfall_proactive_healing_api_gateway_jwt_authorizer
+  #  ]
 }
 
 

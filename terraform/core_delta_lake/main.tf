@@ -60,9 +60,12 @@ module "lambda_module" {
   newrelic_5min_schedule = var.newrelic_5min_schedule
   newrelic_1am_schedule = var.newrelic_1am_schedule
   service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
-  websocket_endpoint = module.websocket_api_module.proactive_healing_websocket_api_endpoint #CHNAGE THISN TO HTTPS https://obeggrryoa.execute-api.eu-central-1.amazonaws.com
+  websocket_endpoint = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com"
+  # websocket_endpoint = module.websocket_api_module.proactive_healing_websocket_api_endpoint #CHNAGE THISN TO HTTPS https://obeggrryoa.execute-api.eu-central-1.amazonaws.com
 
 }   
+
+
 
 # Triggering the SNS Module, will have to change to fix endpoint as email
 module "sns_module" {
@@ -97,21 +100,21 @@ module "api_module" {
   depends_on = [module.lambda_module]
 }
 
-module "websocket_api_module" {
-  source = "./websocketapi"
+# module "websocket_api_module" {
+#   source = "./websocketapi"
 
-  environment        = var.environment
-  resource_tags      = merge(var.resource_tags, { Environment = var.environment })
-  role_assumed_arn   = var.role_assumed_arn
-  stage_name         = var.stage_name
-  account_number     = var.account_number
+#   environment        = var.environment
+#   resource_tags      = merge(var.resource_tags, { Environment = var.environment })
+#   role_assumed_arn   = var.role_assumed_arn
+#   stage_name         = var.stage_name
+#   account_number     = var.account_number
 
-  connect_lambda_arn    = module.lambda_module.connect_lambda_arn
-  disconnect_lambda_arn = module.lambda_module.disconnect_lambda_arn
-  default_lambda_arn    = module.lambda_module.default_lambda_arn
+#   connect_lambda_arn    = module.lambda_module.connect_lambda_arn
+#   disconnect_lambda_arn = module.lambda_module.disconnect_lambda_arn
+#   default_lambda_arn    = module.lambda_module.default_lambda_arn
 
-  #  depends_on = [module.lambda_module]
-}
+#    depends_on = [module.lambda_module]
+# }
 
 
 
