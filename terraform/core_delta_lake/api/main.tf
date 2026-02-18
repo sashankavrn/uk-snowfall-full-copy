@@ -27,16 +27,16 @@ resource "aws_api_gateway_rest_api" "rest_api" {
 ## JWT AUTHORIZER
 ############################################
 
-#resource "aws_api_gateway_authorizer" "jwt_auth" {
-#  name            = "jwt-authorizer"
-#  rest_api_id     = aws_api_gateway_rest_api.rest_api.id
-#  type            = "TOKEN"
-#  identity_source = "method.request.header.Authorization"
-#  authorizer_uri = "arn:aws:apigateway:eu-central-1:lambda:path/2015-03-31/functions/${var.service_agent_upload_s3_jwt_authorizer_arn}/invocations"
-#
-#
-#  # authorizer_uri = "arn:aws:apigateway:eu-central-1:lambda:path/2015-03-31/functions/${data.aws_lambda_function.service_agent_upload_s3_jwt_authorizer.arn}/invocations"
-#}
+resource "aws_api_gateway_authorizer" "jwt_auth" {
+  name            = "jwt-authorizer"
+  rest_api_id     = aws_api_gateway_rest_api.rest_api.id
+  type            = "TOKEN"
+  identity_source = "method.request.header.Authorization"
+  authorizer_uri = "arn:aws:apigateway:eu-central-1:lambda:path/2015-03-31/functions/${var.service_agent_upload_s3_jwt_authorizer_arn}/invocations"
+
+
+  # authorizer_uri = "arn:aws:apigateway:eu-central-1:lambda:path/2015-03-31/functions/${data.aws_lambda_function.service_agent_upload_s3_jwt_authorizer.arn}/invocations"
+}
 
 ############################################
 ## /upload RESOURCE
@@ -125,22 +125,22 @@ resource "aws_api_gateway_stage" "stage" {
 ## LAMBDA PERMISSIONS
 ############################################
 
-## Allow API Gateway to invoke the upload Lambda
-#resource "aws_lambda_permission" "api_gateway_upload" {
-#  statement_id  = "AllowExecutionFromAPIGatewayUpload"
-#  action        = "lambda:InvokeFunction"
-#  # function_name = data.aws_lambda_function.service_agent.function_name
-#  function_name = var.service_agent_upload_s3_arn
-#  principal     = "apigateway.amazonaws.com"
-#  source_arn    = "${aws_api_gateway_rest_api.rest_api.execution_arn}/*/*"
-#}
-#
-## Allow API Gateway to invoke the JWT authorizer Lambda
-#resource "aws_lambda_permission" "api_gateway_authorizer" {
-#  statement_id  = "AllowExecutionFromAPIGatewayAuthorizer"
-#  action        = "lambda:InvokeFunction"
-#  # function_name = data.aws_lambda_function.service_agent_upload_s3_jwt_authorizer.function_name
-#  function_name = var.service_agent_upload_s3_jwt_authorizer_arn
-#  principal     = "apigateway.amazonaws.com"
-#  source_arn    = "${aws_api_gateway_rest_api.rest_api.execution_arn}/*/*"
-#}
+# Allow API Gateway to invoke the upload Lambda
+resource "aws_lambda_permission" "api_gateway_upload" {
+  statement_id  = "AllowExecutionFromAPIGatewayUpload"
+  action        = "lambda:InvokeFunction"
+  # function_name = data.aws_lambda_function.service_agent.function_name
+  function_name = var.service_agent_upload_s3_arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest_api.execution_arn}/*/*"
+}
+
+# Allow API Gateway to invoke the JWT authorizer Lambda
+resource "aws_lambda_permission" "api_gateway_authorizer" {
+  statement_id  = "AllowExecutionFromAPIGatewayAuthorizer"
+  action        = "lambda:InvokeFunction"
+  # function_name = data.aws_lambda_function.service_agent_upload_s3_jwt_authorizer.function_name
+  function_name = var.service_agent_upload_s3_jwt_authorizer_arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.rest_api.execution_arn}/*/*"
+}
