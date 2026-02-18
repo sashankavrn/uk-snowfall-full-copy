@@ -69,20 +69,20 @@ module "appflow_module" {
   landing_bucket_name     = module.s3_module_main.landing_bucket_name
 }
 
-#module "api_module" {
-#  source        = "./api"
-#  environment             = var.environment
-#  resource_tags           = merge(var.resource_tags, { Environment = var.environment })
-#  role_assumed_arn        = var.role_assumed_arn
-#  account_number          = var.account_number
-#  stage_name = var.stage_name
-#  # # NEW — pass the Lambda ARNs
-#  # service_agent_func_arn = var.service_agent_arn
-#  service_agent_upload_s3_arn             = module.lambda_module.service_agent_upload_s3_arn
-#  service_agent_upload_s3_jwt_authorizer_arn = module.lambda_module.service_agent_upload_s3_jwt_authorizer_arn
-#
-#  depends_on = [module.lambda_module]
-#}
+module "api_module" {
+  source        = "./api"
+  environment             = var.environment
+  resource_tags           = merge(var.resource_tags, { Environment = var.environment })
+  role_assumed_arn        = var.role_assumed_arn
+  account_number          = var.account_number
+  stage_name = var.stage_name
+  # # NEW — pass the Lambda ARNs
+  # service_agent_func_arn = var.service_agent_arn
+  service_agent_upload_s3_arn             = module.lambda_module.service_agent_upload_s3_arn
+  service_agent_upload_s3_jwt_authorizer_arn = module.lambda_module.service_agent_upload_s3_jwt_authorizer_arn
+
+  depends_on = [module.lambda_module]
+}
 
 # Triggering the Lambda module
 module "lambda_module" {
