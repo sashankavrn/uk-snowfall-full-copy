@@ -18,10 +18,6 @@ output "lambda_s3_permission_athena" {
   description = "The permission for lambda to accept s3 events"
 }
 
-output "service_agent_arn" {
-  value       = aws_lambda_function.uk_snowfall_service_agent_function.arn
-  description = "The service agent trigger function ARN number"
-}
 
 output "ods_user_data_to_datashare_arn" {
   value       = aws_lambda_function.ods_user_data_to_datashare.arn
@@ -53,3 +49,11 @@ output "service_agent_upload_s3_jwt_authorizer_arn" {
 output "service_agent_upload_s3_lambda_arn" {
   value = aws_lambda_function.uk_snowfall_service_agent_function.arn
 }
+
+output "service_agent_arn" {
+  value       = aws_lambda_function.uk_snowfall_service_agent_function.arn
+  description = "The service agent trigger function ARN number"
+}
+
+
+

@@ -96,7 +96,7 @@ module "api_module" {
   account_number          = var.account_number
   service_agent_func_arn = module.lambda_module.service_agent_arn
   stage_name = var.stage_name
-  # NEW — pass the Lambda ARNs
+  # # NEW — pass the Lambda ARNs
   service_agent_upload_s3_arn             = module.lambda_module.service_agent_upload_s3_arn
   service_agent_upload_s3_jwt_authorizer_arn = module.lambda_module.service_agent_upload_s3_jwt_authorizer_arn
   
@@ -118,7 +118,6 @@ module "api_module" {
 
 #    depends_on = [module.lambda_module]
 # }
-
 
 
 
