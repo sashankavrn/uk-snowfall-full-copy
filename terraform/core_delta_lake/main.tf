@@ -110,7 +110,7 @@ module "websocket_api_module" {
   disconnect_lambda_arn = module.lambda_module.disconnect_lambda_arn
   default_lambda_arn    = module.lambda_module.default_lambda_arn
 
-  #  depends_on = [module.lambda_module]
+   depends_on = [module.lambda_module]
 }
 
 
