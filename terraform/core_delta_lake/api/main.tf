@@ -94,7 +94,7 @@ resource "aws_api_gateway_deployment" "deployment" {
   triggers = {
     redeploy = sha1(jsonencode({
       rest_api     = aws_api_gateway_rest_api.rest_api.id
-      authorizer   = aws_api_gateway_authorizer.jwt_auth.id
+      # authorizer   = aws_api_gateway_authorizer.jwt_auth.id
       method_post  = aws_api_gateway_method.post.id
       integration  = aws_api_gateway_integration.lambda.id
     }))
@@ -107,7 +107,7 @@ resource "aws_api_gateway_deployment" "deployment" {
   depends_on = [
     aws_api_gateway_integration.lambda,
     aws_api_gateway_method.post,
-    aws_api_gateway_authorizer.jwt_auth
+    # aws_api_gateway_authorizer.jwt_auth
   ]
 }
 
