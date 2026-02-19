@@ -1245,8 +1245,8 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_default" {
     variables = {
       TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
       RESULTS_TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
-      WEBSOCKET_ENDPOINT = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev"
-      # NEED TO CHNAGE THIS TO var.websocket_endpoint https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev
+      WEBSOCKET_ENDPOINT = "https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
+      # NEED TO CHNAGE THIS TO var.websocket_endpoint 
     }
   }
 }
@@ -1277,10 +1277,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_monitor" {
   environment {
     variables = {
       TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
-      # WEBSOCKET_ENDPOINT = var.websocket_endpoint
-      WEBSOCKET_ENDPOINT = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev"
-      STALE_TIMEOUT = "30m"
-      # If needed, override with: https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/
+      STALE_TIMEOUT      = "30m"
     }
   }
 }
