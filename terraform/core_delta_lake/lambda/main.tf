@@ -997,7 +997,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
       ATHENA_REGION    = "eu-central-1"
       ATHENA_OUTPUT_S3 = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
       SNS_TOPIC_ARN    = var.sns_topic_arn
-      WEBSOCKET_ENDPOINT = "https://obeggrryoa.execute-api.eu-central-1.amazonaws.com/dev"
+      WEBSOCKET_ENDPOINT = "https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
       TABLE_NAME="uk-snowfall-${var.environment}-proactive-websocket-connections"
     }
   }
