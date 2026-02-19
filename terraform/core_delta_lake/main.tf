@@ -80,7 +80,7 @@ module "api_module" {
   # service_agent_func_arn = var.service_agent_arn
   service_agent_upload_s3_arn             = module.lambda_module.service_agent_upload_s3_arn
   service_agent_upload_s3_jwt_authorizer_arn = module.lambda_module.service_agent_upload_s3_jwt_authorizer_arn
-  
+
   depends_on = [module.lambda_module]
 }
 
