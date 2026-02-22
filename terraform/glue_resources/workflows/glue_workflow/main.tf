@@ -429,7 +429,7 @@ locals {
       trigger_type    = "SCHEDULED"
       schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
-    }
+    },
     "ncr_service_now_knowledge_base" = {
       name            = "uk-snowfall-ncr-service-now-knowledge-base"
       description     = "Workflow for the NCR ServiceNow Knowledge Base data"
