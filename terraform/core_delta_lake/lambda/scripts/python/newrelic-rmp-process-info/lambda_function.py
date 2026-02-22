@@ -127,7 +127,7 @@ def lambda_handler(event, context):
     print(f"[INFO] Retrieved {len(stores)} hostname prefixes.")
 
     # Step 2: Batch these prefixes and run detailed queries
-    maxPrefixesPerBatch = 100
+    maxPrefixesPerBatch = 40
     queries = []
     index = 0
     while index < len(stores):
