@@ -12,11 +12,9 @@ from zoneinfo import ZoneInfo
 from boto3.dynamodb.conditions import Attr
 
 # WebSocket config
-WEBSOCKET_ENDPOINT = os.environ["WEBSOCKET_ENDPOINT"]
+WS_URL = os.environ["WEBSOCKET_ENDPOINT"]
+WEBSOCKET_ENDPOINT = WS_URL.replace("wss://", "https://").replace("ws://", "https://")
 CONNECTIONS_TABLE  = os.environ["TABLE_NAME"]
-
-
-
 
 # Read config from environment variables
 DYNAMO_REGION    = os.environ.get("DYNAMO_REGION", "eu-central-1")

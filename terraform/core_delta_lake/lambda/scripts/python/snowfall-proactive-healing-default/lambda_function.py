@@ -9,7 +9,9 @@ from datetime import datetime
 # Initialize AWS clients
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['TABLE_NAME'])
-apigw = boto3.client('apigatewaymanagementapi', endpoint_url=os.environ['WEBSOCKET_ENDPOINT'])
+WS_URL = os.environ['WEBSOCKET_ENDPOINT']
+WEBSOCKET_ENDPOINT = WS_URL.replace("wss://", "https://").replace("ws://", "https://")
+apigw = boto3.client('apigatewaymanagementapi', endpoint_url=WEBSOCKET_ENDPOINT)
 results_table = dynamodb.Table(os.environ.get("RESULTS_TABLE_NAME", "WebSocketResults"))
 
 
