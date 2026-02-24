@@ -997,7 +997,8 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
       ATHENA_REGION    = "eu-central-1"
       ATHENA_OUTPUT_S3 = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
       SNS_TOPIC_ARN    = var.sns_topic_arn
-      WEBSOCKET_ENDPOINT = var.websocket_endpoint  #"https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
+      STAGE_NAME = var.stage_name
+      # WEBSOCKET_ENDPOINT = var.websocket_endpoint  #"https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
       TABLE_NAME="uk-snowfall-${var.environment}-proactive-websocket-connections"
     }
   }
@@ -1245,7 +1246,8 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_default" {
     variables = {
       TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
       RESULTS_TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
-      WEBSOCKET_ENDPOINT = var.websocket_endpoint #"https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
+      STAGE_NAME = var.stage_name
+      # WEBSOCKET_ENDPOINT = var.websocket_endpoint #"https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
     }
   }
 }

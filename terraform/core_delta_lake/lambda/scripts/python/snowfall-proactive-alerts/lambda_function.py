@@ -9,11 +9,9 @@ import json
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from boto3.dynamodb.conditions import Attr
 
 # WebSocket config
-WS_URL = os.environ["WEBSOCKET_ENDPOINT"]
-WEBSOCKET_ENDPOINT = WS_URL.replace("wss://", "https://").replace("ws://", "https://")
+STAGE_NAME = os.environ["STAGE_NAME"]
 CONNECTIONS_TABLE  = os.environ["TABLE_NAME"]
 
 # Read config from environment variables
@@ -148,8 +146,14 @@ def send_system_info_script(restaurant_number):
     print(f"[INFO] Triggering script via WebSocket for restaurant {restaurant_number}")
 
     connections_table = dynamodb.Table(os.environ["TABLE_NAME"])
+    
+    if STAGE_NAME == "prod":
+        endpoint_url = "https://j3v4n25iwa.execute-api.eu-central-1.amazonaws.com/prod/"
+    elif STAGE_NAME == "nprod":
+        endpoint_url = "https://egnv9vgjjh.execute-api.eu-central-1.amazonaws.com/nprod/"
+    else:
+        endpoint_url = "https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
 
-    endpoint_url = os.environ["WEBSOCKET_ENDPOINT"].replace("wss://", "https://").rstrip("/")
     apigw = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint_url)
 
 
