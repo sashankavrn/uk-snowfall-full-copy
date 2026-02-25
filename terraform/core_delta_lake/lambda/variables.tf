@@ -11,8 +11,9 @@ variable "newrelic_10min_schedule" {}
 variable "newrelic_5min_schedule" {}
 variable "newrelic_1am_schedule" {}
 variable "service_agent_bucket_arn"{}
-variable "websocket_endpoint" {}
+variable "stage_name" {}
 # variable "service_agent_upload_s3_arn" {}
 # variable "service_agent_upload_s3_jwt_authorizer_arn" {}
+#variable "websocket_endpoint" {}
 
 

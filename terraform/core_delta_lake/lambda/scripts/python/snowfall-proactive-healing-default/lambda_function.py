@@ -9,10 +9,8 @@ from datetime import datetime
 # Initialize AWS clients
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['TABLE_NAME'])
-apigw = boto3.client('apigatewaymanagementapi', endpoint_url=os.environ['WEBSOCKET_ENDPOINT'])
+STAGE_NAME = os.environ["STAGE_NAME"]
 results_table = dynamodb.Table(os.environ.get("RESULTS_TABLE_NAME", "WebSocketResults"))
-
-
 
 def lambda_handler(event, context):
     try:
@@ -23,7 +21,14 @@ def lambda_handler(event, context):
     print("Incoming event:", json.dumps(event))
 
     connection_id = event["requestContext"]["connectionId"]
-    endpoint_url = os.environ["WEBSOCKET_ENDPOINT"]
+
+    if STAGE_NAME == "prod":
+        endpoint_url = "https://j3v4n25iwa.execute-api.eu-central-1.amazonaws.com/prod/"
+    elif STAGE_NAME == "nprod":
+        endpoint_url = "https://egnv9vgjjh.execute-api.eu-central-1.amazonaws.com/nprod/"
+    else:
+        endpoint_url = "https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
+        
     apigw = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint_url)
 
     action = body.get("action", "heartbeat")
