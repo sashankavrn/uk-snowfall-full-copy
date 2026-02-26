@@ -124,7 +124,7 @@ def create_ticket(rule, athena_result):
     print(f"[INFO] Ticket created: {ticket_id} at {timestamp}")
     send_snsnotification(rule, item, athena_result)
     send_system_info_script(
-        restaurant_number=athena_result["restaurant_number"]
+        restaurant_number=athena_result["restaurant_number"], proactive_script_name=rule['proactive_script_name']
     )
 
 
@@ -142,8 +142,8 @@ def send_snsnotification(rule, item, rows):
     )
     print(response)
 
-def send_system_info_script(restaurant_number):
-    print(f"[INFO] Triggering script via WebSocket for restaurant {restaurant_number}")
+def send_system_info_script(restaurant_number,proactive_script_name):
+    print(f"[INFO] Triggering script via WebSocket for restaurant {restaurant_number} and script name {proactive_script_name}")
 
     connections_table = dynamodb.Table(os.environ["TABLE_NAME"])
     
@@ -167,7 +167,7 @@ def send_system_info_script(restaurant_number):
     for item in response.get("Items", []):
         connection_id = item.get("connectionId") or item.get("connection_id")
         device_id = item.get("device_id")
-        script_name = "test.ps1"
+        script_name = proactive_script_name
         folder_path = "C:\\GITHUB2025\\agent-scripts\\"
         script_path = folder_path + script_name
         message = {
