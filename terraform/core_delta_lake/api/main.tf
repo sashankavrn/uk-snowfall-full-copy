@@ -91,14 +91,14 @@ resource "aws_api_gateway_integration" "lambda" {
 resource "aws_api_gateway_deployment" "deployment" {
   rest_api_id = aws_api_gateway_rest_api.rest_api.id
 
-  #triggers = {
-  #  redeploy = sha1(jsonencode({
-  #    rest_api     = aws_api_gateway_rest_api.rest_api.id
-  #    # authorizer   = aws_api_gateway_authorizer.jwt_auth.id
-  #    method_post  = aws_api_gateway_method.post.id
-  #    integration  = aws_api_gateway_integration.lambda.id
-  #  }))
-  #}
+  triggers = {
+   redeploy = sha1(jsonencode({
+     rest_api     = aws_api_gateway_rest_api.rest_api.id
+     # authorizer   = aws_api_gateway_authorizer.jwt_auth.id
+     method_post  = aws_api_gateway_method.post.id
+     integration  = aws_api_gateway_integration.lambda.id
+   }))
+  }
 
   lifecycle {
     create_before_destroy = true
@@ -110,7 +110,6 @@ resource "aws_api_gateway_deployment" "deployment" {
     # aws_api_gateway_authorizer.jwt_auth
   ]
 }
-
 ############################################
 ## STAGE
 ############################################
