@@ -45,10 +45,6 @@
       "destinationPath": "ncr_service_now/worknotes/"
     },
     {
-      "fileName": "ncr_service_now/account/",
-      "destinationPath": "ncr_service_now/account/"
-    },
-    {
       "fileName": "ncr_service_now/problem_task/",
       "destinationPath": "ncr_service_now/problem_task/"
     },

@@ -638,6 +638,19 @@ locals {
       schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
+    "genesys_queue_interval_history" = {
+      name            = "uk-snowfall-genesys-queue-interval-history"
+      description     = "Workflow for Genesys Queue Interval History data"
+      dataset         = "genesys_queue_interval_history"
+      group           = "preparation"
+      trigger_name    = "uk-snowfall-genesys-queue-interval-history-trigger"
+      max_concurrent  = 1
+      batch_size      = 100
+      batch_window    = 1
+      trigger_type    = "SCHEDULED"
+      schedule        = "cron(0/45 * * * ? *)"
+      reporting_date  = ""
+    },
     "restaurant_count_by_day" = {
       name            = "uk-snowfall-restaurant-count-by-day"
       description     = "Workflow for the restaurant count by day data, triggered daily at 1 AM UTC"

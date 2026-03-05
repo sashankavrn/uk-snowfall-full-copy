@@ -50,10 +50,3 @@ output "service_agent_upload_s3_arn" {
   value = aws_lambda_function.uk_snowfall_service_agent_function.arn
 }
 
-# output "service_agent_arn" {
-#   value       = aws_lambda_function.uk_snowfall_service_agent_function.arn
-#   description = "The service agent trigger function ARN number"
-# }
-
-
-

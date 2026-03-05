@@ -9,11 +9,9 @@ import json
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from boto3.dynamodb.conditions import Attr
 
 # WebSocket config
-WS_URL = os.environ["WEBSOCKET_ENDPOINT"]
-WEBSOCKET_ENDPOINT = WS_URL.replace("wss://", "https://").replace("ws://", "https://")
+STAGE_NAME = os.environ["STAGE_NAME"]
 CONNECTIONS_TABLE  = os.environ["TABLE_NAME"]
 
 # Read config from environment variables
@@ -126,7 +124,7 @@ def create_ticket(rule, athena_result):
     print(f"[INFO] Ticket created: {ticket_id} at {timestamp}")
     send_snsnotification(rule, item, athena_result)
     send_system_info_script(
-        restaurant_number=athena_result["restaurant_number"]
+        restaurant_number=athena_result["restaurant_number"], proactive_script_name=rule['proactive_script_name']
     )
 
 
@@ -144,12 +142,18 @@ def send_snsnotification(rule, item, rows):
     )
     print(response)
 
-def send_system_info_script(restaurant_number):
-    print(f"[INFO] Triggering script via WebSocket for restaurant {restaurant_number}")
+def send_system_info_script(restaurant_number,proactive_script_name):
+    print(f"[INFO] Triggering script via WebSocket for restaurant {restaurant_number} and script name {proactive_script_name}")
 
     connections_table = dynamodb.Table(os.environ["TABLE_NAME"])
+    
+    if STAGE_NAME == "prod":
+        endpoint_url = "https://j3v4n25iwa.execute-api.eu-central-1.amazonaws.com/prod/"
+    elif STAGE_NAME == "nprod":
+        endpoint_url = "https://egnv9vgjjh.execute-api.eu-central-1.amazonaws.com/nprod/"
+    else:
+        endpoint_url = "https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
 
-    endpoint_url = os.environ["WEBSOCKET_ENDPOINT"].replace("wss://", "https://").rstrip("/")
     apigw = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint_url)
 
 
@@ -163,7 +167,7 @@ def send_system_info_script(restaurant_number):
     for item in response.get("Items", []):
         connection_id = item.get("connectionId") or item.get("connection_id")
         device_id = item.get("device_id")
-        script_name = "test.ps1"
+        script_name = proactive_script_name
         folder_path = "C:\\GITHUB2025\\agent-scripts\\"
         script_path = folder_path + script_name
         message = {
