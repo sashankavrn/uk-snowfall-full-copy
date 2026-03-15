@@ -69,3 +69,8 @@ output "landing_trigger_arn" {
 output "athena_trigger_arn" {
   value = module.lambda_module.athena_trigger_arn
 }
+
+output "lambda_jwt_layer_arn" {
+  value = aws_lambda_layer_version.jwt.arn
+}
+

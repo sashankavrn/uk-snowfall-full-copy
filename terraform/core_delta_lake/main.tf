@@ -99,8 +99,9 @@ module "lambda_module" {
   newrelic_1am_schedule = var.newrelic_1am_schedule
   service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
   stage_name = var.stage_name
+  jwt_layer = module.lambda_layer_module.lambda_jwt_layer_arn
 }   
-
+ 
  module "websocket_api_module" {
    source = "./websocketapi"
 
@@ -118,7 +119,7 @@ module "lambda_module" {
  }
 
 
-module "jwt_layer" {
+module "lambda_layer_module" {
   source              = "./lambda_layers"
   layer_name          = "jwt-layer"
   compatible_runtimes = ["python3.12"]
