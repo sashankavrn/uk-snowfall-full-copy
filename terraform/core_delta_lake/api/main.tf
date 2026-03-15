@@ -121,9 +121,8 @@ resource "aws_lambda_permission" "api_gateway_authorizer" {
   source_arn    = "${aws_api_gateway_rest_api.rest_api.execution_arn}/*/*"
 }
 
-#
 ############################################
-## REST API- thousandeyes-api
+## REST API - thousandeyes-api
 ############################################
 
 resource "aws_api_gateway_rest_api" "thousandeyes_api" {
@@ -149,19 +148,19 @@ resource "aws_api_gateway_authorizer" "thousandeyes_jwt_auth" {
 ## /alert RESOURCE
 ############################################
 
-resource "aws_api_gateway_resource" "alert" {
+resource "aws_api_gateway_resource" "thousandeyes_alert" {
   rest_api_id = aws_api_gateway_rest_api.thousandeyes_api.id
   parent_id   = aws_api_gateway_rest_api.thousandeyes_api.root_resource_id
   path_part   = "alert"
 }
 
 ############################################
-## POST /alert METHOD (JWT PROTECTED)
+## POST /alert METHOD
 ############################################
 
-resource "aws_api_gateway_method" "post_alert" {
+resource "aws_api_gateway_method" "thousandeyes_post_alert" {
   rest_api_id   = aws_api_gateway_rest_api.thousandeyes_api.id
-  resource_id   = aws_api_gateway_resource.alert.id
+  resource_id   = aws_api_gateway_resource.thousandeyes_alert.id
   http_method   = "POST"
   authorization = "CUSTOM"
   authorizer_id = aws_api_gateway_authorizer.thousandeyes_jwt_auth.id
@@ -171,10 +170,10 @@ resource "aws_api_gateway_method" "post_alert" {
 ## INTEGRATION → TICKET LAMBDA
 ############################################
 
-resource "aws_api_gateway_integration" "ticket_lambda" {
+resource "aws_api_gateway_integration" "thousandeyes_ticket_lambda" {
   rest_api_id             = aws_api_gateway_rest_api.thousandeyes_api.id
-  resource_id             = aws_api_gateway_resource.alert.id
-  http_method             = aws_api_gateway_method.post_alert.http_method
+  resource_id             = aws_api_gateway_resource.thousandeyes_alert.id
+  http_method             = aws_api_gateway_method.thousandeyes_post_alert.http_method
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
 
@@ -182,17 +181,17 @@ resource "aws_api_gateway_integration" "ticket_lambda" {
 }
 
 ############################################
-## DEPLOYMENT (AUTO-REDEPLOY)
+## DEPLOYMENT (UNIQUE NAME)
 ############################################
 
-resource "aws_api_gateway_deployment" "deployment" {
+resource "aws_api_gateway_deployment" "thousandeyes_deployment" {
   rest_api_id = aws_api_gateway_rest_api.thousandeyes_api.id
 
   triggers = {
     redeploy = sha1(jsonencode({
       rest_api    = aws_api_gateway_rest_api.thousandeyes_api.id
-      method_post = aws_api_gateway_method.post_alert.id
-      integration = aws_api_gateway_integration.ticket_lambda.id
+      method_post = aws_api_gateway_method.thousandeyes_post_alert.id
+      integration = aws_api_gateway_integration.thousandeyes_ticket_lambda.id
     }))
   }
 
@@ -201,36 +200,36 @@ resource "aws_api_gateway_deployment" "deployment" {
   }
 
   depends_on = [
-    aws_api_gateway_integration.ticket_lambda,
-    aws_api_gateway_method.post_alert
+    aws_api_gateway_integration.thousandeyes_ticket_lambda,
+    aws_api_gateway_method.thousandeyes_post_alert
   ]
 }
 
 ############################################
-## STAGE
+## STAGE (UNIQUE NAME)
 ############################################
 
-resource "aws_api_gateway_stage" "stage" {
-  deployment_id = aws_api_gateway_deployment.deployment.id
+resource "aws_api_gateway_stage" "thousandeyes_stage" {
+  deployment_id = aws_api_gateway_deployment.thousandeyes_deployment.id
   rest_api_id   = aws_api_gateway_rest_api.thousandeyes_api.id
   stage_name    = var.stage_name
   tags          = var.resource_tags
 }
 
 ############################################
-## LAMBDA PERMISSIONS
+## LAMBDA PERMISSIONS (UNIQUE NAMES)
 ############################################
 
-resource "aws_lambda_permission" "api_gateway_ticket" {
-  statement_id  = "AllowExecutionFromAPIGatewayTicket"
+resource "aws_lambda_permission" "thousandeyes_api_gateway_ticket" {
+  statement_id  = "AllowExecutionFromAPIGatewayTicketThousandEyes"
   action        = "lambda:InvokeFunction"
   function_name = var.thousandeyes_alerts_arn
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.thousandeyes_api.execution_arn}/*/*"
 }
 
-resource "aws_lambda_permission" "api_gateway_authorizer" {
-  statement_id  = "AllowExecutionFromAPIGatewayAuthorizer"
+resource "aws_lambda_permission" "thousandeyes_api_gateway_authorizer" {
+  statement_id  = "AllowExecutionFromAPIGatewayAuthorizerThousandEyes"
   action        = "lambda:InvokeFunction"
   function_name = var.thousandeyes_alerts_jwt_authorizer_arn
   principal     = "apigateway.amazonaws.com"
