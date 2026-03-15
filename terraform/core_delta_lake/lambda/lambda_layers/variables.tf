@@ -1,7 +1,7 @@
 variable "layer_name" {
   type        = string
   description = "Lambda layer name"
-  default     = ["jwt_layer"]
+  default     = "jwt_layer"
 }
 
 variable "description" {
