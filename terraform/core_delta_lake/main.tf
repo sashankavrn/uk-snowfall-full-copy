@@ -119,7 +119,7 @@ module "lambda_module" {
 
 
 module "jwt_layer" {
-  source              = "../../modules/lambda/lambda_layers"
+  source              = "./lambda/lambda_layers"
   layer_name          = "jwt-layer"
   compatible_runtimes = ["python3.12"]
 }
