@@ -76,8 +76,6 @@ module "api_module" {
   role_assumed_arn        = var.role_assumed_arn
   account_number          = var.account_number
   stage_name = var.stage_name
-  # # NEW — pass the Lambda ARNs
-  # service_agent_func_arn = var.service_agent_arn
   service_agent_upload_s3_arn             = module.lambda_module.service_agent_upload_s3_arn
   service_agent_upload_s3_jwt_authorizer_arn = module.lambda_module.service_agent_upload_s3_jwt_authorizer_arn
 
@@ -101,9 +99,6 @@ module "lambda_module" {
   newrelic_1am_schedule = var.newrelic_1am_schedule
   service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
   stage_name = var.stage_name
-  # websocket_endpoint = "wss://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev"
-  # websocket_endpoint = module.websocket_api_module.proactive_healing_websocket_api_endpoint #CHNAGE THISN TO HTTPS https://obeggrryoa.execute-api.eu-central-1.amazonaws.com
-
 }   
 
  module "websocket_api_module" {
@@ -121,6 +116,13 @@ module "lambda_module" {
 
     depends_on = [module.lambda_module]
  }
+
+
+module "jwt_layer" {
+  source              = "../../modules/lambda/lambda_layers"
+  layer_name          = "jwt-layer"
+  compatible_runtimes = ["python3.12"]
+}
 
 
 

@@ -998,7 +998,6 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
       ATHENA_OUTPUT_S3 = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
       SNS_TOPIC_ARN    = var.sns_topic_arn
       STAGE_NAME = var.stage_name
-      # WEBSOCKET_ENDPOINT = var.websocket_endpoint  #"https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
       TABLE_NAME="uk-snowfall-${var.environment}-proactive-websocket-connections"
     }
   }
@@ -1184,7 +1183,6 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_connect" {
   environment {
     variables = {
       TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections"
-      # JWT_SECRET = var.jwt_secret
     }
   }
 }
@@ -1247,7 +1245,6 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_default" {
       TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
       RESULTS_TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
       STAGE_NAME = var.stage_name
-      # WEBSOCKET_ENDPOINT = var.websocket_endpoint #"https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
     }
   }
 }
@@ -1331,4 +1328,105 @@ resource "aws_lambda_permission" "allow_proactive_healing_jwt_authorizer_bucket"
     aws_lambda_function.uk_snowfall_proactive_healing_jwt_authorizer
   ]
 }
+
+
+############################################
+## Archive: JWT Authorizer (ThousandEyes Alerts)
+############################################
+data "archive_file" "uk_snowfall_thousandeyes_alerts_jwt_authorizer" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/thousandeyes-alerts-jwt-authorizer/"
+  output_path = "${path.module}/scripts/zips/uk_snowfall_thousandeyes_alerts_jwt_authorizer.zip"
+}
+
+############################################
+## Lambda: JWT Authorizer (ThousandEyes Alerts)
+############################################
+resource "aws_lambda_function" "uk_snowfall_thousandeyes_alerts_jwt_authorizer" {
+  filename         = data.archive_file.uk_snowfall_thousandeyes_alerts_jwt_authorizer.output_path
+
+  # AWS Lambda function name (kebab-case for AWS)
+  function_name    = "uk-snowfall-thousandeyes-alerts-jwt-authorizer-${var.environment}"
+
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  timeout          = 10
+
+  description      = "JWT authorizer for ThousandEyes Alerts APIs"
+
+  # Ensures Lambda updates when ZIP changes
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_thousandeyes_alerts_jwt_authorizer.output_path)
+
+  tags             = var.resource_tags
+
+  ############################################
+  ## Attach shared JWT layer
+  ## Terraform automatically handles dependency ordering
+  ############################################
+  layers = [
+    module.jwt_layer.arn
+  ]
+
+  ############################################
+  ## Environment variables
+  ############################################
+  environment {
+    variables = {
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+############################################
+## Permissions: Allow Lambda to be invoked by S3
+############################################
+resource "aws_lambda_permission" "allow_thousandeyes_alerts_jwt_authorizer_bucket" {
+  statement_id  = "AllowExecutionFromS3Bucket"
+  action        = "lambda:InvokeFunction"
+
+  # Reference the Lambda created above
+  function_name = aws_lambda_function.uk_snowfall_thousandeyes_alerts_jwt_authorizer.arn
+
+  principal     = "s3.amazonaws.com"
+  source_arn    = var.service_agent_bucket_arn
+
+  depends_on = [
+    aws_lambda_function.uk_snowfall_thousandeyes_alerts_jwt_authorizer
+  ]
+}
+
+
+############################################
+## DynamoDB: ThousandEyes Alerts
+############################################
+resource "aws_dynamodb_table" "thousandeyes_alerts" {
+  name         = "uk-snowfall-${var.environment}-thousandeyes-alerts"
+  billing_mode = "PAY_PER_REQUEST"
+
+  # Partition key: restaurant number
+  hash_key     = "restaurant_number"
+
+  # Sort key: alert ID (unique per alert)
+  range_key    = "alert_id"
+
+  ############################################
+  ## Attributes
+  ############################################
+  attribute {
+    name = "restaurant_number"
+    type = "N"
+  }
+
+  attribute {
+    name = "alert_id"
+    type = "S"
+  }
+
+  ############################################
+  ## Tags
+  ############################################
+  tags = var.resource_tags
+}
+
 
