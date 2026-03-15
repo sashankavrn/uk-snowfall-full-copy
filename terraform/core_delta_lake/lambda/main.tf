@@ -1354,11 +1354,7 @@ resource "aws_lambda_function" "uk_snowfall_thousandeyes_alerts_jwt_authorizer" 
   description      = "JWT authorizer for ThousandEyes Alerts APIs"
   source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_thousandeyes_alerts_jwt_authorizer.output_path)
   tags             = var.resource_tags
-
-  ############################################
-  ## Attach shared JWT layer
-  ## Terraform automatically handles dependency ordering
-  ############################################
+  
   layers = [
     module.jwt_layer.arn
   ]
