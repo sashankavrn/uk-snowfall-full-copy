@@ -99,6 +99,7 @@ module "lambda_module" {
   newrelic_1am_schedule = var.newrelic_1am_schedule
   service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
   stage_name = var.stage_name
+  jwt_layer_arn = module.lambda_layer_module.lambda_jwt_layer_arn
 }   
 
 module "lambda_layer_module" {

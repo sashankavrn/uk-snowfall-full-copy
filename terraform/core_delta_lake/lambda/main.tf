@@ -1355,9 +1355,10 @@ resource "aws_lambda_function" "uk_snowfall_thousandeyes_alerts_jwt_authorizer" 
   source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_thousandeyes_alerts_jwt_authorizer.output_path)
   tags             = var.resource_tags
 
-  layers = [
-  module.lambda_layer_module.lambda_jwt_layer_arn
+ layers = [
+  var.jwt_layer_arn
 ]
+
 
 
   ############################################

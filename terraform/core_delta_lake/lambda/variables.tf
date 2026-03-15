@@ -12,3 +12,6 @@ variable "newrelic_5min_schedule" {}
 variable "newrelic_1am_schedule" {}
 variable "service_agent_bucket_arn"{}
 variable "stage_name" {}
+variable "jwt_layer_arn" {
+  type = string
+}
