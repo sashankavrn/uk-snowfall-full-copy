@@ -1347,17 +1347,12 @@ resource "aws_lambda_function" "uk_snowfall_thousandeyes_alerts_jwt_authorizer" 
 
   # AWS Lambda function name (kebab-case for AWS)
   function_name    = "uk-snowfall-thousandeyes-alerts-jwt-authorizer-${var.environment}"
-
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
   timeout          = 10
-
   description      = "JWT authorizer for ThousandEyes Alerts APIs"
-
-  # Ensures Lambda updates when ZIP changes
   source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_thousandeyes_alerts_jwt_authorizer.output_path)
-
   tags             = var.resource_tags
 
   ############################################
@@ -1377,25 +1372,6 @@ resource "aws_lambda_function" "uk_snowfall_thousandeyes_alerts_jwt_authorizer" 
     }
   }
 }
-
-############################################
-## Permissions: Allow Lambda to be invoked by S3
-############################################
-resource "aws_lambda_permission" "allow_thousandeyes_alerts_jwt_authorizer_bucket" {
-  statement_id  = "AllowExecutionFromS3Bucket"
-  action        = "lambda:InvokeFunction"
-
-  # Reference the Lambda created above
-  function_name = aws_lambda_function.uk_snowfall_thousandeyes_alerts_jwt_authorizer.arn
-
-  principal     = "s3.amazonaws.com"
-  source_arn    = var.service_agent_bucket_arn
-
-  depends_on = [
-    aws_lambda_function.uk_snowfall_thousandeyes_alerts_jwt_authorizer
-  ]
-}
-
 
 ############################################
 ## DynamoDB: ThousandEyes Alerts
