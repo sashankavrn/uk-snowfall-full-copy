@@ -102,18 +102,6 @@ module "lambda_module" {
   jwt_layer_arn = module.lambda_layer_module.lambda_jwt_layer_arn
 }   
 
-module "lambda_layer_module" {
-  source              = "./lambda_layers"
-  layer_name          = "jwt-layer"
-  compatible_runtimes = ["python3.12"]
-}
-
-
-
-
-
-
- 
  module "websocket_api_module" {
    source = "./websocketapi"
 
@@ -129,6 +117,14 @@ module "lambda_layer_module" {
 
     depends_on = [module.lambda_module]
  }
+
+module "lambda_layer_module" {
+  source              = "./lambda_layers"
+  layer_name          = "jwt-layer"
+  compatible_runtimes = ["python3.12"]
+}
+
+
 
 
 
