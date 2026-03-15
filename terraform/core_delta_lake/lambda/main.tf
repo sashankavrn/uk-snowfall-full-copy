@@ -2,29 +2,29 @@
 
 data "archive_file" "landing_trigger_script" {
   type        = "zip"
-  source_dir = "${path.module}/scripts/python/landing_trigger/"
+  source_dir  = "${path.module}/scripts/python/landing_trigger/"
   output_path = "${path.module}/scripts/zips/landing-trigger.zip"
 }
 
 
 resource "aws_lambda_function" "uk_snowfall_landing_function" {
-    filename = "${path.module}/scripts/zips/landing-trigger.zip"
-    function_name = "uk-snowfall-landing-trigger-${var.environment}"
-    role = var.role_assumed_arn
-    handler = "lambda_function.lambda_handler"
-    runtime = "python3.12"
-    memory_size = 500
-    timeout = 70
-    description = "Move files from snowfall landing bucket into the raw bucket"
-    source_code_hash = filebase64sha256("${path.module}/scripts/zips/landing-trigger.zip")
-    tags = var.resource_tags
-     layers = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
-    environment {
-      variables = {
-        TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
-        SNS_TOPIC_ARN = var.sns_topic_arn
-      }
+  filename         = "${path.module}/scripts/zips/landing-trigger.zip"
+  function_name    = "uk-snowfall-landing-trigger-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 500
+  timeout          = 70
+  description      = "Move files from snowfall landing bucket into the raw bucket"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/landing-trigger.zip")
+  tags             = var.resource_tags
+  layers           = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
+  environment {
+    variables = {
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
     }
+  }
 }
 
 ## Adding permissions for lambda
@@ -34,34 +34,34 @@ resource "aws_lambda_permission" "allow_landing_bucket" {
   function_name = aws_lambda_function.uk_snowfall_landing_function.arn
   principal     = "s3.amazonaws.com"
   source_arn    = var.landing_bucket_arn
-  depends_on = [ var.landing_bucket_arn,aws_lambda_function.uk_snowfall_landing_function ]
+  depends_on    = [var.landing_bucket_arn, aws_lambda_function.uk_snowfall_landing_function]
 }
 
 #Lambda for creating athena views
 data "archive_file" "athena_views_script" {
   type        = "zip"
-  source_dir = "${path.module}/scripts/python/create_athena_views/"
+  source_dir  = "${path.module}/scripts/python/create_athena_views/"
   output_path = "${path.module}/scripts/zips/create-athena-views.zip"
 }
 
 resource "aws_lambda_function" "uk_snowfall_create_athena_views" {
-  filename = "${path.module}/scripts/zips/create-athena-views.zip"
-  function_name = "uk-snowfall-create-athena-views-${var.environment}"
-  role = var.role_assumed_arn
-  handler = "lambda_function.lambda_handler"
-  runtime = "python3.12"
-  memory_size = 500
-  timeout = 70
-  description = "Create athena views in snowfall database,"
+  filename         = "${path.module}/scripts/zips/create-athena-views.zip"
+  function_name    = "uk-snowfall-create-athena-views-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 500
+  timeout          = 70
+  description      = "Create athena views in snowfall database,"
   source_code_hash = filebase64sha256("${path.module}/scripts/zips/create-athena-views.zip")
-  tags = var.resource_tags
-  layers = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
+  tags             = var.resource_tags
+  layers           = ["arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1"]
   environment {
     variables = {
       ATHENA_OUTPUT_LOCATION = "eu-central1-${var.environment}-uk-snowfall-athena-${var.account_number}"
-      ATHENA_DATABASE = "uk_snowfall_semantic"
-      S3_BUCKET_NAME = "eu-central1-${var.environment}-uk-snowfall-artifact-${var.account_number}"
-      WORKGROUP_NAME = "uk-snowfall-pipeline"
+      ATHENA_DATABASE        = "uk_snowfall_semantic"
+      S3_BUCKET_NAME         = "eu-central1-${var.environment}-uk-snowfall-artifact-${var.account_number}"
+      WORKGROUP_NAME         = "uk-snowfall-pipeline"
     }
   }
 }
@@ -73,12 +73,12 @@ resource "aws_lambda_permission" "allow_artifact_bucket" {
   function_name = aws_lambda_function.uk_snowfall_create_athena_views.arn
   principal     = "s3.amazonaws.com"
   source_arn    = data.aws_s3_bucket.artifact_bucket.arn
-  depends_on = [ var.artifact_bucket_arn,aws_lambda_function.uk_snowfall_create_athena_views ]
+  depends_on    = [var.artifact_bucket_arn, aws_lambda_function.uk_snowfall_create_athena_views]
 }
 
 data "aws_s3_bucket" "artifact_bucket" {
   bucket = "eu-central1-${var.environment}-uk-snowfall-artifact-${var.account_number}"
-  }
+}
 
 resource "aws_s3_bucket_notification" "athena_views_trigger_notification" {
   bucket = data.aws_s3_bucket.artifact_bucket.id
@@ -174,26 +174,26 @@ data "archive_file" "newrelic_fetch_data" {
 
 # Lambda Function for fetching New Relic device info
 resource "aws_lambda_function" "uk_snowfall_newrelic_function" {
-    filename         = "${path.module}/scripts/zips/newrelic-rmp-fetch-device.zip"
-    function_name    = "uk-snowfall-newrelic-rmp-fetch-device-${var.environment}"
-    role            = var.role_assumed_arn
-    handler         = "lambda_function.lambda_handler"
-    runtime         = "python3.12"
-    memory_size     = 2048
-    timeout         = 720
-    description     = "Fetch data from New Relic API and update to landing bucket"
-    source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-rmp-fetch-device.zip")
-    tags            = var.resource_tags
-    layers = [
-      "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1", # AWS SDK for Pandas
-      "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:4"   # Requests library
-    ]
-    environment {
-      variables = {
-        TARGET_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
-        SNS_TOPIC_ARN   = var.sns_topic_arn
-      }
+  filename         = "${path.module}/scripts/zips/newrelic-rmp-fetch-device.zip"
+  function_name    = "uk-snowfall-newrelic-rmp-fetch-device-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 2048
+  timeout          = 720
+  description      = "Fetch data from New Relic API and update to landing bucket"
+  source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-rmp-fetch-device.zip")
+  tags             = var.resource_tags
+  layers = [
+    "arn:aws:lambda:eu-central-1:336392948345:layer:AWSSDKPandas-Python312:1", # AWS SDK for Pandas
+    "arn:aws:lambda:eu-central-1:770693421928:layer:Klayers-p312-requests:4"   # Requests library
+  ]
+  environment {
+    variables = {
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
     }
+  }
 }
 
 # Adding permissions for lambda fetch data 
@@ -210,7 +210,7 @@ resource "aws_lambda_permission" "allow_landing_newrelic_bucket" {
 resource "aws_cloudwatch_event_rule" "newrelic_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-fetch-device-schedule"
   description         = "Triggers the Lambda function every hour"
- schedule_expression = var.newrelic_1am_schedule #"cron(0 1 * * ? *)"  # Runs at 1:01,2:01.. AM UTC every day
+  schedule_expression = var.newrelic_1am_schedule #"cron(0 1 * * ? *)"  # Runs at 1:01,2:01.. AM UTC every day
 }
 
 # Add Lambda as the Target of the Event Rule
@@ -246,7 +246,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_metrics_function" {
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
-  memory_size      = 4096                     # Increased 
+  memory_size      = 4096 # Increased 
   timeout          = 720
   description      = "Fetch metrics data from New Relic API and update to landing bucket"
   source_code_hash = filebase64sha256("${path.module}/scripts/zips/newrelic-rmp-device-metrics.zip")
@@ -258,8 +258,8 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_metrics_function" {
   environment {
     variables = {
       DATASHARE_BUCKET = "eu-central1-${var.environment}-uk-snowfall-datashare-processed-${var.account_number}"
-      TARGET_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
-      SNS_TOPIC_ARN = var.sns_topic_arn
+      TARGET_BUCKET    = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      SNS_TOPIC_ARN    = var.sns_topic_arn
 
     }
   }
@@ -330,7 +330,7 @@ resource "aws_lambda_function" "uk_snowfall_newrelic_process_info_function" {
 resource "aws_cloudwatch_event_rule" "newrelic_process_info_lambda_schedule" {
   name                = "uk-snowfall-newrelic-rmp-process-info-schedule"
   description         = "Triggers the New Relic process info Lambda every 10 minutes"
-  schedule_expression = var.newrelic_10min_schedule   #  "rate(10 minutes)"
+  schedule_expression = var.newrelic_10min_schedule #  "rate(10 minutes)"
 }
 
 # Add Lambda as the target of the Event Rule
@@ -538,7 +538,7 @@ resource "aws_lambda_permission" "allow_landing_newrelic_digital_gma_foe_respons
   function_name = aws_lambda_function.newrelic_digital_gma_foe_response_function.arn
   principal     = "s3.amazonaws.com"
   source_arn    = var.landing_bucket_arn
-  depends_on    = [
+  depends_on = [
     aws_lambda_function.newrelic_digital_gma_foe_response_function
   ]
 }
@@ -577,7 +577,7 @@ resource "aws_lambda_function" "newrelic_digital_3po_foe_response_function" {
   filename         = "${path.module}/scripts/zips/newrelic-digital-3po-foe-response.zip"
   function_name    = "uk-snowfall-newrelic-digital-3po-foe-response-${var.environment}"
   role             = var.role_assumed_arn
-  handler          = "lambda_function.lambda_handler"  # Make sure this matches the Python file inside the ZIP
+  handler          = "lambda_function.lambda_handler" # Make sure this matches the Python file inside the ZIP
   runtime          = "python3.12"
   memory_size      = 2048
   timeout          = 720
@@ -663,7 +663,7 @@ resource "aws_lambda_permission" "allow_service_agent_bucket_auth" {
   function_name = aws_lambda_function.uk_snowfall_service_agent_authorizer_function.arn
   principal     = "s3.amazonaws.com"
   source_arn    = var.service_agent_bucket_arn
-  
+
 }
 
 
@@ -686,7 +686,7 @@ resource "aws_lambda_function" "uk_snowfall_service_agent_function" {
   description      = "Upload data to S3 using JWT authentication via api"
   source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-upload-s3.zip")
   tags             = var.resource_tags
-  layers = [  ]
+  layers           = []
   environment {
     variables = {
       TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
@@ -744,7 +744,7 @@ resource "aws_lambda_permission" "allow_service_agent_s3_bucket" {
   function_name = aws_lambda_function.service_agent_server_files.arn
   principal     = "s3.amazonaws.com"
   source_arn    = var.service_agent_bucket_arn
-  depends_on    = [
+  depends_on = [
     var.service_agent_bucket_arn,
     aws_lambda_function.service_agent_server_files
   ]
@@ -753,7 +753,7 @@ resource "aws_lambda_permission" "allow_service_agent_s3_bucket" {
 
 data "aws_s3_bucket" "service_agent_bucket" {
   bucket = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
-  }
+}
 
 resource "aws_s3_bucket_notification" "service_agent_server_files_trigger" {
   bucket = data.aws_s3_bucket.service_agent_bucket.id
@@ -796,10 +796,10 @@ resource "aws_lambda_function" "service_agent_server_extract_function" {
 
   environment {
     variables = {
-      ATHENA_DATABASE  = "uk_snowfall_processed"
-      S3_BUCKET_NAME   = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
-      WORKGROUP_NAME   = "uk-snowfall-pipeline"
-      SNS_TOPIC_ARN    = var.sns_topic_arn
+      ATHENA_DATABASE = "uk_snowfall_processed"
+      S3_BUCKET_NAME  = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
+      WORKGROUP_NAME  = "uk-snowfall-pipeline"
+      SNS_TOPIC_ARN   = var.sns_topic_arn
     }
   }
 }
@@ -825,7 +825,7 @@ resource "aws_lambda_permission" "allow_eventbridge_invoke_service_agent_server_
   function_name = aws_lambda_function.service_agent_server_extract_function.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.service_agent_server_extract_schedule.arn
-  depends_on = [aws_lambda_function.service_agent_server_extract_function, aws_cloudwatch_event_rule.service_agent_server_extract_schedule]
+  depends_on    = [aws_lambda_function.service_agent_server_extract_function, aws_cloudwatch_event_rule.service_agent_server_extract_schedule]
 
 }
 
@@ -842,16 +842,16 @@ data "archive_file" "meraki_client_info" {
 
 # Lambda Function for fetching Meraki client info
 resource "aws_lambda_function" "uk_snowfall_meraki_client_info_function" {
-  filename         = "${path.module}/scripts/zips/meraki-client-info.zip"
-  function_name    = "uk-snowfall-meraki-client-info-${var.environment}"
-  role             = var.role_assumed_arn
-  handler          = "lambda_function.lambda_handler"
-  runtime          = "python3.12"
-  memory_size      = 10240
+  filename      = "${path.module}/scripts/zips/meraki-client-info.zip"
+  function_name = "uk-snowfall-meraki-client-info-${var.environment}"
+  role          = var.role_assumed_arn
+  handler       = "lambda_function.lambda_handler"
+  runtime       = "python3.12"
+  memory_size   = 10240
   ephemeral_storage {
     size = 10240
   }
-  timeout          = 900  # 15 minutes
+  timeout          = 900 # 15 minutes
   description      = "Fetch client info from Meraki API and update to landing bucket"
   source_code_hash = filebase64sha256("${path.module}/scripts/zips/meraki-client-info.zip")
   tags             = var.resource_tags
@@ -862,7 +862,7 @@ resource "aws_lambda_function" "uk_snowfall_meraki_client_info_function" {
   environment {
     variables = {
       TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
-      TEMP_BUCKET = "eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}"
+      TEMP_BUCKET   = "eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}"
       SNS_TOPIC_ARN = var.sns_topic_arn
     }
   }
@@ -997,8 +997,8 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
       ATHENA_REGION    = "eu-central-1"
       ATHENA_OUTPUT_S3 = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
       SNS_TOPIC_ARN    = var.sns_topic_arn
-      STAGE_NAME = var.stage_name
-      TABLE_NAME="uk-snowfall-${var.environment}-proactive-websocket-connections"
+      STAGE_NAME       = var.stage_name
+      TABLE_NAME       = "uk-snowfall-${var.environment}-proactive-websocket-connections"
     }
   }
 }
@@ -1090,7 +1090,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_dynamodb_rules" {
     variables = {
       DYNAMO_REGION = "eu-central-1"
       RULES_TABLE   = "uk-snowfall-${var.environment}-incident-rules"
-      NUM_RULES = "10" 
+      NUM_RULES     = "10"
     }
   }
 }
@@ -1244,7 +1244,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_default" {
     variables = {
       TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
       RESULTS_TABLE_NAME = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
-      STAGE_NAME = var.stage_name
+      STAGE_NAME         = var.stage_name
     }
   }
 }
@@ -1274,8 +1274,8 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_monitor" {
 
   environment {
     variables = {
-      TABLE_NAME         = "uk-snowfall-${var.environment}-proactive-websocket-connections"
-      STALE_TIMEOUT      = "30m"
+      TABLE_NAME    = "uk-snowfall-${var.environment}-proactive-websocket-connections"
+      STALE_TIMEOUT = "30m"
     }
   }
 }
@@ -1324,7 +1324,7 @@ resource "aws_lambda_permission" "allow_proactive_healing_jwt_authorizer_bucket"
   function_name = aws_lambda_function.uk_snowfall_proactive_healing_jwt_authorizer.arn
   principal     = "s3.amazonaws.com"
   source_arn    = var.service_agent_bucket_arn
-  depends_on    = [
+  depends_on = [
     aws_lambda_function.uk_snowfall_proactive_healing_jwt_authorizer
   ]
 }
@@ -1343,7 +1343,7 @@ data "archive_file" "uk_snowfall_thousandeyes_alerts_jwt_authorizer" {
 ## Lambda: JWT Authorizer (ThousandEyes Alerts)
 ############################################
 resource "aws_lambda_function" "uk_snowfall_thousandeyes_alerts_jwt_authorizer" {
-  filename         = data.archive_file.uk_snowfall_thousandeyes_alerts_jwt_authorizer.output_path
+  filename = data.archive_file.uk_snowfall_thousandeyes_alerts_jwt_authorizer.output_path
 
   # AWS Lambda function name (kebab-case for AWS)
   function_name    = "uk-snowfall-thousandeyes-alerts-jwt-authorizer-${var.environment}"
@@ -1355,9 +1355,9 @@ resource "aws_lambda_function" "uk_snowfall_thousandeyes_alerts_jwt_authorizer" 
   source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_thousandeyes_alerts_jwt_authorizer.output_path)
   tags             = var.resource_tags
 
- layers = [
-  var.jwt_layer_arn
-]
+  layers = [
+    var.jwt_layer_arn
+  ]
 
 
 
@@ -1372,6 +1372,44 @@ resource "aws_lambda_function" "uk_snowfall_thousandeyes_alerts_jwt_authorizer" 
 }
 
 ############################################
+## Archive: ThousandEyes Alerts Lambda
+############################################
+data "archive_file" "uk_snowfall_thousandeyes_alerts" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/thousandeyes-alerts/"
+  output_path = "${path.module}/scripts/zips/uk_snowfall_thousandeyes_alerts.zip"
+}
+
+############################################
+## Lambda: ThousandEyes Alerts Processor
+############################################
+resource "aws_lambda_function" "uk_snowfall_thousandeyes_alerts" {
+  filename = data.archive_file.uk_snowfall_thousandeyes_alerts.output_path
+
+  # AWS Lambda function name (kebab-case for AWS)
+  function_name    = "uk-snowfall-thousandeyes-alerts-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  timeout          = 10
+  description      = "Processes ThousandEyes alert payloads and writes ticket entries to DynamoDB"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_thousandeyes_alerts.output_path)
+  tags             = var.resource_tags
+
+
+
+  ############################################
+  ## Environment variables
+  ############################################
+  environment {
+    variables = {
+      TABLE_NAME = "uk-snowfall-${var.environment}-thousandeyes-alerts"
+    }
+  }
+}
+
+
+############################################
 ## DynamoDB: ThousandEyes Alerts
 ############################################
 resource "aws_dynamodb_table" "thousandeyes_alerts" {
@@ -1379,10 +1417,10 @@ resource "aws_dynamodb_table" "thousandeyes_alerts" {
   billing_mode = "PAY_PER_REQUEST"
 
   # Partition key: restaurant number
-  hash_key     = "restaurant_number"
+  hash_key = "restaurant_number"
 
   # Sort key: alert ID (unique per alert)
-  range_key    = "alert_id"
+  range_key = "alert_id"
 
   ############################################
   ## Attributes
