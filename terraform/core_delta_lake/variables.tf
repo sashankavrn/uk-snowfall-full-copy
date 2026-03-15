@@ -70,6 +70,7 @@ variable "not_prod_email" {
 variable "layer_name" {
   type        = string
   description = "Lambda layer name"
+  default     = "jwt_layer"
 }
 
 variable "description" {
@@ -81,4 +82,3 @@ variable "compatible_runtimes" {
   type        = list(string)
   default     = ["python3.12"]
 }
-
