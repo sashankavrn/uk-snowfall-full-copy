@@ -1,199 +1,341 @@
-
-import uuid
-import base64
-from boto3.dynamodb.conditions import Attr
-from botocore.exceptions import ClientError
 import boto3
-import time
 import json
 import os
+import time
+import uuid
+import smtplib
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from boto3.dynamodb.conditions import Attr
+from botocore.exceptions import ClientError
 
-# WebSocket config
-STAGE_NAME = os.environ["STAGE_NAME"]
-CONNECTIONS_TABLE  = os.environ["TABLE_NAME"]
+# =============================
+# Environment
+# =============================
 
-# Read config from environment variables
-DYNAMO_REGION    = os.environ.get("DYNAMO_REGION", "eu-central-1")
-RULES_TABLE      = os.environ["RULES_TABLE"]
-TICKETS_TABLE    = os.environ["TICKETS_TABLE"]
-ATHENA_REGION    = os.environ.get("ATHENA_REGION", "eu-central-1")
+RULES_TABLE = os.environ["RULES_TABLE"]
+TICKETS_TABLE = os.environ["TICKETS_TABLE"]
+CONNECTIONS_TABLE = os.environ["TABLE_NAME"]
 ATHENA_OUTPUT_S3 = os.environ["ATHENA_OUTPUT_S3"]
+STAGE_NAME = os.environ["STAGE_NAME"]
 
-# DynamoDB clients
-dynamodb = boto3.resource('dynamodb', region_name=DYNAMO_REGION)
+# SMTP (Mailjet)
+SMTP_SERVER = os.environ.get("SMTP_SERVER", "in.mailjet.com")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USERNAME = os.environ["SMTP_USERNAME"]
+SMTP_PASSWORD = os.environ["SMTP_PASSWORD"]
+SMTP_SENDER = os.environ["SMTP_SENDER"]
+EMAIL_TO = os.environ["EMAIL_TO"]
+
+# =============================
+# AWS Clients
+# =============================
+
+dynamodb = boto3.resource("dynamodb")
+
 rules_table = dynamodb.Table(RULES_TABLE)
 tickets_table = dynamodb.Table(TICKETS_TABLE)
 connections_table = dynamodb.Table(CONNECTIONS_TABLE)
 
-# Athena client
-athena = boto3.client('athena', region_name=ATHENA_REGION)
-sns_client = boto3.client('sns')
+athena = boto3.client("athena")
+
+# =============================
+# Lambda Entry
+# =============================
 
 def lambda_handler(event, context):
-    execution_time = datetime.now(ZoneInfo("Europe/London")).isoformat()
-    print(f"[INFO] Lambda execution started at {execution_time}")
-    print(f"[INFO] Fetching rules from DynamoDB table: {RULES_TABLE} in {DYNAMO_REGION}...")
 
-    rules = get_rules()
+    print("Starting rule execution")
+
+    rules = rules_table.scan()["Items"]
 
     for rule in rules:
-        if not rule.get("active", False):
+
+        if not rule.get("active"):
             continue
 
-        print(f"[INFO] Checking rule {rule['rule_id']} at {datetime.now(ZoneInfo('Europe/London')).isoformat()}")
+        print(f"Evaluating rule {rule['rule_id']}")
 
-        athena_result = query_athena(
-            rule['query'],
-            'uk_snowfall_processed',
-        )
+        records = run_athena(rule["query"])
 
-        if athena_result and evaluate_rule(rule, athena_result):
-            print(f"[INFO] Rule {rule['rule_id']} violated. Checking tickets...")
-            if not ticket_exists(rule['rule_id']):
-                print("[INFO] No existing ticket found. Creating new ticket...")
-                create_ticket(rule, athena_result)
-            else:
-                print("[INFO] Ticket already exists. Skipping...")
-        else:
-            print(f"[INFO] Rule {rule['rule_id']} not violated.")
+        if not records:
+            continue
+
+        process_rule(rule, records)
 
     return {"status": "completed"}
 
-def get_rules():
-    response = rules_table.scan()
-    return response.get('Items', [])
 
-def query_athena(athena_query, database):
-    print(f"[INFO] Running Athena query: {athena_query}")
+# =============================
+# Athena Query
+# =============================
+
+def run_athena(query):
+
     response = athena.start_query_execution(
-        QueryString=athena_query,
-        QueryExecutionContext={'Database': database},
-        ResultConfiguration={'OutputLocation': ATHENA_OUTPUT_S3}
+        QueryString=query,
+        QueryExecutionContext={"Database": "uk_snowfall_processed"},
+        ResultConfiguration={"OutputLocation": ATHENA_OUTPUT_S3},
     )
 
-    query_execution_id = response['QueryExecutionId']
-    state = 'RUNNING'
+    execution_id = response["QueryExecutionId"]
 
-    while state in ['RUNNING', 'QUEUED']:
+    while True:
+
+        result = athena.get_query_execution(QueryExecutionId=execution_id)
+        state = result["QueryExecution"]["Status"]["State"]
+
+        if state in ["SUCCEEDED", "FAILED", "CANCELLED"]:
+            break
+
         time.sleep(2)
-        result = athena.get_query_execution(QueryExecutionId=query_execution_id)
-        state = result['QueryExecution']['Status']['State']
 
-    if state == 'SUCCEEDED':
-        results = athena.get_query_results(QueryExecutionId=query_execution_id)
-        rows = results['ResultSet']['Rows']
-        print(f"[INFO] Athena returned {len(rows)} rows")
+    if state != "SUCCEEDED":
+        return []
 
-        if len(rows) > 1:
-            last_row = rows[1]['Data']
-            print(rows)
-            record = {
-                'restaurant_number': last_row[0]['VarCharValue'],
-                'message': last_row[1]['VarCharValue']
-            }
+    results = athena.get_query_results(QueryExecutionId=execution_id)
 
-            return record
-    return None
+    rows = results["ResultSet"]["Rows"]
 
-def evaluate_rule(rule, record):
-    return record  # Placeholder for actual logic
+    records = []
 
-def ticket_exists(rule_id):
+    for row in rows[1:]:
+
+        data = row["Data"]
+
+        records.append({
+            "restaurant_number": data[0].get("VarCharValue", ""),
+            "message": data[1].get("VarCharValue", "")
+        })
+
+    return records
+
+
+# =============================
+# Rule Processing
+# =============================
+
+def process_rule(rule, records):
+
+    restaurants = [r["restaurant_number"] for r in records]
+
+    script_output = None
+
+    # STEP 1 Proactive Script
+    if rule.get("proactive_script"):
+
+        script_output = run_proactive_script(
+            restaurants[0],
+            rule["proactive_script_name"]
+        )
+
+        if script_output.get("remediated"):
+            print("Issue remediated by script")
+            return
+
+    # STEP 2 Cooldown Check
+    if rule.get("email_alert"):
+
+        if not should_send_alert(rule, restaurants):
+            print("Cooldown active. Skipping alert.")
+            return
+
+    # STEP 3 Create Ticket
+    create_ticket(rule, records)
+
+    # STEP 4 Send Email
+    if rule.get("email_alert"):
+
+        send_email(rule, records, script_output)
+
+
+# =============================
+# Cooldown Logic
+# =============================
+
+def should_send_alert(rule, restaurants):
+
+    cooldown_hours = int(rule.get("cool_down_period", 0))
+
     response = tickets_table.scan(
-        FilterExpression=Attr('rule_id').eq(rule_id) & Attr('status').eq('OPEN')
+        FilterExpression=Attr("rule_id").eq(rule["rule_id"]) & Attr("status").eq("OPEN")
     )
-    print(response)
-    print("length"), len(response.get('Items'))
-    return len(response.get('Items', [])) > 0
 
-def create_ticket(rule, athena_result):
-    print(athena_result)
+    items = response.get("Items", [])
+
+    if not items:
+        return True
+
+    last_ticket = items[0]
+
+    last_restaurants = set(last_ticket.get("violating_restaurants", []))
+    current_restaurants = set(restaurants)
+
+    last_time_str = last_ticket.get("last_alert_time")
+
+    last_time = datetime.fromisoformat(last_time_str) if last_time_str else None
+    now = datetime.now(ZoneInfo("Europe/London"))
+
+    if not current_restaurants.issubset(last_restaurants):
+        print("New restaurant detected")
+        return True
+
+    if last_time and cooldown_hours > 0:
+
+        elapsed = (now - last_time).total_seconds() / 3600
+
+        if elapsed >= cooldown_hours:
+            print("Cooldown expired")
+            return True
+
+    return False
+
+
+# =============================
+# Create Ticket
+# =============================
+
+def create_ticket(rule, records):
+
+    restaurants = [r["restaurant_number"] for r in records]
+
+    first_record = records[0]
+
     ticket_id = f"INC{int(time.time())}"
+
     timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
+
     item = {
-        'restaurent number': athena_result['restaurant_number'],
-        'message': athena_result['message'],
-        'ticket_id': ticket_id,
-        'rule_id': rule['rule_id'],
-        'status': 'OPEN',
-        'created_at': timestamp
+        "ticket_id": ticket_id,
+        "rule_id": rule["rule_id"],
+        "restaurant_number": first_record["restaurant_number"],
+        "message": first_record["message"],
+        "status": "OPEN",
+        "created_at": timestamp,
+        "violating_restaurants": restaurants,
+        "last_alert_time": timestamp
     }
+
     tickets_table.put_item(Item=item)
-    print(f"[INFO] Ticket created: {ticket_id} at {timestamp}")
-    send_snsnotification(rule, item, athena_result)
-    send_system_info_script(
-        restaurant_number=athena_result["restaurant_number"], proactive_script_name=rule['proactive_script_name']
-    )
+
+    print(f"Ticket created: {ticket_id}")
 
 
-def send_snsnotification(rule, item, rows):
-    # Format message for email
-    subject = f"Proactive alerts : {rule['incident_description']}"
-    message = json.dumps(item, indent=2)
-    print(message)
-    
-    # Publish to SNS
-    response = sns_client.publish(
-        TopicArn=os.environ["SNS_TOPIC_ARN"],
-        Subject=subject,
-        Message=message
-    )
-    print(response)
+# =============================
+# Email (SMTP - Mailjet)
+# =============================
 
-def send_system_info_script(restaurant_number,proactive_script_name):
-    print(f"[INFO] Triggering script via WebSocket for restaurant {restaurant_number} and script name {proactive_script_name}")
+def send_email(rule, records, script_output):
 
-    connections_table = dynamodb.Table(os.environ["TABLE_NAME"])
-    
+    subject = f"{rule['incident_description']} - [{len(records)} Alerts]"
+
+    html = """
+    <html><body>
+    <h3>Proactive Alert</h3>
+    <table border="1" cellpadding="6">
+    <tr>
+    <th>S.No</th>
+    <th>Restaurant</th>
+    <th>Message</th>
+    </tr>
+    """
+
+    for i, r in enumerate(records, start=1):
+
+        html += f"""
+        <tr>
+        <td>{i}</td>
+        <td>{r['restaurant_number']}</td>
+        <td>{r['message']}</td>
+        </tr>
+        """
+
+    html += "</table>"
+
+    if script_output:
+
+        html += f"""
+        <h4>Proactive Script Output</h4>
+        <pre>{json.dumps(script_output, indent=2)}</pre>
+        """
+
+    html += "</body></html>"
+
+    try:
+
+        msg = MIMEMultipart("alternative")
+
+        msg["Subject"] = subject
+        msg["From"] = SMTP_SENDER
+        msg["To"] = EMAIL_TO
+
+        msg.attach(MIMEText(html, "html"))
+
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
+
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+
+            server.login(SMTP_USERNAME, SMTP_PASSWORD)
+
+            server.sendmail(
+                SMTP_SENDER,
+                EMAIL_TO.split(","),
+                msg.as_string(),
+            )
+
+        print("Email sent successfully via Mailjet")
+
+    except Exception as e:
+
+        print(f"Email send failed: {str(e)}")
+
+
+# =============================
+# WebSocket Proactive Script
+# =============================
+
+def run_proactive_script(restaurant_number, script_name):
+
+    print(f"Triggering script {script_name}")
+
     if STAGE_NAME == "prod":
-        endpoint_url = "https://j3v4n25iwa.execute-api.eu-central-1.amazonaws.com/prod/"
+        endpoint = "https://j3v4n25iwa.execute-api.eu-central-1.amazonaws.com/prod/"
     elif STAGE_NAME == "nprod":
-        endpoint_url = "https://egnv9vgjjh.execute-api.eu-central-1.amazonaws.com/nprod/"
+        endpoint = "https://egnv9vgjjh.execute-api.eu-central-1.amazonaws.com/nprod/"
     else:
-        endpoint_url = "https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
+        endpoint = "https://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev/"
 
-    apigw = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint_url)
-
+    apigw = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint)
 
     response = connections_table.scan(
         FilterExpression=Attr("restaurant_number").eq(str(restaurant_number))
-                        & Attr("status").eq("connected")
+        & Attr("status").eq("connected")
     )
 
-    print(response)
+    for item in response["Items"]:
 
-    for item in response.get("Items", []):
-        connection_id = item.get("connectionId") or item.get("connection_id")
-        device_id = item.get("device_id")
-        script_name = proactive_script_name
-        folder_path = "C:\\GITHUB2025\\agent-scripts\\"
-        script_path = folder_path + script_name
         message = {
             "command_id": str(uuid.uuid4()),
             "script_name": script_name,
             "action": "trigger_script",
-            "script_path": script_path,
-            "save_results": True,
             "timestamp": datetime.utcnow().isoformat(),
         }
 
         try:
+
             apigw.post_to_connection(
-                ConnectionId=connection_id,
-                Data=json.dumps(message).encode("utf-8")
-            )
-            print(f"[INFO] Script sent to device {device_id}")
-
-        except apigw.exceptions.GoneException:
-            print(f"[WARN] Connection {connection_id} is gone, cleaning up")
-            connections_table.delete_item(
-                Key={
-                    "restaurant_number": item["restaurant_number"],
-                    "device_id": device_id
-                }
+                ConnectionId=item["connectionId"],
+                Data=json.dumps(message).encode(),
             )
 
-        except ClientError as e:
-            print("[ERROR] Failed to send WebSocket message:", e)
+        except ClientError:
+            pass
+
+    return {
+        "status": "triggered",
+        "remediated": False
+    }
