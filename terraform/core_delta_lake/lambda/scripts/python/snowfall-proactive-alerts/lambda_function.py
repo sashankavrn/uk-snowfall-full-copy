@@ -73,42 +73,10 @@ athena = boto3.client("athena")
 
 
 # =============================
-# TESTING: Delete all tickets (DeleteItem only)
-# =============================
-
-def delete_all_tickets():
-    """Delete all items from the TICKETS_TABLE using DeleteItem only."""
-    print("[TEST] Wiping all items from TICKETS_TABLE for testing...")
-
-    try:
-        response = tickets_table.scan()
-        items = response.get("Items", [])
-
-        if not items:
-            print("[TEST] No tickets found to delete.")
-            return
-
-        count = 0
-        for item in items:
-            tickets_table.delete_item(
-                Key={"ticket_id": item["ticket_id"]}
-            )
-            count += 1
-
-        print(f"[TEST] Deleted {count} tickets from TICKETS_TABLE.")
-
-    except Exception as e:
-        print(f"[ERROR] Failed to delete tickets: {e}")
-
-
-# =============================
 # Lambda Entry
 # =============================
 
 def lambda_handler(event, context):
-
-    # TESTING ONLY — wipe ticket table before running rules
-    delete_all_tickets()
 
     print("Starting rule execution")
 
