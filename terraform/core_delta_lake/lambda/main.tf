@@ -647,11 +647,17 @@ resource "aws_lambda_function" "uk_snowfall_service_agent_authorizer_function" {
   description      = "Upload data to S3 using JWT authentication via API"
   source_code_hash = filebase64sha256("${path.module}/scripts/zips/service-agent-upload-s3-jwt-authorizer.zip")
   tags             = var.resource_tags
+  layers = [
+    var.jwt_layer_arn
+  ]
+
+
 
   environment {
     variables = {
       TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-service-agent-${var.account_number}"
       SNS_TOPIC_ARN = var.sns_topic_arn
+
     }
   }
 }
@@ -667,7 +673,7 @@ resource "aws_lambda_permission" "allow_service_agent_bucket_auth" {
 }
 
 
-############################################ SERVICE AGENT JWT/UPLOAD S3 LAMBDA VIA API#############################################
+############################################ SERVICE AGENT -UPLOAD S3 LAMBDA VIA API#############################################
 
 data "archive_file" "service_agent_upload_s3" {
   type        = "zip"
@@ -1305,6 +1311,11 @@ resource "aws_lambda_function" "uk_snowfall_proactive_healing_jwt_authorizer" {
   description      = "JWT authorizer for Snowfall Proactive Healing APIs/WebSocket"
   source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_proactive_healing_jwt_authorizer.output_path)
   tags             = var.resource_tags
+  layers = [
+    var.jwt_layer_arn
+  ]
+
+
 
   environment {
     variables = {
