@@ -12,6 +12,36 @@ from boto3.dynamodb.conditions import Attr
 from botocore.exceptions import ClientError
 
 # =============================
+# Secrets Manager (SMTP)
+# =============================
+
+SECRET_NAME = "uk-snowfall"
+REGION_NAME = "eu-central-1"
+
+def get_smtp_credentials():
+    """Retrieve SMTP username and password from AWS Secrets Manager."""
+    session = boto3.session.Session()
+    client = session.client(service_name="secretsmanager", region_name=REGION_NAME)
+
+    try:
+        resp = client.get_secret_value(SecretId=SECRET_NAME)
+        secret = json.loads(resp["SecretString"])
+
+        username = secret.get("uk-snowfall-proactive-smpt-api-key")
+        password = secret.get("uk-snowfall-proactive-smpt-secret-key")
+
+        if not username or not password:
+            print("[ERROR] Missing SMTP credentials in Secrets Manager.")
+            return None, None
+
+        return username, password
+
+    except Exception as e:
+        print(f"[ERROR] Failed to retrieve SMTP secrets: {e}")
+        return None, None
+
+
+# =============================
 # Environment
 # =============================
 
@@ -21,13 +51,13 @@ CONNECTIONS_TABLE = os.environ["TABLE_NAME"]
 ATHENA_OUTPUT_S3 = os.environ["ATHENA_OUTPUT_S3"]
 STAGE_NAME = os.environ["STAGE_NAME"]
 
-# SMTP (Mailjet)
-SMTP_SERVER = os.environ.get("SMTP_SERVER", "in.mailjet.com")
-SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USERNAME = os.environ["SMTP_USERNAME"]
-SMTP_PASSWORD = os.environ["SMTP_PASSWORD"]
-SMTP_SENDER = os.environ["SMTP_SENDER"]
-EMAIL_TO = os.environ["EMAIL_TO"]
+SMTP_SERVER = "in.mailjet.com"
+SMTP_PORT = 587
+SMTP_SENDER = "snowfall-proactive-alerts@ext.mcdonalds.com"
+EMAIL_TO = "venkata.adapa@uk.mcd.com"
+
+# Load SMTP credentials from Secrets Manager
+SMTP_USERNAME, SMTP_PASSWORD = get_smtp_credentials()
 
 # =============================
 # AWS Clients
@@ -41,11 +71,44 @@ connections_table = dynamodb.Table(CONNECTIONS_TABLE)
 
 athena = boto3.client("athena")
 
+
+# =============================
+# TESTING: Delete all tickets (DeleteItem only)
+# =============================
+
+def delete_all_tickets():
+    """Delete all items from the TICKETS_TABLE using DeleteItem only."""
+    print("[TEST] Wiping all items from TICKETS_TABLE for testing...")
+
+    try:
+        response = tickets_table.scan()
+        items = response.get("Items", [])
+
+        if not items:
+            print("[TEST] No tickets found to delete.")
+            return
+
+        count = 0
+        for item in items:
+            tickets_table.delete_item(
+                Key={"ticket_id": item["ticket_id"]}
+            )
+            count += 1
+
+        print(f"[TEST] Deleted {count} tickets from TICKETS_TABLE.")
+
+    except Exception as e:
+        print(f"[ERROR] Failed to delete tickets: {e}")
+
+
 # =============================
 # Lambda Entry
 # =============================
 
 def lambda_handler(event, context):
+
+    # TESTING ONLY — wipe ticket table before running rules
+    delete_all_tickets()
 
     print("Starting rule execution")
 
