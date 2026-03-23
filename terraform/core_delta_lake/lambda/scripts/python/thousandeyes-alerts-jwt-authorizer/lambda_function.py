@@ -10,8 +10,8 @@ secretsmanager = boto3.client("secretsmanager")
 JWT_ALGORITHM = "HS256"
 
 # Your existing secret name and key
-SECRET_NAME = "uk-snowfall-service-agent"
-SECRET_KEY = "uk-snowfall-service-agent-key"
+SECRET_NAME = "uk-snowfall-thousandeyes-alerts"
+SECRET_KEY = "uk-snowfall-thousandeyes-alerts-key"
 
 
 def get_jwt_secret():
