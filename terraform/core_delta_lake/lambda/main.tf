@@ -1423,24 +1423,19 @@ resource "aws_lambda_function" "uk_snowfall_thousandeyes_alerts" {
 ############################################
 ## DynamoDB: ThousandEyes Alerts
 ############################################
+############################################
+## DynamoDB: ThousandEyes Alerts
+############################################
 resource "aws_dynamodb_table" "thousandeyes_alerts" {
   name         = "uk-snowfall-${var.environment}-thousandeyes-alerts"
   billing_mode = "PAY_PER_REQUEST"
 
-  # Partition key: restaurant number
-  hash_key = "restaurant_number"
-
-  # Sort key: alert ID (unique per alert)
-  range_key = "alert_id"
+  # Partition key: alert_id (UUID from Lambda)
+  hash_key = "alert_id"
 
   ############################################
   ## Attributes
   ############################################
-  attribute {
-    name = "restaurant_number"
-    type = "N"
-  }
-
   attribute {
     name = "alert_id"
     type = "S"
@@ -1451,5 +1446,3 @@ resource "aws_dynamodb_table" "thousandeyes_alerts" {
   ############################################
   tags = var.resource_tags
 }
-
-

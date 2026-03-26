@@ -1,10 +1,8 @@
 import json
 import boto3
 import os
-import time
-import re
+import uuid
 from datetime import datetime
-from decimal import Decimal
 
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(os.environ["TABLE_NAME"])
@@ -12,125 +10,62 @@ table = dynamodb.Table(os.environ["TABLE_NAME"])
 
 def lambda_handler(event, context):
     try:
-        # ----------------------------------------------------
-        # LOG EVERYTHING FOR DEBUGGING
-        # ----------------------------------------------------
-        print("=== EVENT RECEIVED ===")
-        print(json.dumps(event))
+        print("=== FULL EVENT ===")
+        print(json.dumps(event, indent=2))
 
         body = event.get("body")
-        print("=== RAW BODY RECEIVED ===")
+
+        print("=== RAW BODY ===")
         print(body)
 
-        # Parse JSON body
-        payload = json.loads(body) if isinstance(body, str) else body
+        if isinstance(body, str):
+            payload = json.loads(body)
+        else:
+            payload = body
 
         print("=== PARSED PAYLOAD ===")
-        print(json.dumps(payload))
+        print(json.dumps(payload, indent=2))
 
-        # ----------------------------------------------------
-        # EXTRACT RESTAURANT NUMBER
-        # ----------------------------------------------------
-        agent = payload.get("agent", {})
-        agent_name = agent.get("agentName", "")
+        if not payload:
+            return response(400, "Invalid payload")
 
-        restaurant_number = extract_restaurant_number(agent_name)
+        alert_id = str(uuid.uuid4())
 
-        if restaurant_number is None:
-            raise ValueError(f"Could not extract restaurant_number from agentName: {agent_name}")
+        event_type = payload.get("type")
+        alert_object = payload.get("alert", {})
 
-        # ----------------------------------------------------
-        # EXTRACT ALERT FIELDS
-        # ----------------------------------------------------
-        alert = payload.get("alert", {})
-        alert_id = str(alert.get("alertId", f"unknown-{int(time.time())}"))
+        created_at = datetime.utcnow().isoformat()
 
-        timestamp_epoch = payload.get("timestamp", int(time.time()))
-        timestamp_iso = datetime.utcfromtimestamp(timestamp_epoch).isoformat()
-
-        # ----------------------------------------------------
-        # VIOLATIONS (SAFE DECIMAL)
-        # ----------------------------------------------------
-        violations = payload.get("violations", [])
-        violation_summary = [
-            {
-                "metric": v.get("metric"),
-                "value": safe_decimal(v.get("value")),
-                "threshold": safe_decimal(v.get("threshold"))
-            }
-            for v in violations
-        ]
-
-        # ----------------------------------------------------
-        # TTL (7 days)
-        # ----------------------------------------------------
-        ttl = int(time.time()) + (7 * 24 * 60 * 60)
-
-        # ----------------------------------------------------
-        # BUILD DYNAMODB ITEM
-        # ----------------------------------------------------
         item = {
-            "restaurant_number": restaurant_number,  # REQUIRED PK
-            "alert_id": alert_id,                    # REQUIRED SK
-
-            "timestamp_iso": timestamp_iso,
-            "timestamp_epoch": timestamp_epoch,
-
-            "event_type": payload.get("eventType", "UNKNOWN"),
-
-            "alert_name": alert.get("alertName", "UNKNOWN"),
-            "severity": alert.get("severity", "UNKNOWN"),
-            "state": alert.get("state", "UNKNOWN"),
-
-            "test_id": str(payload.get("test", {}).get("testId", "UNKNOWN")),
-            "test_name": payload.get("test", {}).get("testName", "UNKNOWN"),
-
-            "agent_id": str(agent.get("agentId", "UNKNOWN")),
-            "agent_name": agent_name,
-
-            "violations": violation_summary,
-            "raw_payload": payload,
-
-            "ttl": ttl
+            "alert_id": alert_id,
+            "type": event_type,
+            "alert": alert_object,
+            "created_at": created_at
         }
 
-        print("=== FINAL ITEM TO WRITE ===")
-        print(json.dumps(item, default=str))
+        # 🔹 Log item before insert
+        print("=== DYNAMODB ITEM ===")
+        print(json.dumps(item, indent=2))
 
-        # ----------------------------------------------------
-        # WRITE TO DYNAMODB
-        # ----------------------------------------------------
+        # 🔹 Insert into DynamoDB
         table.put_item(Item=item)
 
-        return response(200, "Stored successfully")
+        print(f"Successfully stored alert_id: {alert_id}")
+
+        return response(200, {
+            "message": "Stored successfully",
+            "alert_id": alert_id
+        })
 
     except Exception as e:
-        print("ERROR:", str(e))
+        print("ERROR OCCURRED")
+        print(str(e))
+
         return response(500, str(e))
 
 
-# ------------------------------------------------------------
-# HELPERS
-# ------------------------------------------------------------
-
-def extract_restaurant_number(agent_name: str):
-    """
-    Extracts the restaurant number from agentName.
-    Example: "Restaurant-2043-London" → 2043
-    """
-    match = re.search(r"(\d+)", agent_name)
-    return int(match.group(1)) if match else None
-
-
-def safe_decimal(value):
-    """Convert floats to Decimal for DynamoDB."""
-    if isinstance(value, float):
-        return Decimal(str(value))
-    return value
-
-
-def response(code, msg):
+def response(status_code, body):
     return {
-        "statusCode": code,
-        "body": json.dumps({"message": msg})
+        "statusCode": status_code,
+        "body": json.dumps(body)
     }
