@@ -153,7 +153,7 @@ dq_rules = {
         IsComplete "sys_created_on"
     ]""",
         "ncr_service_now_problem_task": """Rules = [
-        ColumnCount <= 210,
+        ColumnCount <= 90,
         RowCount > 0,
         IsComplete "number",
         IsComplete "sys_created_on"
@@ -182,14 +182,44 @@ dq_rules = {
         IsComplete "conversationid",
         IsComplete "conversationstarttime"
     ]""",
+    "genesys_conversations":"""Rules = [
+        ColumnCount <= 30,
+        RowCount > 0,
+        IsComplete "conversationid",
+        IsComplete "conversationstarttime"
+    ]""",
+    "genesys_conversations_detail":"""Rules = [
+        ColumnCount <= 55,
+        RowCount > 0,
+        IsComplete "conversationid",
+        IsComplete "conversationstarttime"
+    ]""",
+    "genesys_conversation_attributes":"""Rules = [
+        ColumnCount <= 25,
+        RowCount > 0,
+        IsComplete "conversationid"
+    ]""",
+    "genesys_queue_abandons":"""Rules = [
+        ColumnCount <= 30,
+        RowCount > 0,
+        IsComplete "conversationid"
+    ]""",
+    "genesys_queue_configuration":"""Rules = [
+        ColumnCount <= 50,
+        RowCount > 0,
+        IsComplete "id",
+        IsComplete "createdTime"
+    ]""",
+    "genesys_queue_interval_history":"""Rules = [
+        ColumnCount <= 90,
+        RowCount > 0,
+        IsComplete "queueId",
+        IsComplete "intervalStartTime"
+    ]""",
     "happysignals":"""Rules = [
         ColumnCount <= 190,
         RowCount > 0,
         IsComplete "number",
         IsComplete "sys_created_on"
-    ]""",
-    "store_db_config":"""Rules = [
-        ColumnCount <= 115,
-        RowCount > 0
     ]"""
 }

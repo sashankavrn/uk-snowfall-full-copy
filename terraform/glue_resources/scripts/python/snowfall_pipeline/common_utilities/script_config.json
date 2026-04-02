@@ -781,6 +781,68 @@
             "cdc_timestamp": "timestamp"
         }  
     },
+    "genesys_conversations": {
+        "process_timestamp": [
+            "conversationstarttime",
+            "conversationendtime",
+            "sessionstarttime",
+            "sessionendtime",
+            "cdc_timestamp"
+        ],
+        "primary_key": "conversationid",
+        "change_column_data_type": {
+            "cdc_timestamp": "timestamp"
+        }  
+    },
+    "genesys_conversations_detail": {
+        "process_timestamp": [
+            "conversationstarttime",
+            "conversationendtime",
+            "sessionstarttime",
+            "sessionendtime",
+            "cdc_timestamp"
+        ],
+        "primary_key": "conversationid",
+        "change_column_data_type": {
+            "cdc_timestamp": "timestamp"
+        }  
+    },
+    "genesys_conversation_attributes": {
+        "process_timestamp": [
+            "cdc_timestamp"
+        ],
+        "primary_key": "conversationid",
+        "change_column_data_type": {
+            "cdc_timestamp": "timestamp"
+        }  
+    },
+    "genesys_queue_configuration": {
+        "process_timestamp": [
+            "cdc_timestamp"
+        ],
+        "primary_key": "id",
+        "change_column_data_type": {
+            "cdc_timestamp": "timestamp"
+        }  
+    },
+    "genesys_queue_abandons": {
+        "process_timestamp": [
+            "cdc_timestamp"
+        ],
+        "primary_key": "conversationid",
+        "change_column_data_type": {
+            "cdc_timestamp": "timestamp"
+        }  
+    },
+    "genesys_queue_interval_history": {
+        "process_timestamp": [
+            "cdc_timestamp"
+        ],
+        "primary_key": "queueId",
+        "change_column_data_type": {
+            "cdc_timestamp": "timestamp"
+        }  
+    },
     "happysignals": {
         "process_timestamp": [
             "sys_created_on",
@@ -792,33 +854,6 @@
             "sys_created_on": "timestamp",
             "cdc_timestamp": "timestamp"
         }  
-    },
-    "store_db_config":{
-        "process_timestamp": [
-            "sys_updated_timestamp"
-        ],
-        "new_column_params": [
-            {
-                "column_name": "StoreDB_StoreProfile_StoreDetails_StoreId",
-                "regex": "(\\d{4})$",
-                "new_column_name": "restaurant_number",
-                "data_type": "integer"
-            }
-        ],
-        "replace_values": [
-            {
-                "column_name": "restaurant_number",
-                "old_value": "None",
-                "new_value": -1
-            }
-        ], 
-        "change_column_data_type": {
-            "sys_updated_timestamp": "string",
-            "cdc_timestamp": "string",
-            "configurationUpdatedAt": "string"
-        },         
-        "primary_key": "StoreDB"
-
     }
 }
 
