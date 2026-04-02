@@ -9,6 +9,7 @@ class ProcessedNewrelicDigital3PoFoeResponse(TransformBase):
     def __init__(self, spark, sc, glueContext):
         super().__init__(spark, sc, glueContext)
         self.spark.conf.set("spark.sql.shuffle.partitions", "5") 
+        self.spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled", "true")
         self.pipeline_config = self.full_configs[self.datasets]
         self.file_path = "newrelic/newrelic_digital_3po_foe_response"
 
@@ -26,7 +27,8 @@ class ProcessedNewrelicDigital3PoFoeResponse(TransformBase):
         1. Filters passed records
         2. Drops unnecessary columns
         3. Select columns to take to processed layer
-        4. Change column names and schema
+        4. Standardizes vendor name from "SkipTheDishes" to "JustEat"
+        5. Change column names and schema
 
         Parameters:
         - df (DataFrame): Input DataFrame.
@@ -46,6 +48,7 @@ class ProcessedNewrelicDigital3PoFoeResponse(TransformBase):
             F.col("facet")[1].alias("foe_response"),
             F.col("facet")[2].alias("3po_response"),
             F.col("facet")[3].alias("3po_description"),
+            F.col("facet")[4].alias("vendor"),
             F.col("Count").alias("count"),
             F.col("date").alias("date"),
             F.col("hour").alias("hour"),
@@ -55,11 +58,18 @@ class ProcessedNewrelicDigital3PoFoeResponse(TransformBase):
             F.col("created_month").alias("created_month")
         )
 
+        # Step 4: Standardizes vendor name from "SkipTheDishes" to "JustEat"
+        df = df.withColumn(
+            "vendor",
+            F.when(F.col("vendor") == "SkipTheDishes", "JustEat").otherwise(F.col("vendor"))
+        )
+
         column_mapping = {
             'restaurant_number': ('restaurant_number', 'Integer'),
             'foe_response': ('foe_response', 'Integer'),
             '3po_response': ('3po_response', 'Integer'),
             '3po_description': ('3po_description', 'string'),
+            'vendor': ('vendor', 'string'),
             'count': ('count', 'Integer'),
             'date': ('date', 'date'),
             'hour': ('hour', 'integer'),
@@ -68,7 +78,7 @@ class ProcessedNewrelicDigital3PoFoeResponse(TransformBase):
             'cdc_timestamp': ('cdc_timestamp', 'timestamp')
         }
 
-        # Step 4. Change column names and schema
+        # Step 5. Change column names and schema
         df = self.change_column_names_and_schema(df,column_mapping)
 
         return df

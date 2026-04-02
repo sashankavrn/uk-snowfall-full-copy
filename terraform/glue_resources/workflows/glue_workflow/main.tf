@@ -648,7 +648,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(0/45 * * * ? *)"
+      schedule        = "cron(45 * * * ? *)"
       reporting_date  = ""
     },
     "restaurant_count_by_day" = {
