@@ -492,33 +492,33 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(45 * * * ? *)"
+      schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
-    "genesys_conversation_attributes" = {
-      name            = "uk-snowfall-genesys-conversation-attributes"
+    "genesys_conv_attributes" = {
+      name            = "uk-snowfall-genesys-conv-attributes"
       description     = "Workflow for Genesys Conversation Attributes data"
-      dataset         = "genesys_conversation_attributes"
+      dataset         = "genesys_conv_attributes"
       group           = "preparation"
-      trigger_name    = "uk-snowfall-genesys-conversation-attributes-trigger"
+      trigger_name    = "uk-snowfall-genesys-conv-attributes-trigger"
       max_concurrent  = 1
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(45 * * * ? *)"
+      schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
-    "genesys_conversations_detail" = {
+    "genesys_conversations_det" = {
       name            = "uk-snowfall-genesys-conversations-detail"
       description     = "Workflow for Genesys Conversations Detail data"
-      dataset         = "genesys_conversations_detsail"
+      dataset         = "genesys_conversations_det"
       group           = "preparation"
       trigger_name    = "uk-snowfall-genesys-conversations-detail-trigger"
       max_concurrent  = 1
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(45 * * * ? *)"
+      schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
     "genesys_conversations" = {
@@ -531,7 +531,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(45 * * * ? *)"
+      schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
     "genesys_presence" = {
@@ -544,7 +544,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(45 * * * ? *)"
+      schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
     "genesys_queue_abandons" = {
@@ -557,7 +557,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(45 * * * ? *)"
+      schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
     "genesys_queue_config" = {
@@ -570,7 +570,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(45 * * * ? *)"
+      schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },    
     "genesys_routing_status" = {
@@ -583,7 +583,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(45 * * * ? *)"
+      schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
     "genesys_queue_history" = {
@@ -596,7 +596,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(45 * * * ? *)"
+      schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
     "genesys_session_summary" = {
@@ -622,7 +622,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(45 * * * ? *)"
+      schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
     "genesys_user_status_history" = {
@@ -635,20 +635,7 @@ locals {
       batch_size      = 100
       batch_window    = 1
       trigger_type    = "SCHEDULED"
-      schedule        = "cron(45 * * * ? *)"
-      reporting_date  = ""
-    },
-    "genesys_queue_interval_history" = {
-      name            = "uk-snowfall-genesys-queue-interval-history"
-      description     = "Workflow for Genesys Queue Interval History data"
-      dataset         = "genesys_queue_interval_history"
-      group           = "preparation"
-      trigger_name    = "uk-snowfall-genesys-queue-interval-history-trigger"
-      max_concurrent  = 1
-      batch_size      = 100
-      batch_window    = 1
-      trigger_type    = "SCHEDULED"
-      schedule        = "cron(45 * * * ? *)"
+      schedule        = "cron(0/15 * * * ? *)"
       reporting_date  = ""
     },
     "restaurant_count_by_day" = {
