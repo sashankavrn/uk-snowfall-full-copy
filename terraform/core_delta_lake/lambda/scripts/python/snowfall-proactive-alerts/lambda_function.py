@@ -19,7 +19,6 @@ SECRET_NAME = "uk-snowfall"
 REGION_NAME = "eu-central-1"
 
 def get_smtp_credentials():
-    """Retrieve SMTP username and password from AWS Secrets Manager."""
     session = boto3.session.Session()
     client = session.client(service_name="secretsmanager", region_name=REGION_NAME)
 
@@ -40,7 +39,6 @@ def get_smtp_credentials():
         print(f"[ERROR] Failed to retrieve SMTP secrets: {e}")
         return None, None
 
-
 # =============================
 # Environment
 # =============================
@@ -56,7 +54,6 @@ SMTP_PORT = 587
 SMTP_SENDER = "snowfall-proactive-alerts@ext.mcdonalds.com"
 EMAIL_TO = "venkata.adapa@uk.mcd.com"
 
-# Load SMTP credentials from Secrets Manager
 SMTP_USERNAME, SMTP_PASSWORD = get_smtp_credentials()
 
 # =============================
@@ -70,7 +67,6 @@ tickets_table = dynamodb.Table(TICKETS_TABLE)
 connections_table = dynamodb.Table(CONNECTIONS_TABLE)
 
 athena = boto3.client("athena")
-
 
 # =============================
 # Lambda Entry
@@ -97,7 +93,6 @@ def lambda_handler(event, context):
         process_rule(rule, records)
 
     return {"status": "completed"}
-
 
 # =============================
 # Athena Query
@@ -136,13 +131,21 @@ def run_athena(query):
 
         data = row["Data"]
 
-        records.append({
-            "restaurant_number": data[0].get("VarCharValue", ""),
-            "message": data[1].get("VarCharValue", "")
-        })
+        # Support both formats:
+        # 1 column -> message only (global rule)
+        # 2 columns -> restaurant + message
+        if len(data) == 1:
+            records.append({
+                "restaurant_number": None,
+                "message": data[0].get("VarCharValue", "")
+            })
+        else:
+            records.append({
+                "restaurant_number": data[0].get("VarCharValue", ""),
+                "message": data[1].get("VarCharValue", "")
+            })
 
     return records
-
 
 # =============================
 # Rule Processing
@@ -150,12 +153,13 @@ def run_athena(query):
 
 def process_rule(rule, records):
 
-    restaurants = [r["restaurant_number"] for r in records]
+    # Only valid restaurant values
+    restaurants = [r["restaurant_number"] for r in records if r["restaurant_number"]]
 
     script_output = None
 
-    # STEP 1 Proactive Script
-    if rule.get("proactive_script"):
+    # STEP 1 Proactive Script (ONLY if restaurant exists)
+    if rule.get("proactive_script") and restaurants:
 
         script_output = run_proactive_script(
             restaurants[0],
@@ -180,7 +184,6 @@ def process_rule(rule, records):
     if rule.get("email_alert"):
 
         send_email(rule, records, script_output)
-
 
 # =============================
 # Cooldown Logic
@@ -209,6 +212,13 @@ def should_send_alert(rule, restaurants):
     last_time = datetime.fromisoformat(last_time_str) if last_time_str else None
     now = datetime.now(ZoneInfo("Europe/London"))
 
+    # If no restaurant rules → always allow based on cooldown only
+    if not restaurants:
+        if last_time and cooldown_hours > 0:
+            elapsed = (now - last_time).total_seconds() / 3600
+            return elapsed >= cooldown_hours
+        return True
+
     if not current_restaurants.issubset(last_restaurants):
         print("New restaurant detected")
         return True
@@ -223,14 +233,13 @@ def should_send_alert(rule, restaurants):
 
     return False
 
-
 # =============================
 # Create Ticket
 # =============================
 
 def create_ticket(rule, records):
 
-    restaurants = [r["restaurant_number"] for r in records]
+    restaurants = [r["restaurant_number"] for r in records if r["restaurant_number"]]
 
     first_record = records[0]
 
@@ -241,7 +250,7 @@ def create_ticket(rule, records):
     item = {
         "ticket_id": ticket_id,
         "rule_id": rule["rule_id"],
-        "restaurant_number": first_record["restaurant_number"],
+        "restaurant_number": first_record.get("restaurant_number"),
         "message": first_record["message"],
         "status": "OPEN",
         "created_at": timestamp,
@@ -253,7 +262,6 @@ def create_ticket(rule, records):
 
     print(f"Ticket created: {ticket_id}")
 
-
 # =============================
 # Email (SMTP - Mailjet)
 # =============================
@@ -262,26 +270,31 @@ def send_email(rule, records, script_output):
 
     subject = f"{rule['incident_description']} - [{len(records)} Alerts]"
 
+    has_restaurant = any(r.get("restaurant_number") for r in records)
+
     html = """
     <html><body>
     <h3>Proactive Alert</h3>
     <table border="1" cellpadding="6">
     <tr>
     <th>S.No</th>
-    <th>Restaurant</th>
-    <th>Message</th>
-    </tr>
     """
+
+    if has_restaurant:
+        html += "<th>Restaurant</th>"
+
+    html += "<th>Message</th></tr>"
 
     for i, r in enumerate(records, start=1):
 
-        html += f"""
-        <tr>
-        <td>{i}</td>
-        <td>{r['restaurant_number']}</td>
-        <td>{r['message']}</td>
-        </tr>
-        """
+        html += "<tr>"
+        html += f"<td>{i}</td>"
+
+        if has_restaurant:
+            html += f"<td>{r.get('restaurant_number','')}</td>"
+
+        html += f"<td>{r['message']}</td>"
+        html += "</tr>"
 
     html += "</table>"
 
@@ -323,7 +336,6 @@ def send_email(rule, records, script_output):
     except Exception as e:
 
         print(f"Email send failed: {str(e)}")
-
 
 # =============================
 # WebSocket Proactive Script
