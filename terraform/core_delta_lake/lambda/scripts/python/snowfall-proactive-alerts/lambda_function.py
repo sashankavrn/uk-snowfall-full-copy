@@ -1,4 +1,5 @@
 import boto3
+import html
 import json
 import os
 import time
@@ -52,7 +53,10 @@ STAGE_NAME = os.environ["STAGE_NAME"]
 SMTP_SERVER = "in.mailjet.com"
 SMTP_PORT = 587
 SMTP_SENDER = "snowfall-proactive-alerts@ext.mcdonalds.com"
-EMAIL_TO = "venkata.adapa@uk.mcd.com"
+
+# Single-table discriminator values for the shared tickets table.
+RECORD_TYPE_EMAIL_ALERT = "EMAIL_ALERT"
+RECORD_TYPE_SERVICENOW_CASE = "SERVICENOW_CASE"
 
 SMTP_USERNAME, SMTP_PASSWORD = get_smtp_credentials()
 
@@ -76,7 +80,7 @@ def lambda_handler(event, context):
 
     print("Starting rule execution")
 
-    rules = rules_table.scan()["Items"]
+    rules = scan_all_items(rules_table)
 
     for rule in rules:
 
@@ -121,29 +125,45 @@ def run_athena(query):
     if state != "SUCCEEDED":
         return []
 
-    results = athena.get_query_results(QueryExecutionId=execution_id)
-
-    rows = results["ResultSet"]["Rows"]
-
     records = []
 
-    for row in rows[1:]:
+    next_token = None
+    skip_header = True
 
-        data = row["Data"]
+    while True:
 
-        # Support both formats:
-        # 1 column -> message only (global rule)
-        # 2 columns -> restaurant + message
-        if len(data) == 1:
-            records.append({
-                "restaurant_number": None,
-                "message": data[0].get("VarCharValue", "")
-            })
-        else:
-            records.append({
-                "restaurant_number": data[0].get("VarCharValue", ""),
-                "message": data[1].get("VarCharValue", "")
-            })
+        query_args = {"QueryExecutionId": execution_id}
+        if next_token:
+            query_args["NextToken"] = next_token
+
+        results = athena.get_query_results(**query_args)
+        rows = results["ResultSet"]["Rows"]
+
+        for row in rows:
+
+            if skip_header:
+                skip_header = False
+                continue
+
+            data = row["Data"]
+
+            # Support both formats:
+            # 1 column -> message only (global rule)
+            # 2 columns -> restaurant + message
+            if len(data) == 1:
+                records.append({
+                    "restaurant_number": None,
+                    "message": data[0].get("VarCharValue", "")
+                })
+            else:
+                records.append({
+                    "restaurant_number": data[0].get("VarCharValue", ""),
+                    "message": data[1].get("VarCharValue", "")
+                })
+
+        next_token = results.get("NextToken")
+        if not next_token:
+            break
 
     return records
 
@@ -154,7 +174,7 @@ def run_athena(query):
 def process_rule(rule, records):
 
     # Only valid restaurant values
-    restaurants = [r["restaurant_number"] for r in records if r["restaurant_number"]]
+    restaurants = get_unique_restaurants(records)
 
     script_output = None
 
@@ -177,13 +197,11 @@ def process_rule(rule, records):
             print("Cooldown active. Skipping alert.")
             return
 
-    # STEP 3 Create Ticket
-    create_ticket(rule, records)
-
-    # STEP 4 Send Email
+    # STEP 3 Send Email
     if rule.get("email_alert"):
 
-        send_email(rule, records, script_output)
+        if send_email(rule, records, script_output):
+            record_email_alert(rule, records)
 
 # =============================
 # Cooldown Logic
@@ -191,18 +209,20 @@ def process_rule(rule, records):
 
 def should_send_alert(rule, restaurants):
 
-    cooldown_hours = int(rule.get("cool_down_period", 0))
+    cooldown_hours = get_cooldown_hours(rule)
 
-    response = tickets_table.scan(
-        FilterExpression=Attr("rule_id").eq(rule["rule_id"]) & Attr("status").eq("OPEN")
+    if cooldown_hours <= 0:
+        return True
+
+    items = scan_all_items(
+        tickets_table,
+        Attr("rule_id").eq(rule["rule_id"]) & Attr("record_type").eq(RECORD_TYPE_EMAIL_ALERT)
     )
-
-    items = response.get("Items", [])
 
     if not items:
         return True
 
-    last_ticket = items[0]
+    last_ticket = max(items, key=alert_sort_key)
 
     last_restaurants = set(last_ticket.get("violating_restaurants", []))
     current_restaurants = set(restaurants)
@@ -214,7 +234,7 @@ def should_send_alert(rule, restaurants):
 
     # If no restaurant rules → always allow based on cooldown only
     if not restaurants:
-        if last_time and cooldown_hours > 0:
+        if last_time:
             elapsed = (now - last_time).total_seconds() / 3600
             return elapsed >= cooldown_hours
         return True
@@ -223,7 +243,7 @@ def should_send_alert(rule, restaurants):
         print("New restaurant detected")
         return True
 
-    if last_time and cooldown_hours > 0:
+    if last_time:
 
         elapsed = (now - last_time).total_seconds() / 3600
 
@@ -234,33 +254,118 @@ def should_send_alert(rule, restaurants):
     return False
 
 # =============================
-# Create Ticket
+# Alert History
 # =============================
 
-def create_ticket(rule, records):
+def scan_all_items(table, filter_expression=None):
 
-    restaurants = [r["restaurant_number"] for r in records if r["restaurant_number"]]
+    scan_kwargs = {}
+    if filter_expression is not None:
+        scan_kwargs["FilterExpression"] = filter_expression
+
+    items = []
+    response = table.scan(**scan_kwargs)
+    items.extend(response.get("Items", []))
+
+    while response.get("LastEvaluatedKey"):
+        scan_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+        response = table.scan(**scan_kwargs)
+        items.extend(response.get("Items", []))
+
+    return items
+
+def get_unique_restaurants(records):
+
+    restaurants = []
+    seen = set()
+
+    for record in records:
+        restaurant_number = record.get("restaurant_number")
+        if restaurant_number and restaurant_number not in seen:
+            seen.add(restaurant_number)
+            restaurants.append(restaurant_number)
+
+    return restaurants
+
+def parse_alert_time(timestamp_value):
+
+    if not timestamp_value:
+        return None
+
+    try:
+        return datetime.fromisoformat(timestamp_value)
+    except ValueError:
+        return None
+
+def get_cooldown_hours(rule):
+
+    raw_value = rule.get("email_cooldown_hours") or 0
+
+    try:
+        return max(int(raw_value), 0)
+    except (TypeError, ValueError):
+        print(
+            f"Invalid cooldown value for rule {rule['rule_id']}: {raw_value}. Defaulting to 0."
+        )
+        return 0
+
+def get_rule_email_recipients(rule):
+
+    recipient_value = str(rule.get("email_dl") or "")
+
+    seen = set()
+    recipients = []
+
+    for email in recipient_value.replace(";", ",").split(","):
+        normalized_email = email.strip()
+
+        if not normalized_email:
+            continue
+
+        dedupe_key = normalized_email.lower()
+        if dedupe_key in seen:
+            continue
+
+        seen.add(dedupe_key)
+        recipients.append(normalized_email)
+
+    return recipients
+
+def alert_sort_key(item):
+
+    parsed_time = parse_alert_time(item.get("last_alert_time"))
+    if not parsed_time:
+        return float("-inf")
+
+    return parsed_time.timestamp()
+
+def record_email_alert(rule, records):
+
+    restaurants = get_unique_restaurants(records)
 
     first_record = records[0]
 
-    ticket_id = f"INC{int(time.time())}"
+    alert_id = f"EMAIL#{uuid.uuid4()}"
 
     timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
+    recipients = get_rule_email_recipients(rule)
 
     item = {
-        "ticket_id": ticket_id,
+        "ticket_id": alert_id,
+        "record_type": RECORD_TYPE_EMAIL_ALERT,
         "rule_id": rule["rule_id"],
         "restaurant_number": first_record.get("restaurant_number"),
         "message": first_record["message"],
-        "status": "OPEN",
+        "status": "SENT",
         "created_at": timestamp,
         "violating_restaurants": restaurants,
-        "last_alert_time": timestamp
+        "last_alert_time": timestamp,
+        "email_recipients": ", ".join(recipients),
     }
 
     tickets_table.put_item(Item=item)
 
-    print(f"Ticket created: {ticket_id}")
+    print(f"Email alert recorded: {alert_id}")
 
 # =============================
 # Email (SMTP - Mailjet)
@@ -269,43 +374,89 @@ def create_ticket(rule, records):
 def send_email(rule, records, script_output):
 
     subject = f"{rule['incident_description']} - [{len(records)} Alerts]"
+    recipients = get_rule_email_recipients(rule)
+
+    if not recipients:
+        print(f"Email send failed: no email_dl configured for rule {rule['rule_id']}")
+        return False
+
+    if not SMTP_USERNAME or not SMTP_PASSWORD:
+        print("Email send failed: SMTP credentials are unavailable")
+        return False
 
     has_restaurant = any(r.get("restaurant_number") for r in records)
+    cooldown_hours = get_cooldown_hours(rule)
 
-    html = """
-    <html><body>
-    <h3>Proactive Alert</h3>
-    <table border="1" cellpadding="6">
-    <tr>
-    <th>S.No</th>
+    html_body_template = """
+    <html>
+    <head>
+        <style>
+            body { font-family: Arial, sans-serif; color: #1f2937; }
+            .container { max-width: 860px; margin: 0 auto; padding: 20px; }
+            .title { font-size: 22px; font-weight: bold; margin-bottom: 8px; }
+            .subtitle { color: #4b5563; margin-bottom: 18px; }
+            .meta { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; }
+            .meta p { margin: 6px 0; }
+            table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+            th { background: #111827; color: #ffffff; text-align: left; padding: 10px; }
+            td { border-bottom: 1px solid #e5e7eb; padding: 10px; vertical-align: top; }
+            .section-title { margin-top: 22px; margin-bottom: 10px; font-size: 16px; font-weight: bold; }
+            pre { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; white-space: pre-wrap; }
+        </style>
+    </head>
+    if not SMTP_USERNAME or not SMTP_PASSWORD:
+        print("Email send failed: SMTP credentials are unavailable")
+        return False
+    <body>
+        <div class="container">
+            <div class="title">Proactive Alert</div>
+            <div class="subtitle">Violations detected for a Snowfall proactive rule.</div>
+            <div class="meta">
+                <p><strong>Rule:</strong> {incident_description}</p>
+                <p><strong>Violations:</strong> {violation_count}</p>
+                <p><strong>Cooldown:</strong> {cooldown_label}</p>
+            </div>
+            <div class="section-title">Violation Details</div>
+            <table>
+                <tr>
+                    <th>S.No</th>
+                    {restaurant_header}
+                    <th>Message</th>
+                </tr>
+                {rows}
+            </table>
+            {script_section}
+        </div>
+    </body>
+    </html>
     """
 
-    if has_restaurant:
-        html += "<th>Restaurant</th>"
-
-    html += "<th>Message</th></tr>"
-
-    for i, r in enumerate(records, start=1):
-
-        html += "<tr>"
-        html += f"<td>{i}</td>"
+    rows = []
+    for i, record in enumerate(records, start=1):
+        cells = [f"<td>{i}</td>"]
 
         if has_restaurant:
-            html += f"<td>{r.get('restaurant_number','')}</td>"
+            cells.append(f"<td>{html.escape(str(record.get('restaurant_number', '')))}</td>")
 
-        html += f"<td>{r['message']}</td>"
-        html += "</tr>"
+        cells.append(f"<td>{html.escape(str(record['message']))}</td>")
+        rows.append(f"<tr>{''.join(cells)}</tr>")
 
-    html += "</table>"
-
+    script_section = ""
     if script_output:
+        script_section = """
+        <div class="section-title">Additional Proactive Measures</div>
+        <p>Proactive script execution was attempted for this rule.</p>
+        <pre>{script_output}</pre>
+        """.format(script_output=html.escape(json.dumps(script_output, indent=2)))
 
-        html += f"""
-        <h4>Proactive Script Output</h4>
-        <pre>{json.dumps(script_output, indent=2)}</pre>
-        """
-
-    html += "</body></html>"
+    html_body = html_body_template.format(
+        incident_description=html.escape(str(rule["incident_description"])),
+        violation_count=len(records),
+        cooldown_label=f"{cooldown_hours} hour(s)" if cooldown_hours > 0 else "No cooldown",
+        restaurant_header="<th>Restaurant</th>" if has_restaurant else "",
+        rows="".join(rows),
+        script_section=script_section,
+    )
 
     try:
 
@@ -313,9 +464,9 @@ def send_email(rule, records, script_output):
 
         msg["Subject"] = subject
         msg["From"] = SMTP_SENDER
-        msg["To"] = EMAIL_TO
+        msg["To"] = ", ".join(recipients)
 
-        msg.attach(MIMEText(html, "html"))
+        msg.attach(MIMEText(html_body, "html"))
 
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10) as server:
 
@@ -327,15 +478,17 @@ def send_email(rule, records, script_output):
 
             server.sendmail(
                 SMTP_SENDER,
-                EMAIL_TO.split(","),
+                recipients,
                 msg.as_string(),
             )
 
         print("Email sent successfully via Mailjet")
+        return True
 
     except Exception as e:
 
         print(f"Email send failed: {str(e)}")
+        return False
 
 # =============================
 # WebSocket Proactive Script
