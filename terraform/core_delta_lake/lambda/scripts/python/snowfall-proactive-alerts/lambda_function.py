@@ -45,7 +45,7 @@ def get_smtp_credentials():
 # =============================
 
 RULES_TABLE = os.environ["RULES_TABLE"]
-TICKETS_TABLE = os.environ["TICKETS_TABLE"]
+PROACTIVE_ALERTS_TABLE = os.environ["PROACTIVE_ALERTS_TABLE"]
 CONNECTIONS_TABLE = os.environ["TABLE_NAME"]
 ATHENA_OUTPUT_S3 = os.environ["ATHENA_OUTPUT_S3"]
 STAGE_NAME = os.environ["STAGE_NAME"]
@@ -54,7 +54,6 @@ SMTP_SERVER = "in.mailjet.com"
 SMTP_PORT = 587
 SMTP_SENDER = "snowfall-proactive-alerts@ext.mcdonalds.com"
 
-# Single-table discriminator values for the shared tickets table.
 RECORD_TYPE_EMAIL_ALERT = "EMAIL_ALERT"
 RECORD_TYPE_SERVICENOW_CASE = "SERVICENOW_CASE"
 
@@ -67,7 +66,7 @@ SMTP_USERNAME, SMTP_PASSWORD = get_smtp_credentials()
 dynamodb = boto3.resource("dynamodb")
 
 rules_table = dynamodb.Table(RULES_TABLE)
-tickets_table = dynamodb.Table(TICKETS_TABLE)
+proactive_alerts_table = dynamodb.Table(PROACTIVE_ALERTS_TABLE)
 connections_table = dynamodb.Table(CONNECTIONS_TABLE)
 
 athena = boto3.client("athena")
@@ -181,13 +180,17 @@ def process_rule(rule, records):
     # STEP 1 Proactive Script (ONLY if restaurant exists)
     if rule.get("proactive_script") and restaurants:
 
-        script_output = run_proactive_script(
-            restaurants[0],
-            rule["proactive_script_name"]
-        )
+        for restaurant in restaurants:
+            script_output = run_proactive_script(
+                restaurant,
+                rule["proactive_script_name"]
+            )
 
-        if script_output.get("remediated"):
-            print("Issue remediated by script")
+            if script_output.get("remediated"):
+                print(f"Issue remediated by script for restaurant {restaurant}")
+
+        if script_output and script_output.get("remediated"):
+            print("All issues remediated by script")
             return
 
     # STEP 2 Cooldown Check
@@ -215,7 +218,7 @@ def should_send_alert(rule, restaurants):
         return True
 
     items = scan_all_items(
-        tickets_table,
+        proactive_alerts_table,
         Attr("rule_id").eq(rule["rule_id"]) & Attr("record_type").eq(RECORD_TYPE_EMAIL_ALERT)
     )
 
@@ -229,7 +232,7 @@ def should_send_alert(rule, restaurants):
 
     last_time_str = last_ticket.get("last_alert_time")
 
-    last_time = datetime.fromisoformat(last_time_str) if last_time_str else None
+    last_time = parse_alert_time(last_time_str)
     now = datetime.now(ZoneInfo("Europe/London"))
 
     # If no restaurant rules → always allow based on cooldown only
@@ -302,12 +305,24 @@ def get_cooldown_hours(rule):
     raw_value = rule.get("email_cooldown_hours") or 0
 
     try:
-        return max(int(raw_value), 0)
+        return max(float(raw_value), 0.0)
     except (TypeError, ValueError):
         print(
             f"Invalid cooldown value for rule {rule['rule_id']}: {raw_value}. Defaulting to 0."
         )
-        return 0
+        return 0.0
+
+def format_cooldown_label(cooldown_hours):
+
+    if cooldown_hours <= 0:
+        return "No cooldown"
+
+    total_minutes = cooldown_hours * 60
+
+    if total_minutes < 60:
+        return f"{total_minutes:g} minute(s)"
+
+    return f"{cooldown_hours:g} hour(s)"
 
 def get_rule_email_recipients(rule):
 
@@ -345,13 +360,13 @@ def record_email_alert(rule, records):
 
     first_record = records[0]
 
-    alert_id = f"EMAIL#{uuid.uuid4()}"
+    alert_id = f"ALERT#{uuid.uuid4()}"
 
     timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
     recipients = get_rule_email_recipients(rule)
 
     item = {
-        "ticket_id": alert_id,
+        "alert_id": alert_id,
         "record_type": RECORD_TYPE_EMAIL_ALERT,
         "rule_id": rule["rule_id"],
         "restaurant_number": first_record.get("restaurant_number"),
@@ -363,7 +378,7 @@ def record_email_alert(rule, records):
         "email_recipients": ", ".join(recipients),
     }
 
-    tickets_table.put_item(Item=item)
+    proactive_alerts_table.put_item(Item=item)
 
     print(f"Email alert recorded: {alert_id}")
 
@@ -391,22 +406,19 @@ def send_email(rule, records, script_output):
     <html>
     <head>
         <style>
-            body { font-family: Arial, sans-serif; color: #1f2937; }
-            .container { max-width: 860px; margin: 0 auto; padding: 20px; }
-            .title { font-size: 22px; font-weight: bold; margin-bottom: 8px; }
-            .subtitle { color: #4b5563; margin-bottom: 18px; }
-            .meta { background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; }
-            .meta p { margin: 6px 0; }
-            table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-            th { background: #111827; color: #ffffff; text-align: left; padding: 10px; }
-            td { border-bottom: 1px solid #e5e7eb; padding: 10px; vertical-align: top; }
-            .section-title { margin-top: 22px; margin-bottom: 10px; font-size: 16px; font-weight: bold; }
-            pre { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; white-space: pre-wrap; }
+            body {{ font-family: Arial, sans-serif; color: #1f2937; }}
+            .container {{ max-width: 860px; margin: 0 auto; padding: 20px; }}
+            .title {{ font-size: 22px; font-weight: bold; margin-bottom: 8px; }}
+            .subtitle {{ color: #4b5563; margin-bottom: 18px; }}
+            .meta {{ background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; }}
+            .meta p {{ margin: 6px 0; }}
+            table {{ width: 100%; border-collapse: collapse; margin-top: 12px; }}
+            th {{ background: #111827; color: #ffffff; text-align: left; padding: 10px; }}
+            td {{ border-bottom: 1px solid #e5e7eb; padding: 10px; vertical-align: top; }}
+            .section-title {{ margin-top: 22px; margin-bottom: 10px; font-size: 16px; font-weight: bold; }}
+            pre {{ background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; white-space: pre-wrap; }}
         </style>
     </head>
-    if not SMTP_USERNAME or not SMTP_PASSWORD:
-        print("Email send failed: SMTP credentials are unavailable")
-        return False
     <body>
         <div class="container">
             <div class="title">Proactive Alert</div>
@@ -452,7 +464,7 @@ def send_email(rule, records, script_output):
     html_body = html_body_template.format(
         incident_description=html.escape(str(rule["incident_description"])),
         violation_count=len(records),
-        cooldown_label=f"{cooldown_hours} hour(s)" if cooldown_hours > 0 else "No cooldown",
+        cooldown_label=format_cooldown_label(cooldown_hours),
         restaurant_header="<th>Restaurant</th>" if has_restaurant else "",
         rows="".join(rows),
         script_section=script_section,
@@ -476,13 +488,16 @@ def send_email(rule, records, script_output):
 
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
 
-            server.sendmail(
+            refused = server.sendmail(
                 SMTP_SENDER,
                 recipients,
                 msg.as_string(),
             )
 
-        print("Email sent successfully via Mailjet")
+        if refused:
+            print(f"[WARN] Some recipients were refused: {refused}")
+
+        print(f"Email sent successfully via Mailjet to {recipients}")
         return True
 
     except Exception as e:
@@ -507,18 +522,27 @@ def run_proactive_script(restaurant_number, script_name):
 
     apigw = boto3.client("apigatewaymanagementapi", endpoint_url=endpoint)
 
-    response = connections_table.scan(
-        FilterExpression=Attr("restaurant_number").eq(str(restaurant_number))
+    scan_kwargs = {
+        "FilterExpression": Attr("restaurant_number").eq(str(restaurant_number))
         & Attr("status").eq("connected")
-    )
+    }
 
-    for item in response["Items"]:
+    items = []
+    response = connections_table.scan(**scan_kwargs)
+    items.extend(response.get("Items", []))
+
+    while response.get("LastEvaluatedKey"):
+        scan_kwargs["ExclusiveStartKey"] = response["LastEvaluatedKey"]
+        response = connections_table.scan(**scan_kwargs)
+        items.extend(response.get("Items", []))
+
+    for item in items:
 
         message = {
             "command_id": str(uuid.uuid4()),
             "script_name": script_name,
             "action": "trigger_script",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(ZoneInfo("UTC")).isoformat(),
         }
 
         try:
