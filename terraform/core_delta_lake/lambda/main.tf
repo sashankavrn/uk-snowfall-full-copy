@@ -1000,6 +1000,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
       DYNAMO_REGION          = "eu-central-1"
       RULES_TABLE            = "uk-snowfall-${var.environment}-incident-rules"
       PROACTIVE_ALERTS_TABLE = "uk-snowfall-${var.environment}-proactive-alerts"
+      RESULTS_TABLE_NAME     = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
       ATHENA_REGION          = "eu-central-1"
       ATHENA_OUTPUT_S3       = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
       SNS_TOPIC_ARN          = var.sns_topic_arn
