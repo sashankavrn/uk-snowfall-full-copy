@@ -461,6 +461,7 @@ def send_email(rule, records, script_results):
             result_rows += (
                 f"<tr>"
                 f"<td>{html.escape(str(r.get('restaurant_number', '')))}</td>"
+                f"<td>{html.escape(str(r.get('device_id', '')))}</td>"
                 f"<td>{html.escape(str(r.get('script_name', '')))}</td>"
                 f"<td style='color:{color};font-weight:bold'>{html.escape(status)}</td>"
                 f"<td><pre style='margin:0'>{html.escape(str(r.get('result_output', '') or ''))}</pre></td>"
@@ -468,10 +469,11 @@ def send_email(rule, records, script_results):
                 f"</tr>"
             )
         script_section = f"""
-        <div class="section-title">Proactive Script Results</div>
+        <div class=\"section-title\">Proactive Script Results</div>
         <table>
             <tr>
                 <th>Restaurant</th>
+                <th>Device ID</th>
                 <th>Script</th>
                 <th>Status</th>
                 <th>Output</th>
