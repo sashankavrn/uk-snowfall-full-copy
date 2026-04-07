@@ -580,6 +580,7 @@ def run_proactive_script(restaurant_number, script_name):
             triggered.append({
                 "command_id": command_id,
                 "restaurant_number": str(restaurant_number),
+                "device_id": item.get("device_id", ""),
                 "script_name": script_name,
             })
 
@@ -605,8 +606,22 @@ def poll_script_results(triggered_commands, timeout_seconds=30):
 
         for command_id in list(remaining.keys()):
             try:
-                resp = results_table.get_item(Key={"result_id": command_id})
-                item = resp.get("Item")
+                triggered = remaining[command_id]
+                response = results_table.scan(
+                    FilterExpression=Attr("result_id").eq(command_id)
+                    & Attr("restaurant_number").eq(triggered["restaurant_number"])
+                )
+                items = response.get("Items", [])
+
+                while response.get("LastEvaluatedKey"):
+                    response = results_table.scan(
+                        FilterExpression=Attr("result_id").eq(command_id)
+                        & Attr("restaurant_number").eq(triggered["restaurant_number"]),
+                        ExclusiveStartKey=response["LastEvaluatedKey"],
+                    )
+                    items.extend(response.get("Items", []))
+
+                item = items[0] if items else None
                 if item:
                     collected.append(item)
                     del remaining[command_id]
@@ -622,6 +637,7 @@ def poll_script_results(triggered_commands, timeout_seconds=30):
         collected.append({
             "result_id": command_id,
             "restaurant_number": triggered["restaurant_number"],
+            "device_id": triggered.get("device_id", ""),
             "script_name": triggered["script_name"],
             "execution_status": "timeout",
             "result_output": "",
