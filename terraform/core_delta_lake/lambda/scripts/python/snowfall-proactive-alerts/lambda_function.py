@@ -47,6 +47,7 @@ def get_smtp_credentials():
 RULES_TABLE = os.environ["RULES_TABLE"]
 PROACTIVE_ALERTS_TABLE = os.environ["PROACTIVE_ALERTS_TABLE"]
 CONNECTIONS_TABLE = os.environ["TABLE_NAME"]
+RESULTS_TABLE_NAME = os.environ.get("RESULTS_TABLE_NAME", "")
 ATHENA_OUTPUT_S3 = os.environ["ATHENA_OUTPUT_S3"]
 STAGE_NAME = os.environ["STAGE_NAME"]
 
@@ -68,6 +69,7 @@ dynamodb = boto3.resource("dynamodb")
 rules_table = dynamodb.Table(RULES_TABLE)
 proactive_alerts_table = dynamodb.Table(PROACTIVE_ALERTS_TABLE)
 connections_table = dynamodb.Table(CONNECTIONS_TABLE)
+results_table = dynamodb.Table(RESULTS_TABLE_NAME) if RESULTS_TABLE_NAME else None
 
 athena = boto3.client("athena")
 
@@ -175,36 +177,33 @@ def process_rule(rule, records):
     # Only valid restaurant values
     restaurants = get_unique_restaurants(records)
 
-    script_output = None
+    script_results = []
 
     # STEP 1 Proactive Script (ONLY if restaurant exists)
     if rule.get("proactive_script") and restaurants:
 
+        all_triggered = []
+
         for restaurant in restaurants:
-            script_output = run_proactive_script(
-                restaurant,
-                rule["proactive_script_name"]
-            )
+            triggered = run_proactive_script(restaurant, rule["proactive_script_name"])
+            all_triggered.extend(triggered)
 
-            if script_output.get("remediated"):
-                print(f"Issue remediated by script for restaurant {restaurant}")
+        if all_triggered:
+            print(f"Polling results for {len(all_triggered)} triggered script(s)")
+            script_results = poll_script_results(all_triggered)
 
-        if script_output and script_output.get("remediated"):
-            print("All issues remediated by script")
-            return
+    # STEP 2 Cooldown Check (always applies)
+    if not should_send_alert(rule, restaurants):
+        print("Cooldown active. Skipping alert.")
+        return
 
-    # STEP 2 Cooldown Check
+    # STEP 3 Send Email (only if email_alert is enabled)
+    email_sent = False
     if rule.get("email_alert"):
+        email_sent = send_email(rule, records, script_results)
 
-        if not should_send_alert(rule, restaurants):
-            print("Cooldown active. Skipping alert.")
-            return
-
-    # STEP 3 Send Email
-    if rule.get("email_alert"):
-
-        if send_email(rule, records, script_output):
-            record_email_alert(rule, records)
+    # STEP 4 Record alert (always, regardless of email_alert flag)
+    record_email_alert(rule, records, email_sent=email_sent)
 
 # =============================
 # Cooldown Logic
@@ -354,7 +353,7 @@ def alert_sort_key(item):
 
     return parsed_time.timestamp()
 
-def record_email_alert(rule, records):
+def record_email_alert(rule, records, email_sent=True):
 
     restaurants = get_unique_restaurants(records)
 
@@ -371,7 +370,7 @@ def record_email_alert(rule, records):
         "rule_id": rule["rule_id"],
         "restaurant_number": first_record.get("restaurant_number"),
         "message": first_record["message"],
-        "status": "SENT",
+        "status": "SENT" if email_sent else "RECORDED",
         "created_at": timestamp,
         "violating_restaurants": restaurants,
         "last_alert_time": timestamp,
@@ -380,13 +379,13 @@ def record_email_alert(rule, records):
 
     proactive_alerts_table.put_item(Item=item)
 
-    print(f"Email alert recorded: {alert_id}")
+    print(f"Alert recorded: {alert_id} (status: {'SENT' if email_sent else 'RECORDED'})")
 
 # =============================
 # Email (SMTP - Mailjet)
 # =============================
 
-def send_email(rule, records, script_output):
+def send_email(rule, records, script_results):
 
     subject = f"{rule['incident_description']} - [{len(records)} Alerts]"
     recipients = get_rule_email_recipients(rule)
@@ -454,12 +453,33 @@ def send_email(rule, records, script_output):
         rows.append(f"<tr>{''.join(cells)}</tr>")
 
     script_section = ""
-    if script_output:
-        script_section = """
-        <div class="section-title">Additional Proactive Measures</div>
-        <p>Proactive script execution was attempted for this rule.</p>
-        <pre>{script_output}</pre>
-        """.format(script_output=html.escape(json.dumps(script_output, indent=2)))
+    if script_results:
+        result_rows = ""
+        for r in script_results:
+            status = r.get("execution_status", "unknown")
+            color = "#16a34a" if status == "success" else "#dc2626" if status == "failed" else "#d97706"
+            result_rows += (
+                f"<tr>"
+                f"<td>{html.escape(str(r.get('restaurant_number', '')))}</td>"
+                f"<td>{html.escape(str(r.get('script_name', '')))}</td>"
+                f"<td style='color:{color};font-weight:bold'>{html.escape(status)}</td>"
+                f"<td><pre style='margin:0'>{html.escape(str(r.get('result_output', '') or ''))}</pre></td>"
+                f"<td><pre style='margin:0;color:#dc2626'>{html.escape(str(r.get('stderr', '') or ''))}</pre></td>"
+                f"</tr>"
+            )
+        script_section = f"""
+        <div class="section-title">Proactive Script Results</div>
+        <table>
+            <tr>
+                <th>Restaurant</th>
+                <th>Script</th>
+                <th>Status</th>
+                <th>Output</th>
+                <th>Error</th>
+            </tr>
+            {result_rows}
+        </table>
+        """
 
     html_body = html_body_template.format(
         incident_description=html.escape(str(rule["incident_description"])),
@@ -511,7 +531,7 @@ def send_email(rule, records, script_output):
 
 def run_proactive_script(restaurant_number, script_name):
 
-    print(f"Triggering script {script_name}")
+    print(f"Triggering script {script_name} for restaurant {restaurant_number}")
 
     if STAGE_NAME == "prod":
         endpoint = "https://j3v4n25iwa.execute-api.eu-central-1.amazonaws.com/prod/"
@@ -536,10 +556,13 @@ def run_proactive_script(restaurant_number, script_name):
         response = connections_table.scan(**scan_kwargs)
         items.extend(response.get("Items", []))
 
+    triggered = []
+
     for item in items:
 
+        command_id = str(uuid.uuid4())
         message = {
-            "command_id": str(uuid.uuid4()),
+            "command_id": command_id,
             "script_name": script_name,
             "action": "trigger_script",
             "timestamp": datetime.now(ZoneInfo("UTC")).isoformat(),
@@ -552,10 +575,55 @@ def run_proactive_script(restaurant_number, script_name):
                 Data=json.dumps(message).encode(),
             )
 
-        except ClientError:
-            pass
+            triggered.append({
+                "command_id": command_id,
+                "restaurant_number": str(restaurant_number),
+                "script_name": script_name,
+            })
 
-    return {
-        "status": "triggered",
-        "remediated": False
-    }
+            print(f"Script triggered: command_id={command_id} connection={item['connectionId']}")
+
+        except ClientError as e:
+            print(f"[WARN] Failed to send to connection {item['connectionId']}: {e}")
+
+    return triggered
+
+
+def poll_script_results(triggered_commands, timeout_seconds=30):
+
+    if not results_table:
+        print("[WARN] RESULTS_TABLE_NAME not configured — skipping result polling")
+        return []
+
+    remaining = {t["command_id"]: t for t in triggered_commands}
+    collected = []
+    deadline = time.time() + timeout_seconds
+
+    while remaining and time.time() < deadline:
+
+        for command_id in list(remaining.keys()):
+            try:
+                resp = results_table.get_item(Key={"result_id": command_id})
+                item = resp.get("Item")
+                if item:
+                    collected.append(item)
+                    del remaining[command_id]
+            except Exception as e:
+                print(f"[WARN] Error polling result for {command_id}: {e}")
+
+        if remaining:
+            time.sleep(3)
+
+    # Commands that never responded within the timeout
+    for command_id, triggered in remaining.items():
+        print(f"[WARN] Timeout waiting for result: command_id={command_id}")
+        collected.append({
+            "result_id": command_id,
+            "restaurant_number": triggered["restaurant_number"],
+            "script_name": triggered["script_name"],
+            "execution_status": "timeout",
+            "result_output": "",
+            "stderr": "No response received within timeout period.",
+        })
+
+    return collected
