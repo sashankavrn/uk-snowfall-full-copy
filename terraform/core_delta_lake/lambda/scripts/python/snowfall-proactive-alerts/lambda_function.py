@@ -218,7 +218,9 @@ def should_send_alert(rule, restaurants):
 
     items = scan_all_items(
         proactive_alerts_table,
-        Attr("rule_id").eq(rule["rule_id"]) & Attr("record_type").eq(RECORD_TYPE_EMAIL_ALERT)
+        Attr("rule_id").eq(rule["rule_id"])
+        & Attr("record_type").eq(RECORD_TYPE_EMAIL_ALERT)
+        & Attr("status").eq("SENT")
     )
 
     if not items:
