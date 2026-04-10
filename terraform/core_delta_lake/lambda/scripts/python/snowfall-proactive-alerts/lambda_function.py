@@ -383,6 +383,27 @@ def record_email_alert(rule, records, email_sent=True):
 
     print(f"Alert recorded: {alert_id} (status: {'SENT' if email_sent else 'RECORDED'})")
 
+
+def get_proactive_result_status(result_item):
+
+    execution_status = str(result_item.get("execution_status", "")).strip().lower()
+    stderr_text = str(result_item.get("stderr", "") or "").strip()
+    output_text = str(result_item.get("result_output", "") or "")
+
+    # Keep transport/runtime failures in a dedicated bucket.
+    if execution_status in {"timeout", "failed", "error"}:
+        return "error/timeout"
+
+    if stderr_text:
+        return "error/timeout"
+
+    # Business success criteria from requirement.
+    if "COMPLETED SUCCESSFULLY" in output_text.upper():
+        return "successful"
+
+    # Script executed but did not report expected completion marker.
+    return "unsuccessful"
+
 # =============================
 # Email (SMTP - Mailjet)
 # =============================
@@ -414,7 +435,7 @@ def send_email(rule, records, script_results):
             .meta {{ background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; }}
             .meta p {{ margin: 6px 0; }}
             table {{ width: 100%; border-collapse: collapse; margin-top: 12px; }}
-            th {{ background: #111827; color: #ffffff; text-align: left; padding: 10px; }}
+            th {{ background: #FFB617; color: #1f2937; text-align: left; padding: 10px; }}
             td {{ border-bottom: 1px solid #e5e7eb; padding: 10px; vertical-align: top; }}
             .section-title {{ margin-top: 22px; margin-bottom: 10px; font-size: 16px; font-weight: bold; }}
             pre {{ background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; white-space: pre-wrap; }}
@@ -432,7 +453,7 @@ def send_email(rule, records, script_results):
             <div class="section-title">Violation Details</div>
             <table>
                 <tr>
-                    <th>S.No</th>
+                    <th>#</th>
                     {restaurant_header}
                     <th>Message</th>
                 </tr>
@@ -458,8 +479,8 @@ def send_email(rule, records, script_results):
     if script_results:
         result_rows = ""
         for r in script_results:
-            status = r.get("execution_status", "unknown")
-            color = "#16a34a" if status == "success" else "#dc2626" if status == "failed" else "#d97706"
+            status = get_proactive_result_status(r)
+            color = "#16a34a" if status == "successful" else "#dc2626" if status == "unsuccessful" else "#d97706"
             result_rows += (
                 f"<tr>"
                 f"<td>{html.escape(str(r.get('restaurant_number', '')))}</td>"
