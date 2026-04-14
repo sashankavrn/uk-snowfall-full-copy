@@ -997,14 +997,15 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
 
   environment {
     variables = {
-      DYNAMO_REGION    = "eu-central-1"
-      RULES_TABLE      = "uk-snowfall-${var.environment}-incident-rules"
-      TICKETS_TABLE    = "uk-snowfall-${var.environment}-service-now-tickets"
-      ATHENA_REGION    = "eu-central-1"
-      ATHENA_OUTPUT_S3 = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
-      SNS_TOPIC_ARN    = var.sns_topic_arn
-      STAGE_NAME       = var.stage_name
-      TABLE_NAME       = "uk-snowfall-${var.environment}-proactive-websocket-connections"
+      DYNAMO_REGION          = "eu-central-1"
+      RULES_TABLE            = "uk-snowfall-${var.environment}-incident-rules"
+      PROACTIVE_ALERTS_TABLE = "uk-snowfall-${var.environment}-proactive-alerts"
+      RESULTS_TABLE_NAME     = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
+      ATHENA_REGION          = "eu-central-1"
+      ATHENA_OUTPUT_S3       = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
+      SNS_TOPIC_ARN          = var.sns_topic_arn
+      STAGE_NAME             = var.stage_name
+      TABLE_NAME             = "uk-snowfall-${var.environment}-proactive-websocket-connections"
     }
   }
 }
@@ -1064,6 +1065,23 @@ resource "aws_dynamodb_table" "uk_snowfall_service_now_tickets" {
     name = "ticket_id"
     type = "S"
   }
+  tags = var.resource_tags
+}
+
+
+############################################
+## DynamoDB: Proactive Alerts Table
+############################################
+resource "aws_dynamodb_table" "uk_snowfall_proactive_alerts" {
+  name         = "uk-snowfall-${var.environment}-proactive-alerts"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "alert_id"
+
+  attribute {
+    name = "alert_id"
+    type = "S"
+  }
+
   tags = var.resource_tags
 }
 

@@ -103,6 +103,10 @@ resource "aws_s3_object" "landing_folder" {
       happysignals            = "happysignals/"
       ncr_service_now_worknotes = "ncr_service_now/worknotes/"
     }
+    lifecycle {
+      ignore_changes = all
+  }
+
 }
 
 
@@ -193,6 +197,9 @@ resource "aws_s3_object" "raw_folder" {
       service_agent_server_files = "service_agent_server_files/uploads/"
       ncr_service_now_worknotes = "ncr_service_now/worknotes/"
     }
+    lifecycle {
+      ignore_changes = all
+  }
 }
 
 resource "aws_s3_bucket_notification" "enabling_event_bridge_notification" {
@@ -295,6 +302,9 @@ resource "aws_s3_object" "preparation_folder" {
       service_agent_server_files = "service_agent_server_files/uploads/"
       ncr_service_now_worknotes = "ncr_service_now/worknotes/"
     }
+    lifecycle {
+      ignore_changes = all
+  }
 }
 
 # ####### Creation of Artifact Bucket ################
@@ -311,7 +321,10 @@ resource "aws_s3_bucket" "artifact_bucket" {
 resource "aws_s3_object" "temporary_folder" {
   bucket = aws_s3_bucket.artifact_bucket.id
   key    = "temporary/" 
-  source = "/dev/null" 
+  source = "/dev/null"
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 #####################################################################################
@@ -402,6 +415,9 @@ resource "aws_s3_object" "processed_folder" {
       ncr_service_now_worknotes = "ncr_service_now/worknotes/"
       ods_location_restaurant_count_by_day = "restaurant_count_by_day/"
     }
+    lifecycle {
+      ignore_changes = all
+  }
 }
 
 
@@ -472,6 +488,9 @@ resource "aws_s3_object" "uploads_folder" {
   key                     = "uploads/"
   source                  = "/dev/null"
   server_side_encryption  = "aws:kms"
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 
@@ -481,6 +500,9 @@ resource "aws_s3_object" "serverlist_folder" {
   key= "server_list/"
   source= "/dev/null"
   server_side_encryption= "aws:kms"
+  lifecycle {
+    ignore_changes = all
+  }
 }
 
 
@@ -527,4 +549,7 @@ resource "aws_s3_object" "temp_folder" {
   bucket  = aws_s3_bucket.temp_bucket.id
   key     = "meraki/client_info/"
   content = ""
+  lifecycle {
+    ignore_changes = all
+  }
 }
