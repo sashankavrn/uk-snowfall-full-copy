@@ -112,7 +112,7 @@ def lambda_handler(event, context):
     # Build NRQL Query with dynamic SINCE and UNTIL
     query = f"""
         SELECT uniqueCount(aparse(message, '%VALUES%, *,%')) as Count
-        FROM Log
+        FROM Log_3PO
         WHERE application = 'hds'
           and market in ('uk','ie')
           and (message like '%FOE returned foeErrorCode:%' or message like '%FOERespon%')
