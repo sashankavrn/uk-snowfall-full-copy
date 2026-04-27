@@ -460,13 +460,16 @@ class TransformBase:
             else:
                 source_df = self.spark.read.json(f"s3://{bucket_name}/{file_path}/")
 
-        elif file_format == 'csv':
-            #source_df = self.spark.read.csv(f"s3://{bucket_name}/{file_path}/", header=True)
-            
-            source_df = self.spark.read.format("csv") \
-                .option("header", "true") \
-                .option("recursiveFileLookup", "true") \
-                .load(f"s3://{bucket_name}/{file_path}/")
+        elif file_format == 'csv':    
+            source_df = (
+                self.spark.read.format("csv")
+                    .option("header", "true")
+                    .option("recursiveFileLookup", "true")
+                    .option("multiLine", "true")
+                    .option("quote", "\"")
+                    .option("escape", "\"")
+                    .load(f"s3://{bucket_name}/{file_path}/")
+            )
 
 
         elif file_format == 'parquet':
