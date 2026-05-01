@@ -404,6 +404,36 @@ def get_proactive_result_status(result_item):
     # Script executed but did not report expected completion marker.
     return "unsuccessful"
 
+
+def escape_html_multiline(value):
+    """
+    HTML-escape a value and convert it to an Outlook-compatible multi-line
+    representation:
+      - Real newlines (\r\n, \n, \r) -> <br>
+      - Leading spaces on each line -> &nbsp; (Outlook collapses spaces otherwise)
+    Combined with a monospace font this preserves the same shape as the
+    Athena console output.
+    """
+    if value is None:
+        return ""
+
+    # Normalise newline variants
+    text = str(value).replace("\r\n", "\n").replace("\r", "\n")
+
+    output_lines = []
+    for line in text.split("\n"):
+        # Preserve leading whitespace by converting to &nbsp;
+        stripped = line.lstrip(" \t")
+        leading_count = len(line) - len(stripped)
+        # Tabs count as 4 spaces visually
+        leading_nbsp = "&nbsp;" * (
+            sum(4 if c == "\t" else 1 for c in line[:leading_count])
+        )
+        escaped_line = html.escape(stripped)
+        output_lines.append(leading_nbsp + escaped_line)
+
+    return "<br>".join(output_lines)
+
 # =============================
 # Email (SMTP - Mailjet)
 # =============================
@@ -436,7 +466,8 @@ def send_email(rule, records, script_results):
             .meta p {{ margin: 6px 0; }}
             table {{ width: 100%; border-collapse: collapse; margin-top: 12px; }}
             th {{ background: #FFB617; color: #1f2937; text-align: left; padding: 10px; }}
-            td {{ border-bottom: 1px solid #e5e7eb; padding: 10px; vertical-align: top; }}
+            td {{ border-bottom: 1px solid #e5e7eb; padding: 10px; vertical-align: top; word-break: break-word; }}
+            td.message {{ white-space: pre-wrap; font-family: Consolas, 'Courier New', monospace; font-size: 13px; }}
             .section-title {{ margin-top: 22px; margin-bottom: 10px; font-size: 16px; font-weight: bold; }}
             pre {{ background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; white-space: pre-wrap; }}
         </style>
@@ -472,7 +503,9 @@ def send_email(rule, records, script_results):
         if has_restaurant:
             cells.append(f"<td>{html.escape(str(record.get('restaurant_number', '')))}</td>")
 
-        cells.append(f"<td>{html.escape(str(record['message']))}</td>")
+        # Use the multi-line helper (escape + <br> + &nbsp; for indentation)
+        # so the message renders correctly in Outlook, Gmail and OWA.
+        cells.append(f"<td class=\"message\">{escape_html_multiline(record.get('message', ''))}</td>")
         rows.append(f"<tr>{''.join(cells)}</tr>")
 
     script_section = ""
