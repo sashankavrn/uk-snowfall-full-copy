@@ -72,6 +72,9 @@ connections_table = dynamodb.Table(CONNECTIONS_TABLE)
 results_table = dynamodb.Table(RESULTS_TABLE_NAME) if RESULTS_TABLE_NAME else None
 
 athena = boto3.client("athena")
+lambda_client = boto3.client("lambda")
+
+SERVICENOW_TICKET_LAMBDA = os.environ.get("SERVICENOW_TICKET_LAMBDA", "")
 
 # =============================
 # Lambda Entry
@@ -203,7 +206,11 @@ def process_rule(rule, records):
         email_sent = send_email(rule, records, script_results)
 
     # STEP 4 Record alert (always, regardless of email_alert flag)
-    record_email_alert(rule, records, email_sent=email_sent)
+    alert_item = record_email_alert(rule, records, email_sent=email_sent)
+
+    # STEP 5 Trigger ServiceNow ticket creation (only if rule has servicenow_alert)
+    if rule.get("servicenow_alert") and alert_item:
+        trigger_servicenow_ticket(rule, alert_item)
 
 # =============================
 # Cooldown Logic
@@ -382,6 +389,49 @@ def record_email_alert(rule, records, email_sent=True):
     proactive_alerts_table.put_item(Item=item)
 
     print(f"Alert recorded: {alert_id} (status: {'SENT' if email_sent else 'RECORDED'})")
+
+    return item
+
+
+def trigger_servicenow_ticket(rule, alert_item):
+    """Invoke the NCR ServiceNow ticket-create Lambda for this single alert."""
+    if not SERVICENOW_TICKET_LAMBDA:
+        print("[WARN] SERVICENOW_TICKET_LAMBDA env var not set; skipping ticket creation")
+        return
+
+    payload = {
+        "alert": _to_json_safe(alert_item),
+        "rule": _to_json_safe(rule),
+    }
+
+    try:
+        response = lambda_client.invoke(
+            FunctionName=SERVICENOW_TICKET_LAMBDA,
+            InvocationType="Event",  # async; ticket Lambda persists the result
+            Payload=json.dumps(payload).encode("utf-8"),
+        )
+        print(
+            f"Triggered ServiceNow ticket Lambda for alert {alert_item.get('alert_id')} "
+            f"(StatusCode={response.get('StatusCode')})"
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(
+            f"[ERROR] Failed to invoke ServiceNow ticket Lambda for alert "
+            f"{alert_item.get('alert_id')}: {exc}"
+        )
+
+
+def _to_json_safe(value):
+    """Recursively convert DynamoDB Decimals / sets to JSON-serialisable types."""
+    from decimal import Decimal
+
+    if isinstance(value, dict):
+        return {k: _to_json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [_to_json_safe(v) for v in value]
+    if isinstance(value, Decimal):
+        return int(value) if value % 1 == 0 else float(value)
+    return value
 
 
 def get_proactive_result_status(result_item):

@@ -997,17 +997,67 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
 
   environment {
     variables = {
-      DYNAMO_REGION          = "eu-central-1"
-      RULES_TABLE            = "uk-snowfall-${var.environment}-incident-rules"
-      PROACTIVE_ALERTS_TABLE = "uk-snowfall-${var.environment}-proactive-alerts"
-      RESULTS_TABLE_NAME     = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
-      ATHENA_REGION          = "eu-central-1"
-      ATHENA_OUTPUT_S3       = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
-      SNS_TOPIC_ARN          = var.sns_topic_arn
-      STAGE_NAME             = var.stage_name
-      TABLE_NAME             = "uk-snowfall-${var.environment}-proactive-websocket-connections"
+      DYNAMO_REGION            = "eu-central-1"
+      RULES_TABLE              = "uk-snowfall-${var.environment}-incident-rules"
+      PROACTIVE_ALERTS_TABLE   = "uk-snowfall-${var.environment}-proactive-alerts"
+      RESULTS_TABLE_NAME       = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
+      ATHENA_REGION            = "eu-central-1"
+      ATHENA_OUTPUT_S3         = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
+      SNS_TOPIC_ARN            = var.sns_topic_arn
+      STAGE_NAME               = var.stage_name
+      TABLE_NAME               = "uk-snowfall-${var.environment}-proactive-websocket-connections"
+      SERVICENOW_TICKET_LAMBDA = aws_lambda_function.uk_snowfall_ncr_servicenow_ticket_create.function_name
     }
   }
+}
+
+
+############################################
+## NCR ServiceNow Ticket Create Lambda
+## Invoked async from snowfall-proactive-alerts
+## per alert that has rule.servicenow_alert = true
+############################################
+
+data "archive_file" "uk_snowfall_ncr_servicenow_ticket_create" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/ncr-servicenow-ticket-create-connectivity-test/"
+  output_path = "${path.module}/scripts/zips/ncr-servicenow-ticket-create.zip"
+}
+
+resource "aws_lambda_function" "uk_snowfall_ncr_servicenow_ticket_create" {
+  filename         = data.archive_file.uk_snowfall_ncr_servicenow_ticket_create.output_path
+  function_name    = "uk-snowfall-ncr-servicenow-ticket-create-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 512
+  timeout          = 60
+  description      = "Creates a ServiceNow ticket via NCR REST API for a single proactive alert"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_ncr_servicenow_ticket_create.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      NCR_URL                   = "https://osbcert-ha.ncrvoyix.com/ext/CSDI/HSRStandardSyncRestReq/ServiceRequest/CreateServiceRequest"
+      NCR_USERNAME              = "MA230518"
+      NCR_PASSWORD              = "REPLACE_WITH_SECRETS_MANAGER"
+      NCR_VERIFY_SSL            = "false"
+      SERVICE_NOW_TICKETS_TABLE = "uk-snowfall-${var.environment}-service-now-tickets"
+      RULES_TABLE               = "uk-snowfall-${var.environment}-incident-rules"
+      SOURCE_SYSTEM             = "WS"
+      USER_ID                   = "UKMCD"
+      COUNTRY_CODE              = "UK"
+    }
+  }
+}
+
+## Allow proactive-alerts Lambda to invoke ticket-create Lambda
+resource "aws_lambda_permission" "uk_snowfall_allow_proactive_alerts_to_invoke_ticket_create" {
+  statement_id  = "AllowProactiveAlertsInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_ncr_servicenow_ticket_create.function_name
+  principal     = "lambda.amazonaws.com"
+  source_arn    = aws_lambda_function.uk_snowfall_proactive_alerts.arn
 }
 
 
