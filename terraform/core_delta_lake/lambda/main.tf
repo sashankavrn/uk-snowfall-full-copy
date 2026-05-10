@@ -1062,6 +1062,68 @@ resource "aws_lambda_permission" "uk_snowfall_allow_proactive_alerts_to_invoke_s
 }
 
 
+############################################
+## ServiceNow Proactive Ticket Sync Lambda
+##  Scheduled hourly during business hours; reconciles open tickets in
+##  the service-now-tickets DDB table against the NCR Athena view and
+##  marks them closed when NCR has closed them.
+## Source: scripts/python/servicenow-proactive-ticket-sync/
+############################################
+
+data "archive_file" "uk_snowfall_servicenow_proactive_ticket_sync" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/servicenow-proactive-ticket-sync/"
+  output_path = "${path.module}/scripts/zips/servicenow-proactive-ticket-sync.zip"
+}
+
+resource "aws_lambda_function" "uk_snowfall_servicenow_proactive_ticket_sync" {
+  filename         = data.archive_file.uk_snowfall_servicenow_proactive_ticket_sync.output_path
+  function_name    = "uk-snowfall-servicenow-proactive-ticket-sync-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 512
+  timeout          = 300
+  description      = "Reconciles open ServiceNow tickets against NCR Athena view and marks closed in DynamoDB"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_servicenow_proactive_ticket_sync.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      SERVICE_NOW_TICKETS_TABLE = "uk-snowfall-${var.environment}-service-now-tickets"
+      ATHENA_DATABASE           = "uk_snowfall_semantic"
+      ATHENA_VIEW               = "ncr_service_now_service_case_latest"
+      ATHENA_WORKGROUP          = "uk-snowfall-pipeline"
+      ATHENA_OUTPUT_S3          = "s3://eu-central1-${var.environment}-uk-snowfall-athena-${var.account_number}/close-sync/"
+      ATHENA_REGION             = "eu-central-1"
+      BATCH_SIZE                = "100"
+      MAX_TICKETS_PER_RUN       = "500"
+    }
+  }
+}
+
+## EventBridge schedule: 15 min after upstream NCR ingest lands (06:45-20:45 GMT, weekdays)
+resource "aws_cloudwatch_event_rule" "uk_snowfall_servicenow_proactive_ticket_sync_schedule" {
+  name                = "uk-snowfall-servicenow-proactive-ticket-sync-schedule-${var.environment}"
+  description         = "Run NCR ticket sync hourly at :45 past business hours weekdays (GMT)"
+  schedule_expression = "cron(45 6-20 ? * MON-FRI *)"
+}
+
+resource "aws_cloudwatch_event_target" "uk_snowfall_servicenow_proactive_ticket_sync_target" {
+  rule      = aws_cloudwatch_event_rule.uk_snowfall_servicenow_proactive_ticket_sync_schedule.name
+  target_id = "uk-snowfall-servicenow-proactive-ticket-sync"
+  arn       = aws_lambda_function.uk_snowfall_servicenow_proactive_ticket_sync.arn
+}
+
+resource "aws_lambda_permission" "uk_snowfall_allow_eventbridge_to_invoke_proactive_ticket_sync" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_servicenow_proactive_ticket_sync.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.uk_snowfall_servicenow_proactive_ticket_sync_schedule.arn
+}
+
+
 ## CloudWatch EventBridge schedule trigger
 resource "aws_cloudwatch_event_rule" "uk_snowfall_proactive_alerts_schedule" {
   name                = "uk-snowfall-proactive-alerts-schedule-${var.environment}"

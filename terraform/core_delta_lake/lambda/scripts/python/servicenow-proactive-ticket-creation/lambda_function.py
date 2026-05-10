@@ -207,6 +207,9 @@ def _build_payload(alert: dict, rule: dict) -> dict:
 
     customer_ticket_id = str(alert.get("alert_id") or f"SNOWFALL-{uuid.uuid4()}")
     site_number = str(alert.get("restaurant_number") or "").strip()
+    # NCR expects UK restaurant numbers zero-padded to 4 digits (e.g. 59 -> "0059")
+    if site_number.isdigit():
+        site_number = site_number.zfill(4)
 
     create_request = {
         "CountryCode": COUNTRY_CODE,
