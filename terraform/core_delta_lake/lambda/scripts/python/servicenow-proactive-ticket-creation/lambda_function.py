@@ -30,9 +30,13 @@ Expected invocation event shape (either form is accepted):
     }
 
 Environment variables (all required unless noted):
-    NCR_URL                    Full NCR CreateServiceRequest endpoint URL.
-    NCR_USERNAME               Basic Auth username (move to Secrets Manager in prod).
-    NCR_PASSWORD               Basic Auth password (move to Secrets Manager in prod).
+    SECRET_NAME                (optional) AWS Secrets Manager secret holding NCR creds.
+                                  Defaults to "uk-snowfall-ncr-servicenow". The secret
+                                  JSON must contain keys:
+                                    uk-snowfall-ncr-servicenow-url,
+                                    uk-snowfall-ncr-servicenow-username,
+                                    uk-snowfall-ncr-servicenow-password.
+    SECRET_REGION              (optional) defaults to "eu-central-1".
     SERVICE_NOW_TICKETS_TABLE  e.g. uk-snowfall-dev-service-now-tickets
     RULES_TABLE                e.g. uk-snowfall-dev-incident-rules
     SOURCE_SYSTEM              (optional) defaults to "WS"
@@ -57,9 +61,8 @@ import boto3
 # Configuration
 # ---------------------------------------------------------------------------
 
-NCR_URL = os.environ["NCR_URL"]
-NCR_USERNAME = os.environ["NCR_USERNAME"]
-NCR_PASSWORD = os.environ["NCR_PASSWORD"]
+SECRET_NAME = os.environ.get("SECRET_NAME", "uk-snowfall-ncr-servicenow")
+SECRET_REGION = os.environ.get("SECRET_REGION", "eu-central-1")
 
 SERVICE_NOW_TICKETS_TABLE = os.environ["SERVICE_NOW_TICKETS_TABLE"]
 RULES_TABLE = os.environ["RULES_TABLE"]
@@ -70,6 +73,37 @@ COUNTRY_CODE = os.environ.get("COUNTRY_CODE", "UK")
 VERIFY_SSL = os.environ.get("NCR_VERIFY_SSL", "false").lower() == "true"
 
 REQUEST_TIMEOUT_SECONDS = 30
+
+# Cached NCR credentials (populated on first call)
+_NCR_CREDS = None
+
+
+def _get_ncr_credentials():
+    """Fetch NCR URL, username and password from AWS Secrets Manager.
+    Cached for the life of the Lambda container."""
+    global _NCR_CREDS
+    if _NCR_CREDS is not None:
+        return _NCR_CREDS
+
+    session = boto3.session.Session()
+    client = session.client(service_name="secretsmanager", region_name=SECRET_REGION)
+    response = client.get_secret_value(SecretId=SECRET_NAME)
+    secret = json.loads(response["SecretString"])
+
+    url = secret.get("uk-snowfall-ncr-servicenow-url")
+    username = secret.get("uk-snowfall-ncr-servicenow-username")
+    password = secret.get("uk-snowfall-ncr-servicenow-password")
+
+    if not url or not username or not password:
+        raise RuntimeError(
+            f"Secret '{SECRET_NAME}' missing one of: "
+            "uk-snowfall-ncr-servicenow-url, "
+            "uk-snowfall-ncr-servicenow-username, "
+            "uk-snowfall-ncr-servicenow-password"
+        )
+
+    _NCR_CREDS = (url, username, password)
+    return _NCR_CREDS
 
 # ---------------------------------------------------------------------------
 # AWS clients
@@ -225,10 +259,12 @@ def _build_caller(rule: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def _post_to_ncr(payload: dict) -> dict:
-    body = json.dumps(payload).encode("utf-8")
-    credentials = base64.b64encode(f"{NCR_USERNAME}:{NCR_PASSWORD}".encode()).decode()
+    ncr_url, ncr_username, ncr_password = _get_ncr_credentials()
 
-    request = urllib.request.Request(NCR_URL, data=body, method="POST")
+    body = json.dumps(payload).encode("utf-8")
+    credentials = base64.b64encode(f"{ncr_username}:{ncr_password}".encode()).decode()
+
+    request = urllib.request.Request(ncr_url, data=body, method="POST")
     request.add_header("Content-Type", "application/json")
     request.add_header("Accept", "application/json")
     request.add_header("Authorization", f"Basic {credentials}")
