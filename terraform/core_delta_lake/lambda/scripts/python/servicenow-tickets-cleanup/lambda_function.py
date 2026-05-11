@@ -78,12 +78,11 @@ def lambda_handler(event, context):  # noqa: ARG001
         }
 
     deleted = 0
-    with tickets_table.batch_writer() as batch:
-        for tid in matched_keys:
-            batch.delete_item(Key={"ticket_id": tid})
-            deleted += 1
-            if deleted % 100 == 0:
-                print(f"[INFO] Deleted {deleted}/{matched}")
+    for tid in matched_keys:
+        tickets_table.delete_item(Key={"ticket_id": tid})
+        deleted += 1
+        if deleted % 25 == 0:
+            print(f"[INFO] Deleted {deleted}/{matched}")
 
     print(f"[INFO] Cleanup complete. deleted={deleted}")
     return {
