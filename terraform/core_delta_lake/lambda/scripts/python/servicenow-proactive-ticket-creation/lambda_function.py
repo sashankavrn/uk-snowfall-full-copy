@@ -330,6 +330,7 @@ def _save_ticket(
         f"NCR#{ncr_ticket_id}" if ncr_ticket_id else f"FAILED#{alert_id}#{uuid.uuid4()}"
     )
 
+    create_req = payload.get("CreateServiceRequest", {}) or {}
     item = {
         "ticket_id": ticket_id,
         "record_type": "SERVICENOW_TICKET",
@@ -340,10 +341,20 @@ def _save_ticket(
         "status": status or "UNKNOWN",
         "ncr_ticket_id": str(ncr_ticket_id) if ncr_ticket_id else "",
         "ncr_transaction_id": payload.get("Header", {}).get("TransactionID", ""),
-        "service_offering": str(rule.get("service_offering", "") or ""),
-        "category": str(rule.get("category", "") or ""),
-        "subcategory": str(rule.get("subcategory", "") or ""),
-        "priority": str(rule.get("priority", "") or ""),
+        "service_offering": str(
+            create_req.get("ServiceOffering") or rule.get("service_offering") or ""
+        ),
+        "category": str(create_req.get("Category") or rule.get("category") or ""),
+        "subcategory": str(
+            create_req.get("Subcategory") or rule.get("subcategory") or ""
+        ),
+        "priority": str(create_req.get("Priority", rule.get("priority", "")) or ""),
+        "request_type": str(create_req.get("RequestType") or rule.get("request_type") or ""),
+        "country_code": str(create_req.get("CountryCode") or ""),
+        "site_number": str((create_req.get("Site") or {}).get("SiteNumber") or ""),
+        "customer_ticket_id": str(create_req.get("CustomerTicketID") or ""),
+        "summary": str(create_req.get("Summary") or ""),
+        "description": str(create_req.get("Description") or ""),
         "short_description": payload["CreateServiceRequest"]["Summary"],
         "request_payload": json.dumps(payload),
         "response_payload": json.dumps(response),
