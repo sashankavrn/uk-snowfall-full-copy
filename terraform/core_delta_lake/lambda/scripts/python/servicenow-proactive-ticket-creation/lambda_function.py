@@ -212,7 +212,7 @@ def _build_payload(alert: dict, rule: dict) -> dict:
         site_number = site_number.zfill(4)
 
     create_request = {
-        "CountryCode": COUNTRY_CODE,
+        "CountryCode": _resolve_country_code(alert.get("restaurant_number", "")),
         "CustomerTicketID": customer_ticket_id,
         "RequestType": str(rule.get("request_type") or rule.get("category") or "Software"),
         "Priority": _coerce_int(rule.get("priority"), default=3),
@@ -382,6 +382,17 @@ def _get_rule(rule_id) -> dict:
     except Exception as exc:  # noqa: BLE001
         print(f"[WARN] Failed to fetch rule {rule_id}: {exc}; using defaults")
         return {}
+
+
+def _resolve_country_code(restaurant_number) -> str:
+    """Return 'IE' for restaurant numbers >= 7000, 'UK' otherwise.
+    Falls back to the COUNTRY_CODE env var when the value is non-numeric."""
+    try:
+        if restaurant_number is not None and str(restaurant_number).strip().isdigit():
+            return "IE" if int(str(restaurant_number).strip()) >= 7000 else "UK"
+    except (TypeError, ValueError):
+        pass
+    return COUNTRY_CODE
 
 
 def _coerce_int(value, default: int) -> int:
