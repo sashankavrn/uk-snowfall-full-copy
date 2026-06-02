@@ -1007,6 +1007,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
       STAGE_NAME               = var.stage_name
       TABLE_NAME               = "uk-snowfall-${var.environment}-proactive-websocket-connections"
       SERVICENOW_TICKET_LAMBDA = aws_lambda_function.uk_snowfall_servicenow_proactive_ticket.function_name
+      SERVICENOW_CLOSE_LAMBDA  = aws_lambda_function.uk_snowfall_servicenow_proactive_ticket_close.function_name
     }
   }
 }
@@ -1044,6 +1045,7 @@ resource "aws_lambda_function" "uk_snowfall_servicenow_proactive_ticket" {
       SECRET_REGION             = "eu-central-1"
       NCR_VERIFY_SSL            = "false"
       SERVICE_NOW_TICKETS_TABLE = "uk-snowfall-${var.environment}-service-now-tickets"
+      PROACTIVE_ALERTS_TABLE    = "uk-snowfall-${var.environment}-proactive-alerts"
       RULES_TABLE               = "uk-snowfall-${var.environment}-incident-rules"
       SOURCE_SYSTEM             = "WS"
       USER_ID                   = "UKMCD"
@@ -1121,6 +1123,55 @@ resource "aws_lambda_permission" "uk_snowfall_allow_eventbridge_to_invoke_proact
   function_name = aws_lambda_function.uk_snowfall_servicenow_proactive_ticket_sync.function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.uk_snowfall_servicenow_proactive_ticket_sync_schedule.arn
+}
+
+
+############################################
+## ServiceNow Proactive Ticket Close Lambda
+##  Invoked async from snowfall-proactive-alerts when Athena returns
+##  no rows for a rule that has an open ServiceNow case.
+##  Calls NCR ResolveServiceRequest and marks the case CLOSED in DynamoDB.
+## Source: scripts/python/servicenow-proactive-ticket-close/
+############################################
+
+data "archive_file" "uk_snowfall_servicenow_proactive_ticket_close" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/servicenow-proactive-ticket-close/"
+  output_path = "${path.module}/scripts/zips/servicenow-proactive-ticket-close.zip"
+}
+
+resource "aws_lambda_function" "uk_snowfall_servicenow_proactive_ticket_close" {
+  filename         = data.archive_file.uk_snowfall_servicenow_proactive_ticket_close.output_path
+  function_name    = "uk-snowfall-servicenow-proactive-ticket-close-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 512
+  timeout          = 60
+  description      = "Resolves an open ServiceNow ticket via NCR REST API when proactive alert clears"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_servicenow_proactive_ticket_close.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      SECRET_NAME               = "uk-snowfall-ncr-servicenow"
+      SECRET_REGION             = "eu-central-1"
+      NCR_VERIFY_SSL            = "false"
+      SERVICE_NOW_TICKETS_TABLE = "uk-snowfall-${var.environment}-service-now-tickets"
+      PROACTIVE_ALERTS_TABLE    = "uk-snowfall-${var.environment}-proactive-alerts"
+      SOURCE_SYSTEM             = "WS"
+      USER_ID                   = "UKMCD"
+    }
+  }
+}
+
+## Allow proactive-alerts Lambda to invoke this ticket-close Lambda
+resource "aws_lambda_permission" "uk_snowfall_allow_proactive_alerts_to_invoke_servicenow_proactive_ticket_close" {
+  statement_id  = "AllowProactiveAlertsInvokeClose"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_servicenow_proactive_ticket_close.function_name
+  principal     = "lambda.amazonaws.com"
+  source_arn    = aws_lambda_function.uk_snowfall_proactive_alerts.arn
 }
 
 
