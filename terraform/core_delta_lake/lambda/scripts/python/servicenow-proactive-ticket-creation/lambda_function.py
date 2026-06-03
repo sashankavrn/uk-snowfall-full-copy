@@ -66,7 +66,6 @@ SECRET_REGION = os.environ.get("SECRET_REGION", "eu-central-1")
 
 SERVICE_NOW_TICKETS_TABLE = os.environ["SERVICE_NOW_TICKETS_TABLE"]
 RULES_TABLE = os.environ["RULES_TABLE"]
-PROACTIVE_ALERTS_TABLE = os.environ.get("PROACTIVE_ALERTS_TABLE", "")
 
 SOURCE_SYSTEM = os.environ.get("SOURCE_SYSTEM", "WS")
 USER_ID = os.environ.get("USER_ID", "UKMCD")
@@ -113,7 +112,6 @@ def _get_ncr_credentials():
 dynamodb = boto3.resource("dynamodb")
 tickets_table = dynamodb.Table(SERVICE_NOW_TICKETS_TABLE)
 rules_table = dynamodb.Table(RULES_TABLE)
-proactive_alerts_table = dynamodb.Table(PROACTIVE_ALERTS_TABLE) if PROACTIVE_ALERTS_TABLE else None
 
 
 # ---------------------------------------------------------------------------
@@ -162,12 +160,6 @@ def lambda_handler(event, context):
         fault_description=fault.get("FaultDescription"),
         fault_code=fault.get("FaultCode"),
     )
-
-    # Write ncr_ticket_id back to the PROACTIVE_ALERTS_TABLE case record so the
-    # close Lambda can find it directly without scanning SERVICE_NOW_TICKETS_TABLE.
-    case_id = event.get("case_id")
-    if case_id and ncr_ticket_id:
-        _update_case_ncr_ticket_id(case_id, ncr_ticket_id)
 
     success = status == "SUCCESS" and bool(ncr_ticket_id)
     return {
@@ -393,13 +385,9 @@ def _get_rule(rule_id) -> dict:
 
 
 def _resolve_country_code(restaurant_number) -> str:
-    """Return 'IE' for restaurant numbers >= 7000, 'UK' otherwise.
-    Falls back to the COUNTRY_CODE env var when the value is non-numeric."""
-    try:
-        if restaurant_number is not None and str(restaurant_number).strip().isdigit():
-            return "IE" if int(str(restaurant_number).strip()) >= 7000 else "UK"
-    except (TypeError, ValueError):
-        pass
+    """Return the country code for the given restaurant number.
+    Uses COUNTRY_CODE env var (default 'UK') for all restaurants until
+    NCR confirms the correct CountryCode value for Ireland sites (>=7000)."""
     return COUNTRY_CODE
 
 
@@ -410,21 +398,3 @@ def _coerce_int(value, default: int) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
-
-
-def _update_case_ncr_ticket_id(case_id: str, ncr_ticket_id: str) -> None:
-    """Write the resolved NCR ticket ID back to the SERVICENOW_CASE record in
-    PROACTIVE_ALERTS_TABLE so the close Lambda can find it directly."""
-    if not proactive_alerts_table:
-        return
-    from datetime import datetime, timezone
-    now_iso = datetime.now(timezone.utc).isoformat()
-    try:
-        proactive_alerts_table.update_item(
-            Key={"alert_id": case_id},
-            UpdateExpression="SET ncr_ticket_id = :tid, last_updated_at = :ts",
-            ExpressionAttributeValues={":tid": ncr_ticket_id, ":ts": now_iso},
-        )
-        print(f"Case {case_id} updated with ncr_ticket_id={ncr_ticket_id}")
-    except Exception as exc:  # noqa: BLE001
-        print(f"[WARN] Failed to update case {case_id} with ncr_ticket_id: {exc}")

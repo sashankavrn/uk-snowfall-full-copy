@@ -25,6 +25,7 @@ Environment variables:
 """
 
 import os
+from decimal import Decimal
 
 import boto3
 from boto3.dynamodb.conditions import Attr
@@ -38,15 +39,21 @@ tickets_table = dynamodb.Table(SERVICE_NOW_TICKETS_TABLE)
 def lambda_handler(event, context):  # noqa: ARG001
     event = event or {}
     prefix = str(event.get("prefix", ""))
-    dry_run = bool(event.get("dry_run", True))
-    max_delete = int(event.get("max_delete", 1000))
+    dry_run = _coerce_bool(event.get("dry_run", True))
+    max_delete = _coerce_int(event.get("max_delete", 1000), default=1000)
+    key_prefix = str(event.get("key_prefix", "ticket_id")).strip() or "ticket_id"
+
+    if key_prefix not in {"ticket_id", "ncr_ticket_id", "alert_id"}:
+        raise ValueError(
+            f"Unsupported key_prefix={key_prefix!r}. Use ticket_id, ncr_ticket_id, or alert_id."
+        )
 
     print(f"[INFO] Cleanup starting. table={SERVICE_NOW_TICKETS_TABLE} "
-          f"prefix={prefix!r} dry_run={dry_run} max_delete={max_delete}")
+          f"prefix={prefix!r} key_prefix={key_prefix!r} dry_run={dry_run} max_delete={max_delete}")
 
-    scan_kwargs = {"ProjectionExpression": "ticket_id"}
+    scan_kwargs = {"ProjectionExpression": "ticket_id, ncr_ticket_id, alert_id"}
     if prefix:
-        scan_kwargs["FilterExpression"] = Attr("ticket_id").begins_with(prefix)
+        scan_kwargs["FilterExpression"] = Attr(key_prefix).begins_with(prefix)
 
     matched_keys = []
     scanned = 0
@@ -91,3 +98,22 @@ def lambda_handler(event, context):  # noqa: ARG001
         "deleted": deleted,
         "dry_run": False,
     }
+
+
+def _coerce_bool(value):
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes", "y", "on"}
+    return bool(value)
+
+
+def _coerce_int(value, default):
+    try:
+        if isinstance(value, Decimal):
+            return int(value)
+        return int(value)
+    except (TypeError, ValueError):
+        return default
