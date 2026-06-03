@@ -386,8 +386,17 @@ def _get_rule(rule_id) -> dict:
 
 
 def _resolve_country_code(restaurant_number) -> str:
-    """Use COUNTRY_CODE env var (default 'UK') for all restaurants until
-    NCR confirms the correct CountryCode value for Ireland sites (>=7000)."""
+    """Return the CountryCode for the NCR payload.
+
+    Restaurants with numbers >= 7000 are Ireland (IE) sites.
+    All others use the COUNTRY_CODE env var (default 'UK').
+    """
+    try:
+        if restaurant_number is not None and str(restaurant_number).strip().isdigit():
+            if int(str(restaurant_number).strip()) >= 7000:
+                return "IE"
+    except (TypeError, ValueError):
+        pass
     return COUNTRY_CODE
 
 
