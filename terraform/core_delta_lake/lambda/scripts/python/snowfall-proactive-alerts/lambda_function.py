@@ -502,7 +502,18 @@ def close_servicenow_ticket_if_open(rule):
         f"Athena returned no rows; closing open ServiceNow case "
         f"{case_item.get('alert_id')} for rule {rule['rule_id']}"
     )
+<<<<<<< HEAD
     _invoke_servicenow_close(rule, case_item)
+=======
+    close_invoked = _invoke_servicenow_close(rule, case_item)
+    if not close_invoked:
+        print(
+            f"[WARN] Close lambda was not invoked for case {case_item.get('alert_id')}; "
+            "leaving case status unchanged"
+        )
+        return
+
+>>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
     proactive_alerts_table.update_item(
         Key={"alert_id": case_item["alert_id"]},
         UpdateExpression="SET #s = :s, last_updated_at = :ts",
@@ -518,7 +529,11 @@ def _invoke_servicenow_close(rule, case_item):
     """Invoke the ServiceNow ticket-close Lambda."""
     if not SERVICENOW_CLOSE_LAMBDA:
         print("[WARN] SERVICENOW_CLOSE_LAMBDA env var not set; skipping ticket close")
+<<<<<<< HEAD
         return
+=======
+        return False
+>>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
     payload = {
         "rule": _to_json_safe(rule),
         "case": _to_json_safe(case_item),
@@ -529,15 +544,32 @@ def _invoke_servicenow_close(rule, case_item):
             InvocationType="Event",
             Payload=json.dumps(payload).encode("utf-8"),
         )
+<<<<<<< HEAD
+=======
+        if response.get("StatusCode") != 202:
+            print(
+                f"[WARN] Close lambda invoke returned unexpected status code "
+                f"{response.get('StatusCode')} for case {case_item.get('alert_id')}"
+            )
+            return False
+>>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
         print(
             f"Triggered ServiceNow close for case {case_item.get('alert_id')} "
             f"(StatusCode={response.get('StatusCode')})"
         )
+<<<<<<< HEAD
+=======
+        return True
+>>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
     except Exception as exc:
         print(
             f"[ERROR] Failed to invoke ServiceNow ticket Lambda for close of case "
             f"{case_item.get('alert_id')}: {exc}"
         )
+<<<<<<< HEAD
+=======
+        return False
+>>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
 
 
 def get_proactive_result_status(result_item):
