@@ -207,9 +207,10 @@ def _build_payload(alert: dict, rule: dict) -> dict:
 
     customer_ticket_id = str(alert.get("alert_id") or f"SNOWFALL-{uuid.uuid4()}")
     site_number = str(alert.get("restaurant_number") or "").strip()
-    # NCR expects UK restaurant numbers zero-padded to 4 digits (e.g. 59 -> "0059")
+    # NCR expects UK restaurant numbers zero-padded to exactly 4 digits (e.g. 59 -> "0059").
+    # Strip leading zeros first so over-padded values like "04071" become "4071".
     if site_number.isdigit():
-        site_number = site_number.zfill(4)
+        site_number = str(int(site_number)).zfill(4)
 
     create_request = {
         "CountryCode": _resolve_country_code(alert.get("restaurant_number", "")),
@@ -385,8 +386,7 @@ def _get_rule(rule_id) -> dict:
 
 
 def _resolve_country_code(restaurant_number) -> str:
-    """Return the country code for the given restaurant number.
-    Uses COUNTRY_CODE env var (default 'UK') for all restaurants until
+    """Use COUNTRY_CODE env var (default 'UK') for all restaurants until
     NCR confirms the correct CountryCode value for Ireland sites (>=7000)."""
     return COUNTRY_CODE
 

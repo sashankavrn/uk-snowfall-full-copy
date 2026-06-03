@@ -75,7 +75,6 @@ athena = boto3.client("athena")
 lambda_client = boto3.client("lambda")
 
 SERVICENOW_TICKET_LAMBDA = os.environ.get("SERVICENOW_TICKET_LAMBDA", "")
-SERVICENOW_CLOSE_LAMBDA = os.environ.get("SERVICENOW_CLOSE_LAMBDA", "")
 
 # =============================
 # Lambda Entry
@@ -97,8 +96,6 @@ def lambda_handler(event, context):
         records = run_athena(rule["query"])
 
         if not records:
-            if rule.get("servicenow_alert"):
-                close_servicenow_ticket_if_open(rule)
             continue
 
         process_rule(rule, records)
@@ -211,13 +208,9 @@ def process_rule(rule, records):
     # STEP 4 Record alert (always, regardless of email_alert flag)
     alert_item = record_email_alert(rule, records, email_sent=email_sent)
 
-    # STEP 5 Trigger ServiceNow ticket creation (only if rule has servicenow_alert and no active ticket)
+    # STEP 5 Trigger ServiceNow ticket creation (only if rule has servicenow_alert)
     if rule.get("servicenow_alert") and alert_item:
-        existing_case = get_active_servicenow_case(rule["rule_id"])
-        if not existing_case:
-            trigger_servicenow_ticket(rule, alert_item)
-        else:
-            print(f"ServiceNow case already active (status={existing_case.get('status')} ncr_ticket_id={existing_case.get('ncr_ticket_id', 'pending')}) for rule {rule['rule_id']}; skipping creation.")
+        trigger_servicenow_ticket(rule, alert_item)
 
 # =============================
 # Cooldown Logic
@@ -401,17 +394,14 @@ def record_email_alert(rule, records, email_sent=True):
 
 
 def trigger_servicenow_ticket(rule, alert_item):
-    """Invoke the NCR ServiceNow ticket-create Lambda and record the open case."""
+    """Invoke the NCR ServiceNow ticket-create Lambda for this single alert."""
     if not SERVICENOW_TICKET_LAMBDA:
         print("[WARN] SERVICENOW_TICKET_LAMBDA env var not set; skipping ticket creation")
         return
 
-    case_item = record_servicenow_case(rule, alert_item)
-
     payload = {
         "alert": _to_json_safe(alert_item),
         "rule": _to_json_safe(rule),
-        "case_id": case_item["alert_id"],
     }
 
     try:
@@ -442,102 +432,6 @@ def _to_json_safe(value):
     if isinstance(value, Decimal):
         return int(value) if value % 1 == 0 else float(value)
     return value
-
-
-def get_open_servicenow_case(rule_id):
-    """Return the most recent OPEN SERVICENOW_CASE record for this rule, or None.
-    Used by the close trigger — only matches OPEN (not CLOSING/CLOSED)."""
-    items = scan_all_items(
-        proactive_alerts_table,
-        Attr("rule_id").eq(rule_id)
-        & Attr("record_type").eq(RECORD_TYPE_SERVICENOW_CASE)
-        & Attr("status").eq("OPEN"),
-    )
-    if not items:
-        return None
-    return max(items, key=lambda x: x.get("created_at", ""))
-
-
-def get_active_servicenow_case(rule_id):
-    """Return the most recent OPEN or CLOSING SERVICENOW_CASE for this rule, or None.
-    Used by the creation guard — prevents duplicate tickets when a close is in-flight."""
-    items = scan_all_items(
-        proactive_alerts_table,
-        Attr("rule_id").eq(rule_id)
-        & Attr("record_type").eq(RECORD_TYPE_SERVICENOW_CASE)
-        & Attr("status").is_in(["OPEN", "CLOSING"]),
-    )
-    if not items:
-        return None
-    return max(items, key=lambda x: x.get("created_at", ""))
-
-
-def record_servicenow_case(rule, alert_item):
-    """Write an OPEN SERVICENOW_CASE record to proactive_alerts_table."""
-    case_id = f"CASE#{uuid.uuid4()}"
-    timestamp = datetime.now(ZoneInfo("Europe/London")).isoformat()
-    item = {
-        "alert_id": case_id,
-        "record_type": RECORD_TYPE_SERVICENOW_CASE,
-        "rule_id": rule["rule_id"],
-        "source_alert_id": alert_item.get("alert_id"),
-        "violating_restaurants": alert_item.get("violating_restaurants", []),
-        "status": "OPEN",
-        "ncr_ticket_id": "",
-        "created_at": timestamp,
-        "last_updated_at": timestamp,
-    }
-    proactive_alerts_table.put_item(Item=item)
-    print(f"ServiceNow case record created: {case_id}")
-    return item
-
-
-def close_servicenow_ticket_if_open(rule):
-    """If there is an open ServiceNow case for this rule, request closure."""
-    case_item = get_open_servicenow_case(rule["rule_id"])
-    if not case_item:
-        print(f"No open ServiceNow case found for rule {rule['rule_id']}; nothing to close.")
-        return
-    print(
-        f"Athena returned no rows; closing open ServiceNow case "
-        f"{case_item.get('alert_id')} for rule {rule['rule_id']}"
-    )
-    _invoke_servicenow_close(rule, case_item)
-    proactive_alerts_table.update_item(
-        Key={"alert_id": case_item["alert_id"]},
-        UpdateExpression="SET #s = :s, last_updated_at = :ts",
-        ExpressionAttributeNames={"#s": "status"},
-        ExpressionAttributeValues={
-            ":s": "CLOSING",
-            ":ts": datetime.now(ZoneInfo("Europe/London")).isoformat(),
-        },
-    )
-
-
-def _invoke_servicenow_close(rule, case_item):
-    """Invoke the ServiceNow ticket-close Lambda."""
-    if not SERVICENOW_CLOSE_LAMBDA:
-        print("[WARN] SERVICENOW_CLOSE_LAMBDA env var not set; skipping ticket close")
-        return
-    payload = {
-        "rule": _to_json_safe(rule),
-        "case": _to_json_safe(case_item),
-    }
-    try:
-        response = lambda_client.invoke(
-            FunctionName=SERVICENOW_CLOSE_LAMBDA,
-            InvocationType="Event",
-            Payload=json.dumps(payload).encode("utf-8"),
-        )
-        print(
-            f"Triggered ServiceNow close for case {case_item.get('alert_id')} "
-            f"(StatusCode={response.get('StatusCode')})"
-        )
-    except Exception as exc:
-        print(
-            f"[ERROR] Failed to invoke ServiceNow ticket Lambda for close of case "
-            f"{case_item.get('alert_id')}: {exc}"
-        )
 
 
 def get_proactive_result_status(result_item):
