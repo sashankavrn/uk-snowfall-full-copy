@@ -195,8 +195,17 @@ def process_rule(rule, records):
             all_triggered.extend(triggered)
 
         if all_triggered:
+            all_triggered = dedupe_script_attempts(all_triggered)
             print(f"Polling results for {len(all_triggered)} triggered script(s)")
             script_results = poll_script_results(all_triggered)
+
+    all_scripts_successful = are_all_script_results_successful(script_results)
+    if all_scripts_successful and rule.get("servicenow_alert"):
+        print(
+            f"All proactive script results were successful for rule {rule['rule_id']}; "
+            "closing any open ServiceNow case immediately and skipping new ticket creation"
+        )
+        close_servicenow_ticket_if_open(rule)
 
     # STEP 2 Cooldown Check (always applies)
     if not should_send_alert(rule, restaurants):
@@ -213,11 +222,52 @@ def process_rule(rule, records):
 
     # STEP 5 Trigger ServiceNow ticket creation (only if rule has servicenow_alert and no active ticket)
     if rule.get("servicenow_alert") and alert_item:
+        if all_scripts_successful:
+            print(
+                f"Skipping ServiceNow ticket creation for rule {rule['rule_id']} "
+                "because proactive script remediation succeeded"
+            )
+            return
         existing_case = get_active_servicenow_case(rule["rule_id"])
         if not existing_case:
             trigger_servicenow_ticket(rule, alert_item)
         else:
             print(f"ServiceNow case already active (status={existing_case.get('status')} ncr_ticket_id={existing_case.get('ncr_ticket_id', 'pending')}) for rule {rule['rule_id']}; skipping creation.")
+
+
+def dedupe_script_attempts(triggered_commands):
+    """Deduplicate script attempts by restaurant + device + script in one run."""
+    deduped = []
+    seen = set()
+
+    for item in triggered_commands:
+        restaurant = str(item.get("restaurant_number") or "")
+        script_name = str(item.get("script_name") or "")
+        device = str(item.get("device_id") or "")
+        command_id = str(item.get("command_id") or "")
+
+        # Prefer device-level identity; fall back to command id if device id is missing.
+        unique_target = device or command_id
+        dedupe_key = (restaurant, script_name, unique_target)
+
+        if dedupe_key in seen:
+            continue
+
+        seen.add(dedupe_key)
+        deduped.append(item)
+
+    return deduped
+
+
+def are_all_script_results_successful(script_results):
+    if not script_results:
+        return False
+
+    for result in script_results:
+        if get_proactive_result_status(result) != "successful":
+            return False
+
+    return True
 
 # =============================
 # Cooldown Logic
@@ -786,8 +836,21 @@ def run_proactive_script(restaurant_number, script_name):
         items.extend(response.get("Items", []))
 
     triggered = []
+    seen_targets = set()
 
     for item in items:
+        target_key = (
+            str(restaurant_number),
+            str(script_name),
+            str(item.get("device_id") or f"connection:{item.get('connectionId', '')}"),
+        )
+        if target_key in seen_targets:
+            print(
+                f"[INFO] Skipping duplicate script attempt for restaurant {restaurant_number} "
+                f"target {target_key[2]}"
+            )
+            continue
+        seen_targets.add(target_key)
 
         command_id = str(uuid.uuid4())
         message = {
