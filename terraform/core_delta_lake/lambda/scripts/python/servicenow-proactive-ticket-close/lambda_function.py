@@ -1,9 +1,5 @@
 """
-<<<<<<< HEAD
-NCR Voyix - Close ServiceNow Ticket Lambda
-=======
 NCR Voyix - Close/Update ServiceNow Ticket Lambda
->>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
 ------------------------------------------
 Invoked asynchronously by snowfall-proactive-alerts when an Athena query
 returns no rows for a rule that previously had an open ServiceNow case.
@@ -15,17 +11,10 @@ Flow:
        b. Otherwise scan SERVICE_NOW_TICKETS_TABLE by source_alert_id.
   3. If no NCR ticket ID can be found (ticket was never created / still
      in-flight), log and exit gracefully.
-<<<<<<< HEAD
-  4. POST a ResolveServiceRequest payload to the NCR CSDI endpoint.
+  4. POST an UpdateServiceRequest payload to the NCR CSDI endpoint.
   5. Update SERVICE_NOW_TICKETS_TABLE ticket row: set resolved_at, close_notes,
      ncr_close_status.
-  6. Update PROACTIVE_ALERTS_TABLE case row: status → CLOSED.
-=======
-    4. POST an UpdateServiceRequest payload to the NCR CSDI endpoint.
-  5. Update SERVICE_NOW_TICKETS_TABLE ticket row: set resolved_at, close_notes,
-     ncr_close_status.
-    6. Update PROACTIVE_ALERTS_TABLE case row: status → CLOSED on business success.
->>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
+  6. Update PROACTIVE_ALERTS_TABLE case row: status → CLOSED on business success.
 
 Expected invocation event shape:
     {
@@ -39,12 +28,8 @@ Environment variables:
                                JSON must contain:
                                  uk-snowfall-ncr-servicenow-url          (CreateServiceRequest URL used
                                                                           as base; /Create is replaced)
-<<<<<<< HEAD
-                                 uk-snowfall-ncr-servicenow-resolve-url  (direct resolve URL, preferred)
-=======
                                  uk-snowfall-ncr-servicenow-update-url   (direct update URL, preferred)
                                  uk-snowfall-ncr-servicenow-resolve-url  (fallback)
->>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
                                  uk-snowfall-ncr-servicenow-username
                                  uk-snowfall-ncr-servicenow-password
     SECRET_REGION             (optional) defaults to "eu-central-1"
@@ -131,42 +116,24 @@ def lambda_handler(event, context):
 
     print(f"Resolved NCR ticket ID: {ncr_ticket_id}")
 
-<<<<<<< HEAD
-    # Build and send ResolveServiceRequest
-    payload = _build_resolve_payload(ncr_ticket_id, case, rule)
-    print(f"NCR resolve request payload: {json.dumps(payload)}")
-
-    response = _post_to_ncr(payload)
-    print(f"NCR resolve response: {json.dumps(response)}")
-=======
     # Build and send UpdateServiceRequest
     payload = _build_update_payload(ncr_ticket_id, case, rule)
     print(f"NCR update request payload: {json.dumps(payload)}")
 
     response = _post_to_ncr(payload)
     print(f"NCR update response: {json.dumps(response)}")
->>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
 
     header = response.get("Header", {}) or {}
     ncr_status = (header.get("Status") or "UNKNOWN").upper()
     fault = header.get("Fault") or {}
-<<<<<<< HEAD
-=======
     incident_update = response.get("IncidentUpdate") or {}
     returned_ticket_id = incident_update.get("TicketID")
->>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
     fault_code = fault.get("FaultCode")
     fault_description = fault.get("FaultDescription")
 
     # Update SERVICE_NOW_TICKETS_TABLE
     _update_ticket_resolved(ncr_ticket_id, ncr_status, fault_description)
 
-<<<<<<< HEAD
-    # Update PROACTIVE_ALERTS_TABLE case record
-    _mark_case_closed(case_id, ncr_ticket_id=ncr_ticket_id, ncr_status=ncr_status)
-
-    success = ncr_status == "SUCCESS"
-=======
     success = ncr_status == "SUCCESS"
     if success:
         # Update PROACTIVE_ALERTS_TABLE case record only on business success.
@@ -177,7 +144,7 @@ def lambda_handler(event, context):
             f"(ncr_status={ncr_status}); leaving case state unchanged"
         )
 
->>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
+
     return {
         "statusCode": 200 if success else 502,
         "body": json.dumps(
@@ -185,10 +152,7 @@ def lambda_handler(event, context):
                 "success": success,
                 "case_id": case_id,
                 "ncr_ticket_id": ncr_ticket_id,
-<<<<<<< HEAD
-=======
                 "returned_ticket_id": returned_ticket_id,
->>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
                 "ncr_status": ncr_status,
                 "fault_code": fault_code,
                 "fault_description": fault_description,
@@ -241,11 +205,7 @@ def _resolve_ncr_ticket_id(case: dict):
 # Payload construction
 # ---------------------------------------------------------------------------
 
-<<<<<<< HEAD
-def _build_resolve_payload(ncr_ticket_id: str, case: dict, rule: dict) -> dict:
-=======
 def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict) -> dict:
->>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
     transaction_id = str(int(datetime.now(timezone.utc).timestamp() * 1000))
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
@@ -258,11 +218,7 @@ def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict) -> dict:
             "SourceSystem": SOURCE_SYSTEM,
             "TimeStamp": timestamp,
         },
-<<<<<<< HEAD
-        "ResolveServiceRequest": {
-=======
         "UpdateServiceRequest": {
->>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
             "CustomerTicketID": ncr_ticket_id,
             "TicketID": ncr_ticket_id,
             "CountryCode": "UK",
@@ -294,13 +250,6 @@ def _get_ncr_credentials():
     response = client.get_secret_value(SecretId=SECRET_NAME)
     secret = json.loads(response["SecretString"])
 
-<<<<<<< HEAD
-    # Prefer a dedicated resolve URL; otherwise derive from the create URL
-    resolve_url = secret.get("uk-snowfall-ncr-servicenow-resolve-url")
-    if not resolve_url:
-        create_url = secret.get("uk-snowfall-ncr-servicenow-url", "")
-        resolve_url = create_url.replace("CreateServiceRequest", "ResolveServiceRequest")
-=======
     # Prefer dedicated update URL, fallback to resolve URL, then derive from create URL.
     ncr_url = secret.get("uk-snowfall-ncr-servicenow-update-url")
     if not ncr_url:
@@ -308,20 +257,10 @@ def _get_ncr_credentials():
     if not ncr_url:
         create_url = secret.get("uk-snowfall-ncr-servicenow-url", "")
         ncr_url = create_url.replace("CreateServiceRequest", "UpdateServiceRequest")
->>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
 
     username = secret.get("uk-snowfall-ncr-servicenow-username")
     password = secret.get("uk-snowfall-ncr-servicenow-password")
 
-<<<<<<< HEAD
-    if not resolve_url or not username or not password:
-        raise RuntimeError(
-            f"Secret '{SECRET_NAME}' missing required keys for close Lambda. "
-            "Need uk-snowfall-ncr-servicenow-resolve-url (or -url), -username, -password."
-        )
-
-    _NCR_CREDS = (resolve_url, username, password)
-=======
     if not ncr_url or not username or not password:
         raise RuntimeError(
             f"Secret '{SECRET_NAME}' missing required keys for close Lambda. "
@@ -329,7 +268,6 @@ def _get_ncr_credentials():
         )
 
     _NCR_CREDS = (ncr_url, username, password)
->>>>>>> c43a466 (Fix proactive close flow, update payload contract, and sync default)
     return _NCR_CREDS
 
 
