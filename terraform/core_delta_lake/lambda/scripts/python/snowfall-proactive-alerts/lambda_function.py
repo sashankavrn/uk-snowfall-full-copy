@@ -403,9 +403,12 @@ def record_email_alert(rule, records, email_sent=True):
         "email_recipients": ", ".join(recipients),
     }
 
-    proactive_alerts_table.put_item(Item=item)
-
-    print(f"Alert recorded: {alert_id} (status: {'SENT' if email_sent else 'RECORDED'})")
+    try:
+        proactive_alerts_table.put_item(Item=item)
+        print(f"Alert recorded: {alert_id} (status: {'SENT' if email_sent else 'RECORDED'})")
+    except Exception as e:
+        print(f"[ERROR] Failed to record alert {alert_id} to DynamoDB: {e}")
+        raise
 
     return item
 
@@ -476,8 +479,12 @@ def record_servicenow_case(rule, alert_item):
         "last_updated_at": now,
         "ncr_ticket_id": "",
     }
-    proactive_alerts_table.put_item(Item=item)
-    print(f"Recorded ServiceNow case {case_id} for rule {rule['rule_id']}")
+    try:
+        proactive_alerts_table.put_item(Item=item)
+        print(f"Recorded ServiceNow case {case_id} for rule {rule['rule_id']}")
+    except Exception as e:
+        print(f"[ERROR] Failed to record ServiceNow case {case_id} to DynamoDB: {e}")
+        raise
     return item
 
 
