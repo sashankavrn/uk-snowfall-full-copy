@@ -211,13 +211,19 @@ def process_rule(rule, records):
 
     # STEP 5 Trigger ServiceNow ticket creation (only if rule has servicenow_alert)
     if rule.get("servicenow_alert") and alert_item:
+        # Ensure there is an OPEN case first so successful scripts can close it immediately.
+        existing_case = get_open_servicenow_case(rule["rule_id"])
+        if not existing_case:
+            case_item = record_servicenow_case(rule, alert_item)
+            print(f"Created ServiceNow case {case_item.get('alert_id')} for rule {rule['rule_id']}")
+
         # If proactive script was executed and all results are successful,
-        # immediately close any existing open case and skip new ticket creation.
+        # close the OPEN case and skip ticket creation.
         if script_results and are_all_script_results_successful(script_results):
             close_servicenow_ticket_if_open(rule)
             print(
-                f"Skipping ticket creation for rule {rule['rule_id']} "
-                "because all proactive scripts were successful."
+                f"Closed ServiceNow case for rule {rule['rule_id']} "
+                "(all proactive scripts succeeded); skipping ticket creation."
             )
             return
 
@@ -410,21 +416,19 @@ def trigger_servicenow_ticket(rule, alert_item):
         print("[WARN] SERVICENOW_TICKET_LAMBDA env var not set; skipping ticket creation")
         return
 
-    # Avoid duplicate open cases for the same rule.
+    # Case should already exist from process_rule().
     existing_case = get_open_servicenow_case(rule["rule_id"])
-    if existing_case:
+    if not existing_case:
         print(
-            f"Open ServiceNow case already exists for rule {rule['rule_id']} "
-            f"(case_id={existing_case.get('alert_id')}); skipping ticket creation"
+            f"[WARN] No open ServiceNow case found for rule {rule['rule_id']}; "
+            "skipping ticket creation to avoid orphan ticket."
         )
         return
-
-    case_item = record_servicenow_case(rule, alert_item)
 
     payload = {
         "alert": _to_json_safe(alert_item),
         "rule": _to_json_safe(rule),
-        "case_id": case_item.get("alert_id"),
+        "case_id": existing_case.get("alert_id"),
     }
 
     try:
