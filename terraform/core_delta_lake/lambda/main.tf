@@ -1041,16 +1041,16 @@ resource "aws_lambda_function" "uk_snowfall_servicenow_proactive_ticket" {
 
   environment {
     variables = {
-      SECRET_NAME               = "uk-snowfall-ncr-servicenow"
-      SECRET_REGION             = "eu-central-1"
-      NCR_VERIFY_SSL            = "false"
-      SERVICE_NOW_TICKETS_TABLE = "uk-snowfall-${var.environment}-service-now-tickets"
-      PROACTIVE_ALERTS_TABLE    = "uk-snowfall-${var.environment}-proactive-alerts"
-      RULES_TABLE               = "uk-snowfall-${var.environment}-incident-rules"
-      SOURCE_SYSTEM             = "WS"
-      USER_ID                   = "UKMCD"
-      COUNTRY_CODE              = "UK"
-      NCR_CREATE_URL            = ""
+      SECRET_NAME                     = "uk-snowfall-ncr-servicenow"
+      SECRET_REGION                   = "eu-central-1"
+      NCR_VERIFY_SSL                  = "false"
+      SERVICE_NOW_TICKETS_TABLE       = "uk-snowfall-${var.environment}-service-now-tickets"
+      PROACTIVE_ALERTS_TABLE          = "uk-snowfall-${var.environment}-proactive-alerts"
+      RULES_TABLE                     = "uk-snowfall-${var.environment}-incident-rules"
+      SOURCE_SYSTEM                   = "WS"
+      USER_ID                         = "UKMCD"
+      COUNTRY_CODE                    = "UK"
+      NCR_SOAP_SERVICE_NOW_CREATE_URL = ""
     }
   }
 }
@@ -1155,14 +1155,14 @@ resource "aws_lambda_function" "uk_snowfall_servicenow_proactive_ticket_close" {
 
   environment {
     variables = {
-      SECRET_NAME               = "uk-snowfall-ncr-servicenow"
-      SECRET_REGION             = "eu-central-1"
-      NCR_VERIFY_SSL            = "false"
-      SERVICE_NOW_TICKETS_TABLE = "uk-snowfall-${var.environment}-service-now-tickets"
-      PROACTIVE_ALERTS_TABLE    = "uk-snowfall-${var.environment}-proactive-alerts"
-      SOURCE_SYSTEM             = "WS"
-      USER_ID                   = "UKMCD"
-      NCR_UPDATE_URL            = ""
+      SECRET_NAME                     = "uk-snowfall-ncr-servicenow"
+      SECRET_REGION                   = "eu-central-1"
+      NCR_VERIFY_SSL                  = "false"
+      SERVICE_NOW_TICKETS_TABLE       = "uk-snowfall-${var.environment}-service-now-tickets"
+      PROACTIVE_ALERTS_TABLE          = "uk-snowfall-${var.environment}-proactive-alerts"
+      SOURCE_SYSTEM                   = "WS"
+      USER_ID                         = "UKMCD"
+      NCR_SOAP_SERVICE_NOW_UPDATE_URL = ""
     }
   }
 }
