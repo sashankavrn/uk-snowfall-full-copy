@@ -404,10 +404,13 @@ def record_email_alert(rule, records, email_sent=True):
     }
 
     try:
-        proactive_alerts_table.put_item(Item=item)
+        response = proactive_alerts_table.put_item(Item=item)
+        print(f"[DynamoDB Response] put_item returned: {response.get('ResponseMetadata', {}).get('HTTPStatusCode', 'unknown')}")
         print(f"Alert recorded: {alert_id} (status: {'SENT' if email_sent else 'RECORDED'})")
     except Exception as e:
         print(f"[ERROR] Failed to record alert {alert_id} to DynamoDB: {e}")
+        import traceback
+        traceback.print_exc()
         raise
 
     return item
@@ -480,10 +483,13 @@ def record_servicenow_case(rule, alert_item):
         "ncr_ticket_id": "",
     }
     try:
-        proactive_alerts_table.put_item(Item=item)
+        response = proactive_alerts_table.put_item(Item=item)
+        print(f"[DynamoDB Response] put_item returned: {response.get('ResponseMetadata', {}).get('HTTPStatusCode', 'unknown')}")
         print(f"Recorded ServiceNow case {case_id} for rule {rule['rule_id']}")
     except Exception as e:
         print(f"[ERROR] Failed to record ServiceNow case {case_id} to DynamoDB: {e}")
+        import traceback
+        traceback.print_exc()
         raise
     return item
 
