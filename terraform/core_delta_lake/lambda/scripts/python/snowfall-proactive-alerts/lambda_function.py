@@ -211,22 +211,32 @@ def process_rule(rule, records):
 
     # STEP 5 Trigger ServiceNow ticket creation (only if rule has servicenow_alert)
     if rule.get("servicenow_alert") and alert_item:
-        # Ensure there is an OPEN case first so successful scripts can close it immediately.
+        # Create a new case only if no OPEN case exists (prevents duplicate tickets).
         existing_case = get_open_servicenow_case(rule["rule_id"])
-        if not existing_case:
+        if existing_case:
+            print(
+                f"Open ServiceNow case {existing_case.get('alert_id')} already exists for rule "
+                f"{rule['rule_id']}; skipping duplicate ticket creation."
+            )
+        else:
             case_item = record_servicenow_case(rule, alert_item)
             print(f"Created ServiceNow case {case_item.get('alert_id')} for rule {rule['rule_id']}")
 
-        # If proactive script was executed and all results are successful,
-        # close the OPEN case (issue auto-remediated) but still raise an NCR ticket.
-        if script_results and are_all_script_results_successful(script_results):
-            close_servicenow_ticket_if_open(rule)
-            print(
-                f"Closed ServiceNow case for rule {rule['rule_id']} "
-                "(all proactive scripts succeeded); raising NCR ticket to record the incident."
-            )
+            # Always raise an NCR ticket for the new case (issue occurred, record it).
+            trigger_servicenow_ticket(rule, alert_item)
 
-        trigger_servicenow_ticket(rule, alert_item)
+            # If the proactive script ran and succeeded, close the ticket (issue self-healed).
+            if script_results and are_all_script_results_successful(script_results):
+                close_servicenow_ticket_if_open(rule)
+                print(
+                    f"Closed ServiceNow case for rule {rule['rule_id']} "
+                    "(proactive script succeeded; ticket raised and closed automatically)."
+                )
+            else:
+                print(
+                    f"ServiceNow ticket raised for rule {rule['rule_id']}; "
+                    "script failed or not present — ticket left open for engineer dispatch."
+                )
 
 # =============================
 # Cooldown Logic
