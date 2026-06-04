@@ -210,6 +210,13 @@ def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict) -> dict:
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
     description = str(rule.get("incident_description") or "Snowfall proactive alert").splitlines()[0]
+    customer_ticket_id = str(
+        case.get("source_alert_id")
+        or case.get("customer_ticket_id")
+        or case.get("alert_id")
+        or ncr_ticket_id
+    )
+    country_code = str(case.get("country_code") or rule.get("country_code") or "UK")
 
     return {
         "Header": {
@@ -219,16 +226,14 @@ def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict) -> dict:
             "TimeStamp": timestamp,
         },
         "UpdateServiceRequest": {
-            "CustomerTicketID": ncr_ticket_id,
+            "CustomerTicketID": customer_ticket_id,
             "TicketID": ncr_ticket_id,
-            "CountryCode": "UK",
-            "ResolutionNotes": RESOLUTION_TEXT,
+            "CountryCode": country_code,
+            "ResolutionNotes": "Please close",
             "Remark": {
                 "Text": (
-                    f"Auto-resolved by Snowfall proactive monitoring. "
-                    f"Rule: {description}. "
-                    f"Case: {case.get('alert_id', '')}. "
-                    f"No violations detected."
+                    f"Close request for Snowfall proactive ticket {ncr_ticket_id}. "
+                    f"Rule: {description}."
                 )
             },
         },
