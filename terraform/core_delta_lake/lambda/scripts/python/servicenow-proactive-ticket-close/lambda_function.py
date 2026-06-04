@@ -68,7 +68,7 @@ VERIFY_SSL = os.environ.get("NCR_VERIFY_SSL", "false").lower() == "true"
 
 REQUEST_TIMEOUT_SECONDS = 30
 
-RESOLUTION_TEXT = "Issue resolved - no violations detected by Snowfall proactive monitoring."
+RESOLUTION_TEXT = "Closed by Snowfall proactive system as this is triggered by rules defined."
 
 # Cached NCR credentials (populated on first call)
 _NCR_CREDS = None
@@ -229,7 +229,7 @@ def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict) -> dict:
             "CustomerTicketID": customer_ticket_id,
             "TicketID": ncr_ticket_id,
             "CountryCode": country_code,
-            "ResolutionNotes": "Please close",
+            "ResolutionNotes": RESOLUTION_TEXT,
             "Remark": {
                 "Text": (
                     f"Close request for Snowfall proactive ticket {ncr_ticket_id}. "
