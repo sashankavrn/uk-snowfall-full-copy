@@ -42,6 +42,7 @@ Environment variables (all required unless noted):
     SOURCE_SYSTEM              (optional) defaults to "WS"
     USER_ID                    (optional) defaults to "UKMCD"
     COUNTRY_CODE               (optional) defaults to "UK"
+    NCR_CREATE_URL             (optional) direct CreateServiceRequest URL override
     NCR_VERIFY_SSL             (optional) "true"/"false" - defaults to "false"
                                   (NCR CERT uses a private CA)
 """
@@ -70,6 +71,7 @@ RULES_TABLE = os.environ["RULES_TABLE"]
 SOURCE_SYSTEM = os.environ.get("SOURCE_SYSTEM", "WS")
 USER_ID = os.environ.get("USER_ID", "UKMCD")
 COUNTRY_CODE = os.environ.get("COUNTRY_CODE", "UK")
+NCR_CREATE_URL = os.environ.get("NCR_CREATE_URL", "").strip()
 VERIFY_SSL = os.environ.get("NCR_VERIFY_SSL", "false").lower() == "true"
 
 REQUEST_TIMEOUT_SECONDS = 30
@@ -90,14 +92,14 @@ def _get_ncr_credentials():
     response = client.get_secret_value(SecretId=SECRET_NAME)
     secret = json.loads(response["SecretString"])
 
-    url = secret.get("uk-snowfall-ncr-servicenow-url")
+    url = NCR_CREATE_URL or secret.get("uk-snowfall-ncr-servicenow-create-url") or secret.get("uk-snowfall-ncr-servicenow-url")
     username = secret.get("uk-snowfall-ncr-servicenow-username")
     password = secret.get("uk-snowfall-ncr-servicenow-password")
 
     if not url or not username or not password:
         raise RuntimeError(
             f"Secret '{SECRET_NAME}' missing one of: "
-            "uk-snowfall-ncr-servicenow-url, "
+            "uk-snowfall-ncr-servicenow-create-url (or uk-snowfall-ncr-servicenow-url), "
             "uk-snowfall-ncr-servicenow-username, "
             "uk-snowfall-ncr-servicenow-password"
         )

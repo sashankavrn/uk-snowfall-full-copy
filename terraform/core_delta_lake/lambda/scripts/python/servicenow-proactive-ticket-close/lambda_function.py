@@ -37,6 +37,7 @@ Environment variables:
     PROACTIVE_ALERTS_TABLE    e.g. uk-snowfall-dev-proactive-alerts
     SOURCE_SYSTEM             (optional) defaults to "WS"
     USER_ID                   (optional) defaults to "UKMCD"
+    NCR_UPDATE_URL            (optional) direct UpdateServiceRequest URL override
     NCR_VERIFY_SSL            (optional) "true"/"false" - defaults to "false"
 """
 
@@ -64,6 +65,7 @@ PROACTIVE_ALERTS_TABLE = os.environ["PROACTIVE_ALERTS_TABLE"]
 
 SOURCE_SYSTEM = os.environ.get("SOURCE_SYSTEM", "WS")
 USER_ID = os.environ.get("USER_ID", "UKMCD")
+NCR_UPDATE_URL = os.environ.get("NCR_UPDATE_URL", "").strip()
 VERIFY_SSL = os.environ.get("NCR_VERIFY_SSL", "false").lower() == "true"
 
 REQUEST_TIMEOUT_SECONDS = 30
@@ -255,8 +257,9 @@ def _get_ncr_credentials():
     response = client.get_secret_value(SecretId=SECRET_NAME)
     secret = json.loads(response["SecretString"])
 
-    # Prefer dedicated update URL, fallback to resolve URL, then derive from create URL.
-    ncr_url = secret.get("uk-snowfall-ncr-servicenow-update-url")
+    # Prefer env override, then dedicated update URL, fallback to resolve URL,
+    # then derive from create URL.
+    ncr_url = NCR_UPDATE_URL or secret.get("uk-snowfall-ncr-servicenow-update-url")
     if not ncr_url:
         ncr_url = secret.get("uk-snowfall-ncr-servicenow-resolve-url")
     if not ncr_url:

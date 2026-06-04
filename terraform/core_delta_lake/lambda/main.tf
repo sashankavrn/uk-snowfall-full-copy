@@ -1050,6 +1050,7 @@ resource "aws_lambda_function" "uk_snowfall_servicenow_proactive_ticket" {
       SOURCE_SYSTEM             = "WS"
       USER_ID                   = "UKMCD"
       COUNTRY_CODE              = "UK"
+      NCR_CREATE_URL            = ""
     }
   }
 }
@@ -1161,6 +1162,7 @@ resource "aws_lambda_function" "uk_snowfall_servicenow_proactive_ticket_close" {
       PROACTIVE_ALERTS_TABLE    = "uk-snowfall-${var.environment}-proactive-alerts"
       SOURCE_SYSTEM             = "WS"
       USER_ID                   = "UKMCD"
+      NCR_UPDATE_URL            = ""
     }
   }
 }
