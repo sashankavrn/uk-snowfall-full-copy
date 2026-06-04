@@ -3,14 +3,14 @@ variable "resource_tags" {
   description = "Tagging of all resources created using Terraform"
 
   default = {
-    Application_ID  = "APP2002212"
-    Owner           = "camille.taylor@uk.mcd.com"
-    GBL             = "195500433387"
-    Market          = "GB"
-    Application     = "SNOW"
-    Purpose         = "SNOWFALL"
-    Budget_Owner    = "camille.taylor@uk.mcd.com"
-    IT_Owner        = "camille.taylor@uk.mcd.com"
+    Application_ID = "APP2002212"
+    Owner          = "camille.taylor@uk.mcd.com"
+    GBL            = "195500433387"
+    Market         = "GB"
+    Application    = "SNOW"
+    Purpose        = "SNOWFALL"
+    Budget_Owner   = "camille.taylor@uk.mcd.com"
+    IT_Owner       = "camille.taylor@uk.mcd.com"
 
 
   }
@@ -38,13 +38,13 @@ variable "role_assumed_arn" {
 
 variable "AWS_REGION" {
   description = "AWS region"
-  default = "eu-central-1"
-  
+  default     = "eu-central-1"
+
 }
 
 variable "terraform_bucket_name" {
 
-  description = "Bucket Name for where terraform state file is stored"  
+  description = "Bucket Name for where terraform state file is stored"
 }
 
 variable "connector_profile_name" {
@@ -58,12 +58,24 @@ variable "newrelic_1am_schedule" {}
 
 variable "stage_name" {}
 
-variable "prod_email" {  
-  default     = "snowfall.engineering@uk.mcd.com"
+variable "ncr_soap_service_now_create_url" {
+  type        = string
+  description = "NCR ServiceNow create endpoint URL"
+  default     = ""
+}
+
+variable "ncr_soap_service_now_update_url" {
+  type        = string
+  description = "NCR ServiceNow update endpoint URL"
+  default     = ""
+}
+
+variable "prod_email" {
+  default = "snowfall.engineering@uk.mcd.com"
 }
 
 variable "not_prod_email" {
-  default     = "snowfall.engineering.dev@uk.mcd.com"
+  default = "snowfall.engineering.dev@uk.mcd.com"
 }
 
 
@@ -74,11 +86,11 @@ variable "layer_name" {
 }
 
 variable "description" {
-  type        = string
-  default     = "JWT dependencies for Lambda"
+  type    = string
+  default = "JWT dependencies for Lambda"
 }
 
 variable "compatible_runtimes" {
-  type        = list(string)
-  default     = ["python3.12"]
+  type    = list(string)
+  default = ["python3.12"]
 }

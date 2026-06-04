@@ -1050,7 +1050,7 @@ resource "aws_lambda_function" "uk_snowfall_servicenow_proactive_ticket" {
       SOURCE_SYSTEM                   = "WS"
       USER_ID                         = "UKMCD"
       COUNTRY_CODE                    = "UK"
-      NCR_SOAP_SERVICE_NOW_CREATE_URL = ""
+      NCR_SOAP_SERVICE_NOW_CREATE_URL = var.ncr_soap_service_now_create_url
     }
   }
 }
@@ -1162,7 +1162,7 @@ resource "aws_lambda_function" "uk_snowfall_servicenow_proactive_ticket_close" {
       PROACTIVE_ALERTS_TABLE          = "uk-snowfall-${var.environment}-proactive-alerts"
       SOURCE_SYSTEM                   = "WS"
       USER_ID                         = "UKMCD"
-      NCR_SOAP_SERVICE_NOW_UPDATE_URL = ""
+      NCR_SOAP_SERVICE_NOW_UPDATE_URL = var.ncr_soap_service_now_update_url
     }
   }
 }

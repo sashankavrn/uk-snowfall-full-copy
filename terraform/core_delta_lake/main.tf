@@ -86,22 +86,24 @@ module "api_module" {
 
 # Triggering the Lambda module
 module "lambda_module" {
-  source                   = "./lambda"
-  environment              = var.environment
-  resource_tags            = merge(var.resource_tags, { Environment = var.environment })
-  role_assumed_arn         = var.role_assumed_arn
-  landing_bucket_arn       = module.s3_module_main.landing_bucket_arn
-  raw_bucket_arn           = module.s3_module_main.raw_bucket_arn
-  sns_topic_arn            = module.sns_module.snowfall_topic_arn
-  account_number           = var.account_number
-  artifact_bucket_arn      = module.s3_module_main.artifact_bucket_bucket_arn
-  meraki_schedule          = var.meraki_schedule
-  newrelic_10min_schedule  = var.newrelic_10min_schedule
-  newrelic_5min_schedule   = var.newrelic_5min_schedule
-  newrelic_1am_schedule    = var.newrelic_1am_schedule
-  service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
-  stage_name               = var.stage_name
-  jwt_layer_arn            = module.lambda_layer_module.lambda_jwt_layer_arn
+  source                          = "./lambda"
+  environment                     = var.environment
+  resource_tags                   = merge(var.resource_tags, { Environment = var.environment })
+  role_assumed_arn                = var.role_assumed_arn
+  landing_bucket_arn              = module.s3_module_main.landing_bucket_arn
+  raw_bucket_arn                  = module.s3_module_main.raw_bucket_arn
+  sns_topic_arn                   = module.sns_module.snowfall_topic_arn
+  account_number                  = var.account_number
+  artifact_bucket_arn             = module.s3_module_main.artifact_bucket_bucket_arn
+  meraki_schedule                 = var.meraki_schedule
+  newrelic_10min_schedule         = var.newrelic_10min_schedule
+  newrelic_5min_schedule          = var.newrelic_5min_schedule
+  newrelic_1am_schedule           = var.newrelic_1am_schedule
+  service_agent_bucket_arn        = module.s3_module_main.service_agent_bucket_arn
+  stage_name                      = var.stage_name
+  ncr_soap_service_now_create_url = var.ncr_soap_service_now_create_url
+  ncr_soap_service_now_update_url = var.ncr_soap_service_now_update_url
+  jwt_layer_arn                   = module.lambda_layer_module.lambda_jwt_layer_arn
 }
 
 module "websocket_api_module" {
