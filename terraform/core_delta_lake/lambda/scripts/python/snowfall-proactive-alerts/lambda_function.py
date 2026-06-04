@@ -75,6 +75,7 @@ athena = boto3.client("athena")
 lambda_client = boto3.client("lambda")
 
 SERVICENOW_TICKET_LAMBDA = os.environ.get("SERVICENOW_TICKET_LAMBDA", "")
+SERVICENOW_CLOSE_LAMBDA = os.environ.get("SERVICENOW_CLOSE_LAMBDA", "")
 
 # =============================
 # Lambda Entry
@@ -210,6 +211,16 @@ def process_rule(rule, records):
 
     # STEP 5 Trigger ServiceNow ticket creation (only if rule has servicenow_alert)
     if rule.get("servicenow_alert") and alert_item:
+        # If proactive script was executed and all results are successful,
+        # immediately close any existing open case and skip new ticket creation.
+        if script_results and are_all_script_results_successful(script_results):
+            close_servicenow_ticket_if_open(rule)
+            print(
+                f"Skipping ticket creation for rule {rule['rule_id']} "
+                "because all proactive scripts were successful."
+            )
+            return
+
         trigger_servicenow_ticket(rule, alert_item)
 
 # =============================
@@ -399,9 +410,21 @@ def trigger_servicenow_ticket(rule, alert_item):
         print("[WARN] SERVICENOW_TICKET_LAMBDA env var not set; skipping ticket creation")
         return
 
+    # Avoid duplicate open cases for the same rule.
+    existing_case = get_open_servicenow_case(rule["rule_id"])
+    if existing_case:
+        print(
+            f"Open ServiceNow case already exists for rule {rule['rule_id']} "
+            f"(case_id={existing_case.get('alert_id')}); skipping ticket creation"
+        )
+        return
+
+    case_item = record_servicenow_case(rule, alert_item)
+
     payload = {
         "alert": _to_json_safe(alert_item),
         "rule": _to_json_safe(rule),
+        "case_id": case_item.get("alert_id"),
     }
 
     try:
@@ -434,6 +457,89 @@ def _to_json_safe(value):
     return value
 
 
+def record_servicenow_case(rule, alert_item):
+    now = datetime.now(ZoneInfo("Europe/London")).isoformat()
+    case_id = f"CASE#{uuid.uuid4()}"
+    item = {
+        "alert_id": case_id,
+        "record_type": RECORD_TYPE_SERVICENOW_CASE,
+        "rule_id": rule["rule_id"],
+        "source_alert_id": alert_item["alert_id"],
+        "restaurant_number": alert_item.get("restaurant_number"),
+        "message": alert_item.get("message", ""),
+        "status": "OPEN",
+        "created_at": now,
+        "last_updated_at": now,
+        "ncr_ticket_id": "",
+    }
+    proactive_alerts_table.put_item(Item=item)
+    print(f"Recorded ServiceNow case {case_id} for rule {rule['rule_id']}")
+    return item
+
+
+def get_open_servicenow_case(rule_id):
+    items = scan_all_items(
+        proactive_alerts_table,
+        Attr("rule_id").eq(rule_id)
+        & Attr("record_type").eq(RECORD_TYPE_SERVICENOW_CASE)
+        & Attr("status").eq("OPEN")
+    )
+
+    if not items:
+        return None
+
+    # Most recent OPEN case for this rule.
+    return max(items, key=alert_sort_key)
+
+
+def close_servicenow_ticket_if_open(rule):
+    case_item = get_open_servicenow_case(rule["rule_id"])
+    if not case_item:
+        print(f"No open ServiceNow case for rule {rule['rule_id']}; nothing to close")
+        return False
+
+    now = datetime.now(ZoneInfo("Europe/London")).isoformat()
+    proactive_alerts_table.update_item(
+        Key={"alert_id": case_item["alert_id"]},
+        UpdateExpression="SET #s = :s, last_updated_at = :ts",
+        ExpressionAttributeNames={"#s": "status"},
+        ExpressionAttributeValues={":s": "CLOSING", ":ts": now},
+    )
+    case_item["status"] = "CLOSING"
+    case_item["last_updated_at"] = now
+
+    return _invoke_servicenow_close(rule, case_item)
+
+
+def _invoke_servicenow_close(rule, case_item):
+    if not SERVICENOW_CLOSE_LAMBDA:
+        print("[WARN] SERVICENOW_CLOSE_LAMBDA env var not set; cannot invoke close Lambda")
+        return False
+
+    payload = {
+        "rule": _to_json_safe(rule),
+        "case": _to_json_safe(case_item),
+    }
+
+    try:
+        response = lambda_client.invoke(
+            FunctionName=SERVICENOW_CLOSE_LAMBDA,
+            InvocationType="Event",
+            Payload=json.dumps(payload).encode("utf-8"),
+        )
+        print(
+            f"Triggered ServiceNow close Lambda for case {case_item.get('alert_id')} "
+            f"(StatusCode={response.get('StatusCode')})"
+        )
+        return True
+    except Exception as exc:  # noqa: BLE001
+        print(
+            f"[ERROR] Failed to invoke ServiceNow close Lambda for case "
+            f"{case_item.get('alert_id')}: {exc}"
+        )
+        return False
+
+
 def get_proactive_result_status(result_item):
 
     execution_status = str(result_item.get("execution_status", "")).strip().lower()
@@ -453,6 +559,17 @@ def get_proactive_result_status(result_item):
 
     # Script executed but did not report expected completion marker.
     return "unsuccessful"
+
+
+def are_all_script_results_successful(script_results):
+    if not script_results:
+        return False
+
+    for result_item in script_results:
+        if get_proactive_result_status(result_item) != "successful":
+            return False
+
+    return True
 
 
 def escape_html_multiline(value):

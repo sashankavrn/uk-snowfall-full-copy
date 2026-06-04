@@ -70,7 +70,7 @@ VERIFY_SSL = os.environ.get("NCR_VERIFY_SSL", "false").lower() == "true"
 
 REQUEST_TIMEOUT_SECONDS = 30
 
-RESOLUTION_TEXT = "Closed by Snowfall proactive system as this is triggered by rules defined."
+RESOLUTION_TEXT = "Closed by Snowfall proactive system."
 
 # Cached NCR credentials (populated on first call)
 _NCR_CREDS = None
@@ -219,6 +219,27 @@ def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict) -> dict:
         or ncr_ticket_id
     )
     country_code = str(case.get("country_code") or rule.get("country_code") or "UK")
+    script_name = str(rule.get("proactive_script_name") or "").strip()
+
+    if script_name:
+        resolution_notes = (
+            f"Ticket opened by Snowfall proactive rule '{description}'. "
+            f"Proactive agent script '{script_name}' fixed the issue on the fly. "
+            "Ticket closed automatically by Snowfall proactive system."
+        )
+    else:
+        resolution_notes = (
+            f"Ticket opened by Snowfall proactive rule '{description}'. "
+            "Issue was auto-remediated on the fly by Snowfall proactive agents. "
+            "Ticket closed automatically by Snowfall proactive system."
+        )
+
+    remark_text = (
+        f"Auto-close request for proactive ticket {ncr_ticket_id}. "
+        f"Rule: {description}. "
+        f"Source alert: {case.get('source_alert_id') or case.get('alert_id') or ''}. "
+        "Opened by proactive rule evaluation and closed after proactive agent remediation."
+    )
 
     return {
         "Header": {
@@ -231,12 +252,9 @@ def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict) -> dict:
             "CustomerTicketID": customer_ticket_id,
             "TicketID": ncr_ticket_id,
             "CountryCode": country_code,
-            "ResolutionNotes": RESOLUTION_TEXT,
+            "ResolutionNotes": resolution_notes,
             "Remark": {
-                "Text": (
-                    f"Close request for Snowfall proactive ticket {ncr_ticket_id}. "
-                    f"Rule: {description}."
-                )
+                "Text": remark_text
             },
         },
     }
