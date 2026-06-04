@@ -218,14 +218,13 @@ def process_rule(rule, records):
             print(f"Created ServiceNow case {case_item.get('alert_id')} for rule {rule['rule_id']}")
 
         # If proactive script was executed and all results are successful,
-        # close the OPEN case and skip ticket creation.
+        # close the OPEN case (issue auto-remediated) but still raise an NCR ticket.
         if script_results and are_all_script_results_successful(script_results):
             close_servicenow_ticket_if_open(rule)
             print(
                 f"Closed ServiceNow case for rule {rule['rule_id']} "
-                "(all proactive scripts succeeded); skipping ticket creation."
+                "(all proactive scripts succeeded); raising NCR ticket to record the incident."
             )
-            return
 
         trigger_servicenow_ticket(rule, alert_item)
 
