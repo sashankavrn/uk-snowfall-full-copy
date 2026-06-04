@@ -196,14 +196,14 @@ def process_rule(rule, records):
             print(f"Polling results for {len(all_triggered)} triggered script(s)")
             script_results = poll_script_results(all_triggered)
 
-    # STEP 2 Cooldown Check (always applies)
-    if not should_send_alert(rule, restaurants):
-        print("Cooldown active. Skipping alert.")
-        return
+    # STEP 2 Cooldown Check (email only)
+    email_allowed = should_send_alert(rule, restaurants)
+    if not email_allowed:
+        print("Cooldown active. Skipping email alert; continuing ServiceNow flow.")
 
-    # STEP 3 Send Email (only if email_alert is enabled)
+    # STEP 3 Send Email (only if email_alert is enabled and cooldown allows)
     email_sent = False
-    if rule.get("email_alert"):
+    if rule.get("email_alert") and email_allowed:
         email_sent = send_email(rule, records, script_results)
 
     # STEP 4 Record alert (always, regardless of email_alert flag)
