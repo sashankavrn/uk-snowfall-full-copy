@@ -1094,6 +1094,7 @@ resource "aws_lambda_function" "uk_snowfall_servicenow_proactive_ticket_sync" {
   environment {
     variables = {
       SERVICE_NOW_TICKETS_TABLE = "uk-snowfall-${var.environment}-service-now-tickets"
+      PROACTIVE_ALERTS_TABLE    = "uk-snowfall-${var.environment}-proactive-alerts"
       ATHENA_DATABASE           = "uk_snowfall_semantic"
       ATHENA_VIEW               = "ncr_service_now_service_case_latest"
       ATHENA_WORKGROUP          = "uk-snowfall-pipeline"

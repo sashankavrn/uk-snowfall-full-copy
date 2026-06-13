@@ -77,6 +77,10 @@ lambda_client = boto3.client("lambda")
 SERVICENOW_TICKET_LAMBDA = os.environ.get("SERVICENOW_TICKET_LAMBDA", "")
 SERVICENOW_CLOSE_LAMBDA = os.environ.get("SERVICENOW_CLOSE_LAMBDA", "")
 
+# Seconds to wait after creating an NCR ticket before requesting its closure.
+# Gives NCR time to register the new ticket so the close call is not skipped.
+CLOSE_DELAY_SECONDS = 15
+
 # =============================
 # Lambda Entry
 # =============================
@@ -223,11 +227,27 @@ def process_rule(rule, records):
             print(f"Created ServiceNow case {case_item.get('alert_id')} for rule {rule['rule_id']}")
 
             # Always raise an NCR ticket for the new case (issue occurred, record it).
-            trigger_servicenow_ticket(rule, alert_item)
+            # Synchronous: waits for NCR to create the ticket and stores the
+            # ncr_ticket_id on the case so a later close can find it.
+            ncr_ticket_id = trigger_servicenow_ticket(rule, alert_item)
 
             # If the proactive script ran and succeeded, close the ticket (issue self-healed).
             if script_results and are_all_script_results_successful(script_results):
-                close_servicenow_ticket_if_open(rule)
+                if ncr_ticket_id and CLOSE_DELAY_SECONDS > 0:
+                    # Brief delay so NCR finishes registering the new ticket
+                    # before we immediately request its closure (prevents the
+                    # close Lambda from skipping with 'No NCR ticket ID found').
+                    print(
+                        f"Waiting {CLOSE_DELAY_SECONDS}s before closing NCR ticket "
+                        f"{ncr_ticket_id} for rule {rule['rule_id']}..."
+                    )
+                    time.sleep(CLOSE_DELAY_SECONDS)
+                elif not ncr_ticket_id:
+                    print(
+                        f"[WARN] No NCR ticket ID returned for rule {rule['rule_id']}; "
+                        "close may be skipped."
+                    )
+                close_servicenow_ticket_if_open(rule, script_results)
                 print(
                     f"Closed ServiceNow case for rule {rule['rule_id']} "
                     "(proactive script succeeded; ticket raised and closed automatically)."
@@ -426,10 +446,16 @@ def record_email_alert(rule, records, email_sent=True):
 
 
 def trigger_servicenow_ticket(rule, alert_item):
-    """Invoke the NCR ServiceNow ticket-create Lambda for this single alert."""
+    """Invoke the NCR ServiceNow ticket-create Lambda for this single alert.
+
+    Invoked synchronously so we can capture the NCR ticket ID and persist it on
+    the case row before any close attempt. This prevents the close Lambda from
+    being skipped because ticket creation is still in-flight.
+    Returns the NCR ticket ID (str) on success, otherwise None.
+    """
     if not SERVICENOW_TICKET_LAMBDA:
         print("[WARN] SERVICENOW_TICKET_LAMBDA env var not set; skipping ticket creation")
-        return
+        return None
 
     # Case should already exist from process_rule().
     existing_case = get_open_servicenow_case(rule["rule_id"])
@@ -438,7 +464,7 @@ def trigger_servicenow_ticket(rule, alert_item):
             f"[WARN] No open ServiceNow case found for rule {rule['rule_id']}; "
             "skipping ticket creation to avoid orphan ticket."
         )
-        return
+        return None
 
     payload = {
         "alert": _to_json_safe(alert_item),
@@ -449,18 +475,71 @@ def trigger_servicenow_ticket(rule, alert_item):
     try:
         response = lambda_client.invoke(
             FunctionName=SERVICENOW_TICKET_LAMBDA,
-            InvocationType="Event",  # async; ticket Lambda persists the result
+            InvocationType="RequestResponse",  # sync; wait for the NCR ticket ID
             Payload=json.dumps(payload).encode("utf-8"),
         )
+        status_code = response.get("StatusCode")
+        raw_payload = response["Payload"].read().decode("utf-8")
         print(
-            f"Triggered ServiceNow ticket Lambda for alert {alert_item.get('alert_id')} "
-            f"(StatusCode={response.get('StatusCode')})"
+            f"ServiceNow ticket Lambda returned (StatusCode={status_code}) for alert "
+            f"{alert_item.get('alert_id')}: {raw_payload[:500]}"
         )
+
+        ncr_ticket_id = _extract_ncr_ticket_id(raw_payload)
+        if ncr_ticket_id:
+            _store_ncr_ticket_id_on_case(existing_case.get("alert_id"), ncr_ticket_id)
+            print(
+                f"Stored NCR ticket {ncr_ticket_id} on case "
+                f"{existing_case.get('alert_id')} for rule {rule['rule_id']}"
+            )
+        else:
+            print(
+                f"[WARN] No NCR ticket ID returned for alert {alert_item.get('alert_id')}; "
+                "ticket creation may have failed."
+            )
+        return ncr_ticket_id
     except Exception as exc:  # noqa: BLE001
         print(
             f"[ERROR] Failed to invoke ServiceNow ticket Lambda for alert "
             f"{alert_item.get('alert_id')}: {exc}"
         )
+        return None
+
+
+def _extract_ncr_ticket_id(raw_payload):
+    """Parse the create-ticket Lambda response body for the NCR ticket ID."""
+    try:
+        outer = json.loads(raw_payload)
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+    body = outer.get("body") if isinstance(outer, dict) else None
+    if isinstance(body, str):
+        try:
+            body = json.loads(body)
+        except json.JSONDecodeError:
+            body = None
+
+    if isinstance(body, dict):
+        ncr_ticket_id = body.get("ncr_ticket_id")
+        if ncr_ticket_id:
+            return str(ncr_ticket_id).strip() or None
+    return None
+
+
+def _store_ncr_ticket_id_on_case(case_id, ncr_ticket_id):
+    """Persist the NCR ticket ID onto the case row so the close Lambda finds it."""
+    if not case_id or not ncr_ticket_id:
+        return
+    now = datetime.now(ZoneInfo("Europe/London")).isoformat()
+    try:
+        proactive_alerts_table.update_item(
+            Key={"alert_id": case_id},
+            UpdateExpression="SET ncr_ticket_id = :tid, last_updated_at = :ts",
+            ExpressionAttributeValues={":tid": str(ncr_ticket_id), ":ts": now},
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"[ERROR] Failed to store ncr_ticket_id on case {case_id}: {exc}")
 
 
 def _to_json_safe(value):
@@ -518,7 +597,7 @@ def get_open_servicenow_case(rule_id):
     return max(items, key=alert_sort_key)
 
 
-def close_servicenow_ticket_if_open(rule):
+def close_servicenow_ticket_if_open(rule, script_results=None):
     case_item = get_open_servicenow_case(rule["rule_id"])
     if not case_item:
         print(f"No open ServiceNow case for rule {rule['rule_id']}; nothing to close")
@@ -534,10 +613,10 @@ def close_servicenow_ticket_if_open(rule):
     case_item["status"] = "CLOSING"
     case_item["last_updated_at"] = now
 
-    return _invoke_servicenow_close(rule, case_item)
+    return _invoke_servicenow_close(rule, case_item, script_results)
 
 
-def _invoke_servicenow_close(rule, case_item):
+def _invoke_servicenow_close(rule, case_item, script_results=None):
     if not SERVICENOW_CLOSE_LAMBDA:
         print("[WARN] SERVICENOW_CLOSE_LAMBDA env var not set; cannot invoke close Lambda")
         return False
@@ -545,6 +624,9 @@ def _invoke_servicenow_close(rule, case_item):
     payload = {
         "rule": _to_json_safe(rule),
         "case": _to_json_safe(case_item),
+        # Pass the proactive script outcomes so the close Lambda can record
+        # exactly what was remediated in the ServiceNow resolution notes.
+        "script_results": _to_json_safe(script_results or []),
     }
 
     try:

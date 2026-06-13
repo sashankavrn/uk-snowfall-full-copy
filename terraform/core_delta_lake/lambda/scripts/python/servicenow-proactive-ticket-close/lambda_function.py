@@ -93,6 +93,7 @@ def lambda_handler(event, context):
 
     rule = event.get("rule") or {}
     case = event.get("case") or {}
+    script_results = event.get("script_results") or []
 
     if not case:
         print("[ERROR] No 'case' payload in event; nothing to do.")
@@ -119,8 +120,14 @@ def lambda_handler(event, context):
     print(f"Resolved NCR ticket ID: {ncr_ticket_id}")
 
     # Build and send UpdateServiceRequest
-    payload = _build_update_payload(ncr_ticket_id, case, rule)
+    payload = _build_update_payload(ncr_ticket_id, case, rule, script_results)
     print(f"NCR update request payload: {json.dumps(payload)}")
+
+    # The detailed resolution notes we send to NCR are also persisted to the
+    # ticket row so the DynamoDB close_notes reflect what actually happened.
+    resolution_notes = (
+        payload.get("UpdateServiceRequest", {}).get("ResolutionNotes") or RESOLUTION_TEXT
+    )
 
     response = _post_to_ncr(payload)
     print(f"NCR update response: {json.dumps(response)}")
@@ -133,8 +140,10 @@ def lambda_handler(event, context):
     fault_code = fault.get("FaultCode")
     fault_description = fault.get("FaultDescription")
 
-    # Update SERVICE_NOW_TICKETS_TABLE
-    _update_ticket_resolved(ncr_ticket_id, ncr_status, fault_description)
+    # Update SERVICE_NOW_TICKETS_TABLE. On success store the detailed remediation
+    # notes; on failure store the fault description so the reason is visible.
+    close_notes = fault_description or resolution_notes
+    _update_ticket_resolved(ncr_ticket_id, ncr_status, close_notes)
 
     success = ncr_status == "SUCCESS"
     if success:
@@ -207,7 +216,54 @@ def _resolve_ncr_ticket_id(case: dict):
 # Payload construction
 # ---------------------------------------------------------------------------
 
-def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict) -> dict:
+def _summarise_script_results(script_results: list) -> str:
+    """Build a human-readable, single-line-per-device summary of what the
+    proactive scripts actually did, for inclusion in the NCR resolution notes.
+
+    Reads the same fields the results table stores: restaurant_number,
+    device_id, script_name, execution_status, result_output, stderr.
+    """
+    if not script_results:
+        return ""
+
+    lines = []
+    for r in script_results:
+        if not isinstance(r, dict):
+            continue
+        restaurant = str(r.get("restaurant_number", "") or "").strip()
+        device_id = str(r.get("device_id", "") or "").strip()
+        script_name = str(r.get("script_name", "") or "").strip()
+        execution_status = str(r.get("execution_status", "") or "").strip()
+        output_text = str(r.get("result_output", "") or "").strip()
+        stderr_text = str(r.get("stderr", "") or "").strip()
+
+        # Derive an outcome consistent with the orchestrator's success rule:
+        # success requires the COMPLETED SUCCESSFULLY marker and no error/stderr.
+        if execution_status.lower() in {"timeout", "failed", "error"} or stderr_text:
+            outcome = "FAILED/ERROR"
+        elif "COMPLETED SUCCESSFULLY" in output_text.upper():
+            outcome = "SUCCESS"
+        else:
+            outcome = "NO SUCCESS MARKER"
+
+        # Keep the captured script output short so the note stays readable.
+        output_snippet = " ".join(output_text.split())[:200]
+
+        detail = (
+            f"Restaurant {restaurant or 'N/A'}, device {device_id or 'N/A'}: "
+            f"script '{script_name or 'N/A'}' -> {outcome}"
+            f" (execution_status={execution_status or 'N/A'})"
+        )
+        if output_snippet:
+            detail += f"; output: {output_snippet}"
+        if stderr_text:
+            detail += f"; error: {' '.join(stderr_text.split())[:200]}"
+        lines.append(detail)
+
+    return " | ".join(lines)
+
+
+def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict, script_results: list = None) -> dict:
     transaction_id = str(int(datetime.now(timezone.utc).timestamp() * 1000))
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
@@ -221,18 +277,25 @@ def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict) -> dict:
     country_code = str(case.get("country_code") or rule.get("country_code") or "UK")
     script_name = str(rule.get("proactive_script_name") or "").strip()
 
+    # Detailed account of what the proactive agents actually executed.
+    results_summary = _summarise_script_results(script_results or [])
+
     if script_name:
         resolution_notes = (
             f"Ticket opened by Snowfall proactive rule '{description}'. "
-            f"Proactive agent script '{script_name}' fixed the issue on the fly. "
-            "Ticket closed automatically by Snowfall proactive system."
+            f"Proactive agent script '{script_name}' was executed on the affected "
+            "device(s) and remediated the issue automatically. "
         )
     else:
         resolution_notes = (
             f"Ticket opened by Snowfall proactive rule '{description}'. "
             "Issue was auto-remediated on the fly by Snowfall proactive agents. "
-            "Ticket closed automatically by Snowfall proactive system."
         )
+
+    if results_summary:
+        resolution_notes += f"Remediation details: {results_summary}. "
+
+    resolution_notes += "Ticket closed automatically by Snowfall proactive system."
 
     remark_text = (
         f"Auto-close request for proactive ticket {ncr_ticket_id}. "
@@ -240,6 +303,8 @@ def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict) -> dict:
         f"Source alert: {case.get('source_alert_id') or case.get('alert_id') or ''}. "
         "Opened by proactive rule evaluation and closed after proactive agent remediation."
     )
+    if results_summary:
+        remark_text += f" Script outcome(s): {results_summary}."
 
     return {
         "Header": {
@@ -348,7 +413,7 @@ def _post_to_ncr(payload: dict) -> dict:
 # DynamoDB updates
 # ---------------------------------------------------------------------------
 
-def _update_ticket_resolved(ncr_ticket_id: str, ncr_status: str, fault_description):
+def _update_ticket_resolved(ncr_ticket_id: str, ncr_status: str, close_notes):
     """Update the SERVICE_NOW_TICKETS_TABLE row (keyed by NCR#<id>) with resolve result."""
     ticket_id = f"NCR#{ncr_ticket_id}"
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -361,7 +426,7 @@ def _update_ticket_resolved(ncr_ticket_id: str, ncr_status: str, fault_descripti
             ExpressionAttributeValues={
                 ":ts": now_iso,
                 ":cs": ncr_status,
-                ":cn": fault_description or RESOLUTION_TEXT,
+                ":cn": close_notes or RESOLUTION_TEXT,
             },
         )
         print(f"Updated ticket row {ticket_id} → resolved_at set (ncr_status={ncr_status})")

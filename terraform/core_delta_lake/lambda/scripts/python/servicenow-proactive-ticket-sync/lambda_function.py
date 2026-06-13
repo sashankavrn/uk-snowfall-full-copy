@@ -12,7 +12,10 @@ Flow:
      for any rows with state IN ('Closed','Resolved') for those case numbers.
   4. For each closed/resolved case → update_item on DDB to set
         closed_at, ncr_state, close_notes, resolution_code, resolved_at.
-  5. Log summary counts.
+  5. For engineer-only tickets, also flip the matching SERVICENOW_CASE row in
+     `uk-snowfall-<env>-proactive-alerts` from OPEN/CLOSING to CLOSED so the
+     orchestrator stops treating the rule as having an open case.
+  6. Log summary counts.
 
 NOTE: In DEV the upstream `service_case` ingest is intentionally stopped, so
 this lambda will only update DDB rows whose ncr_ticket_id matches a historical
@@ -20,6 +23,7 @@ closed case in the DEV view. PROD has live data.
 
 Environment variables:
     SERVICE_NOW_TICKETS_TABLE   e.g. uk-snowfall-dev-service-now-tickets
+    PROACTIVE_ALERTS_TABLE      e.g. uk-snowfall-dev-proactive-alerts (case rows)
     ATHENA_DATABASE             default "uk_snowfall_semantic"
     ATHENA_VIEW                 default "ncr_service_now_service_case_latest"
     ATHENA_WORKGROUP            default "uk-snowfall-pipeline"
@@ -43,6 +47,7 @@ from boto3.dynamodb.conditions import Attr
 # ---------------------------------------------------------------------------
 
 SERVICE_NOW_TICKETS_TABLE = os.environ["SERVICE_NOW_TICKETS_TABLE"]
+PROACTIVE_ALERTS_TABLE = os.environ.get("PROACTIVE_ALERTS_TABLE", "")
 ATHENA_DATABASE = os.environ.get("ATHENA_DATABASE", "uk_snowfall_semantic")
 ATHENA_VIEW = os.environ.get("ATHENA_VIEW", "ncr_service_now_service_case_latest")
 ATHENA_WORKGROUP = os.environ.get("ATHENA_WORKGROUP", "uk-snowfall-pipeline")
@@ -56,8 +61,13 @@ QUERY_TIMEOUT_SEC = int(os.environ.get("QUERY_TIMEOUT_SEC", "60"))
 
 CLOSED_STATES = ("Closed", "Resolved")
 
+# Case-row reconciliation (engineer-only tickets)
+RECORD_TYPE_SERVICENOW_CASE = "SERVICENOW_CASE"
+OPEN_CASE_STATUSES = ("OPEN", "CLOSING")
+
 dynamodb = boto3.resource("dynamodb")
 tickets_table = dynamodb.Table(SERVICE_NOW_TICKETS_TABLE)
+alerts_table = dynamodb.Table(PROACTIVE_ALERTS_TABLE) if PROACTIVE_ALERTS_TABLE else None
 athena = boto3.client("athena", region_name=ATHENA_REGION)
 
 
@@ -78,7 +88,11 @@ def lambda_handler(event, context):  # noqa: ARG001
     case_to_ticket = {t["ncr_ticket_id"]: t["ticket_id"] for t in open_tickets}
     case_numbers = list(case_to_ticket.keys())
 
+    # Map ncr_ticket_id -> open SERVICENOW_CASE alert_id (engineer-only path)
+    ncr_to_case_alert = _load_open_case_rows()
+
     closed_count = 0
+    cases_closed = 0
     batches = 0
     for batch in _chunks(case_numbers, BATCH_SIZE):
         batches += 1
@@ -86,15 +100,26 @@ def lambda_handler(event, context):  # noqa: ARG001
         closed_rows = _query_closed_cases(batch)
         print(f"[INFO] Athena returned {len(closed_rows)} closed/resolved rows in batch {batches}")
         for row in closed_rows:
-            ticket_id = case_to_ticket.get(row["case_number"])
+            ncr_ticket_id = row["case_number"]
+            ticket_id = case_to_ticket.get(ncr_ticket_id)
             if not ticket_id:
                 continue
             _mark_ticket_closed(ticket_id, row)
             closed_count += 1
+            # Engineer-only: also close the originating case row so the
+            # orchestrator can raise future tickets for this rule.
+            case_alert_id = ncr_to_case_alert.get(ncr_ticket_id)
+            if case_alert_id and _close_case_row(case_alert_id, row):
+                cases_closed += 1
 
     print(f"[INFO] Close-sync complete. checked={len(open_tickets)} "
-          f"closed={closed_count} batches={batches}")
-    return {"checked": len(open_tickets), "closed": closed_count, "batches": batches}
+          f"closed={closed_count} cases_closed={cases_closed} batches={batches}")
+    return {
+        "checked": len(open_tickets),
+        "closed": closed_count,
+        "cases_closed": cases_closed,
+        "batches": batches,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +180,73 @@ def _mark_ticket_closed(ticket_id: str, row: dict) -> None:
         ExpressionAttributeValues=values,
     )
     print(f"[INFO] Closed ticket {ticket_id} (case={row['case_number']}, state={row.get('state')})")
+
+
+def _load_open_case_rows() -> dict:
+    """Scan the proactive-alerts table for open SERVICENOW_CASE rows.
+
+    Returns a map of ncr_ticket_id -> alert_id (case row hash key) for cases
+    still OPEN/CLOSING. Used to close the originating case row of an
+    engineer-handled ticket once NCR reports it Closed/Resolved.
+    """
+    if alerts_table is None:
+        print("[WARN] PROACTIVE_ALERTS_TABLE not configured; "
+              "skipping case-row reconciliation")
+        return {}
+
+    mapping: dict = {}
+    scan_kwargs = {
+        "FilterExpression": (
+            Attr("record_type").eq(RECORD_TYPE_SERVICENOW_CASE)
+            & Attr("status").is_in(list(OPEN_CASE_STATUSES))
+            & Attr("ncr_ticket_id").exists()
+            & Attr("ncr_ticket_id").ne("")
+        ),
+        "ProjectionExpression": "alert_id, ncr_ticket_id",
+    }
+    while True:
+        resp = alerts_table.scan(**scan_kwargs)
+        for item in resp.get("Items", []):
+            ncr = item.get("ncr_ticket_id")
+            if ncr:
+                mapping[ncr] = item["alert_id"]
+        if "LastEvaluatedKey" not in resp:
+            break
+        scan_kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
+    print(f"[INFO] Loaded {len(mapping)} open case row(s) for reconciliation")
+    return mapping
+
+
+def _close_case_row(alert_id: str, row: dict) -> bool:
+    """Mark the originating SERVICENOW_CASE row CLOSED for an engineer ticket."""
+    if alerts_table is None:
+        return False
+    now_iso = datetime.now(timezone.utc).isoformat()
+    try:
+        alerts_table.update_item(
+            Key={"alert_id": alert_id},
+            UpdateExpression=(
+                "SET #s = :s, last_updated_at = :ts, ncr_state = :ncr_state, "
+                "close_notes = :close_notes, closed_by = :closed_by"
+            ),
+            ExpressionAttributeNames={"#s": "status"},
+            ExpressionAttributeValues={
+                ":s": "CLOSED",
+                ":ts": now_iso,
+                ":ncr_state": row.get("state", ""),
+                ":close_notes": row.get("close_notes", "") or "",
+                ":closed_by": "NCR_ENGINEER",
+            },
+            ConditionExpression=Attr("status").is_in(list(OPEN_CASE_STATUSES)),
+        )
+        print(f"[INFO] Closed case row {alert_id} (engineer ticket {row['case_number']})")
+        return True
+    except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
+        # Already closed by another path; not an error.
+        return False
+    except Exception as exc:  # noqa: BLE001
+        print(f"[ERROR] Failed to close case row {alert_id}: {exc}")
+        return False
 
 
 # ---------------------------------------------------------------------------
