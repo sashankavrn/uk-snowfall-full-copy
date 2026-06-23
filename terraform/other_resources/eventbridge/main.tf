@@ -8,7 +8,7 @@ data "terraform_remote_state" "core_module" {
 
   config = {
     bucket = var.terraform_bucket_name
-    key     = "snowfall-data-pipeline/core_delta_lake/terraform.tfstate"
+    key    = "snowfall-data-pipeline/core_delta_lake/terraform.tfstate"
     region = "eu-central-1"
   }
 }
@@ -18,7 +18,7 @@ data "terraform_remote_state" "glue_module" {
 
   config = {
     bucket = var.terraform_bucket_name
-    key     = "snowfall-data-pipeline/glue_resources/terraform.tfstate"
+    key    = "snowfall-data-pipeline/glue_resources/terraform.tfstate"
     region = "eu-central-1"
   }
 }
@@ -29,7 +29,7 @@ locals {
 
 
 resource "aws_cloudwatch_event_rule" "location_event_rule" {
-  name = "uk-snowfall-location-trigger-rule"
+  name          = "uk-snowfall-location-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -50,15 +50,15 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "location_rule" {
-  rule      = aws_cloudwatch_event_rule.location_event_rule.name
-  arn       = local.workflow_trigger_arns["location"]
+  rule     = aws_cloudwatch_event_rule.location_event_rule.name
+  arn      = local.workflow_trigger_arns["location"]
   role_arn = var.role_assumed_arn
 
 }
 
 
 resource "aws_cloudwatch_event_rule" "amazon_connect_event_rule" {
-  name = "uk-snowfall-amazon-connect-trigger-rule"
+  name          = "uk-snowfall-amazon-connect-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -79,14 +79,14 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "amazon_connect_rule" {
-  rule      = aws_cloudwatch_event_rule.amazon_connect_event_rule.name
-  arn       = local.workflow_trigger_arns["amazon_connect"]
+  rule     = aws_cloudwatch_event_rule.amazon_connect_event_rule.name
+  arn      = local.workflow_trigger_arns["amazon_connect"]
   role_arn = var.role_assumed_arn
 
 }
 
 resource "aws_cloudwatch_event_rule" "incident_intraday_event_rule" {
-  name = "uk-snowfall-incident-intraday-trigger-rule"
+  name          = "uk-snowfall-incident-intraday-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -107,14 +107,14 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "incident_intraday_rule" {
-  rule      = aws_cloudwatch_event_rule.incident_intraday_event_rule.name
-  arn       = local.workflow_trigger_arns["incident_intraday"]
+  rule     = aws_cloudwatch_event_rule.incident_intraday_event_rule.name
+  arn      = local.workflow_trigger_arns["incident_intraday"]
   role_arn = var.role_assumed_arn
 
 }
 
 resource "aws_cloudwatch_event_rule" "location_hierarchy_event_rule" {
-  name = "uk-snowfall-location-hierarchy-trigger-rule"
+  name          = "uk-snowfall-location-hierarchy-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -135,14 +135,14 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "location_hierarchy_rule" {
-  rule      = aws_cloudwatch_event_rule.location_hierarchy_event_rule.name
-  arn       = local.workflow_trigger_arns["location_hierarchy"]
+  rule     = aws_cloudwatch_event_rule.location_hierarchy_event_rule.name
+  arn      = local.workflow_trigger_arns["location_hierarchy"]
   role_arn = var.role_assumed_arn
 
 }
 
 resource "aws_cloudwatch_event_rule" "incident_daily_event_rule" {
-  name = "uk-snowfall-incident-daily-trigger-rule"
+  name          = "uk-snowfall-incident-daily-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -163,15 +163,15 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "incident_daily_rule" {
-  rule      = aws_cloudwatch_event_rule.incident_daily_event_rule.name
-  arn       = local.workflow_trigger_arns["incident_daily"]
+  rule     = aws_cloudwatch_event_rule.incident_daily_event_rule.name
+  arn      = local.workflow_trigger_arns["incident_daily"]
   role_arn = var.role_assumed_arn
 
 }
 
 
 resource "aws_cloudwatch_event_rule" "problem_record_event_rule" {
-  name = "uk-snowfall-problem-record-trigger-rule"
+  name          = "uk-snowfall-problem-record-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -192,14 +192,14 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "problem_record_rule" {
-  rule      = aws_cloudwatch_event_rule.problem_record_event_rule.name
-  arn       = local.workflow_trigger_arns["problem_record"]
+  rule     = aws_cloudwatch_event_rule.problem_record_event_rule.name
+  arn      = local.workflow_trigger_arns["problem_record"]
   role_arn = var.role_assumed_arn
 
 }
 
 resource "aws_cloudwatch_event_rule" "service_offering_event_rule" {
-  name = "uk-snowfall-service-offering-trigger-rule"
+  name          = "uk-snowfall-service-offering-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -220,14 +220,14 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "service_offering_rule" {
-  rule      = aws_cloudwatch_event_rule.service_offering_event_rule.name
-  arn       = local.workflow_trigger_arns["service_offering"]
+  rule     = aws_cloudwatch_event_rule.service_offering_event_rule.name
+  arn      = local.workflow_trigger_arns["service_offering"]
   role_arn = var.role_assumed_arn
 
 }
 
 resource "aws_cloudwatch_event_rule" "service_request_event_rule" {
-  name = "uk-snowfall-service-request-trigger-rule"
+  name          = "uk-snowfall-service-request-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -248,14 +248,14 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "service_request_rule" {
-  rule      = aws_cloudwatch_event_rule.service_request_event_rule.name
-  arn       = local.workflow_trigger_arns["service_request"]
+  rule     = aws_cloudwatch_event_rule.service_request_event_rule.name
+  arn      = local.workflow_trigger_arns["service_request"]
   role_arn = var.role_assumed_arn
 
 }
 
 resource "aws_cloudwatch_event_rule" "sys_user_event_rule" {
-  name = "uk-snowfall-sys-user-trigger-rule"
+  name          = "uk-snowfall-sys-user-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -276,14 +276,14 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "sys_user_rule" {
-  rule      = aws_cloudwatch_event_rule.sys_user_event_rule.name
-  arn       = local.workflow_trigger_arns["sys_user"]
+  rule     = aws_cloudwatch_event_rule.sys_user_event_rule.name
+  arn      = local.workflow_trigger_arns["sys_user"]
   role_arn = var.role_assumed_arn
 
 }
 
 resource "aws_cloudwatch_event_rule" "sys_user_group_event_rule" {
-  name = "uk-snowfall-sys-user-group-trigger-rule"
+  name          = "uk-snowfall-sys-user-group-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -304,14 +304,14 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "sys_user_group_rule" {
-  rule      = aws_cloudwatch_event_rule.sys_user_group_event_rule.name
-  arn       = local.workflow_trigger_arns["sys_user_group"]
+  rule     = aws_cloudwatch_event_rule.sys_user_group_event_rule.name
+  arn      = local.workflow_trigger_arns["sys_user_group"]
   role_arn = var.role_assumed_arn
 
 }
 
 resource "aws_cloudwatch_event_rule" "adj_trading_hours_event_rule" {
-  name = "uk-snowfall-adj-trading-hours-trigger-rule"
+  name          = "uk-snowfall-adj-trading-hours-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -332,14 +332,14 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "adj_trading_hours_rule" {
-  rule      = aws_cloudwatch_event_rule.adj_trading_hours_event_rule.name
-  arn       = local.workflow_trigger_arns["adj_trading_hours"]
+  rule     = aws_cloudwatch_event_rule.adj_trading_hours_event_rule.name
+  arn      = local.workflow_trigger_arns["adj_trading_hours"]
   role_arn = var.role_assumed_arn
 
 }
 
 resource "aws_cloudwatch_event_rule" "trading_hours_event_rule" {
-  name = "uk-snowfall-trading-hours-trigger-rule"
+  name          = "uk-snowfall-trading-hours-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -360,14 +360,14 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "trading_hours_rule" {
-  rule      = aws_cloudwatch_event_rule.trading_hours_event_rule.name
-  arn       = local.workflow_trigger_arns["trading_hours"]
+  rule     = aws_cloudwatch_event_rule.trading_hours_event_rule.name
+  arn      = local.workflow_trigger_arns["trading_hours"]
   role_arn = var.role_assumed_arn
 
 }
 
 resource "aws_cloudwatch_event_rule" "change_request_event_rule" {
-  name = "uk-snowfall-change-request-trigger-rule"
+  name          = "uk-snowfall-change-request-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -388,8 +388,8 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "change_request_rule" {
-  rule      = aws_cloudwatch_event_rule.change_request_event_rule.name
-  arn       = local.workflow_trigger_arns["change_request"]
+  rule     = aws_cloudwatch_event_rule.change_request_event_rule.name
+  arn      = local.workflow_trigger_arns["change_request"]
   role_arn = var.role_assumed_arn
 
 }
@@ -399,8 +399,8 @@ resource "aws_cloudwatch_event_target" "change_request_rule" {
 ###################################### Meraki Device Info ######################################
 
 resource "aws_cloudwatch_event_rule" "meraki_device_info_event_rule" {
-  name        = "uk-snowfall-meraki-device-info-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name} for device_info"
+  name          = "uk-snowfall-meraki-device-info-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name} for device_info"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -420,16 +420,16 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "meraki_device_info_rule" {
-  rule      = aws_cloudwatch_event_rule.meraki_device_info_event_rule.name
-  arn       = local.workflow_trigger_arns["meraki_device_info"]
-  role_arn  = var.role_assumed_arn
+  rule     = aws_cloudwatch_event_rule.meraki_device_info_event_rule.name
+  arn      = local.workflow_trigger_arns["meraki_device_info"]
+  role_arn = var.role_assumed_arn
 }
 
 ###################################### Meraki Client Info ######################################
 
 resource "aws_cloudwatch_event_rule" "meraki_client_info_event_rule" {
-  name        = "uk-snowfall-meraki-client-info-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name} for client_info"
+  name          = "uk-snowfall-meraki-client-info-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name} for client_info"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -449,9 +449,9 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "meraki_client_info_rule" {
-  rule      = aws_cloudwatch_event_rule.meraki_client_info_event_rule.name
-  arn       = local.workflow_trigger_arns["meraki_client_info"]
-  role_arn  = var.role_assumed_arn
+  rule     = aws_cloudwatch_event_rule.meraki_client_info_event_rule.name
+  arn      = local.workflow_trigger_arns["meraki_client_info"]
+  role_arn = var.role_assumed_arn
 }
 
 
@@ -480,17 +480,17 @@ EOF
 
 
 resource "aws_cloudwatch_event_target" "newrelic_rmp_device_rule" {
-  rule      = aws_cloudwatch_event_rule.newrelic_rmp_device_event_rule.name
-  arn       = local.workflow_trigger_arns["newrelic_rmp_device_info"]
-  role_arn  = var.role_assumed_arn
+  rule     = aws_cloudwatch_event_rule.newrelic_rmp_device_event_rule.name
+  arn      = local.workflow_trigger_arns["newrelic_rmp_device_info"]
+  role_arn = var.role_assumed_arn
 }
 
 
 ###################################### New Relic Digital GMA FOE ##############################################
 
 resource "aws_cloudwatch_event_rule" "newrelic_digital_gma_foe_event_rule" {
-  name        = "uk-snowfall-newrelic-digital-gma-foe-response-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-newrelic-digital-gma-foe-response-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -518,8 +518,8 @@ resource "aws_cloudwatch_event_target" "newrelic_digital_gma_foe_response_rule" 
 ###################################### New Relic Digital 3PO FOE ##############################################
 
 resource "aws_cloudwatch_event_rule" "newrelic_digital_3po_foe_event_rule" {
-  name        = "uk-snowfall-newrelic-digital-3po-foe-response-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-newrelic-digital-3po-foe-response-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -549,7 +549,7 @@ resource "aws_cloudwatch_event_target" "newrelic_digital_3po_foe_response_rule" 
 ###################################### NCR ServiceNow service_case ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_service_case_event_rule" {
-  name = "uk-snowfall-ncr-service-now-service-case-trigger-rule"
+  name          = "uk-snowfall-ncr-service-now-service-case-trigger-rule"
   description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
@@ -570,8 +570,8 @@ EOF
 }
 
 resource "aws_cloudwatch_event_target" "ncr_service_now_service_case_rule" {
-  rule      = aws_cloudwatch_event_rule.ncr_service_now_service_case_event_rule.name
-  arn       = local.workflow_trigger_arns["ncr_service_now_service_case"]
+  rule     = aws_cloudwatch_event_rule.ncr_service_now_service_case_event_rule.name
+  arn      = local.workflow_trigger_arns["ncr_service_now_service_case"]
   role_arn = var.role_assumed_arn
 
 }
@@ -579,8 +579,8 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_service_case_rule" {
 ###################################### NCR ServiceNow Incident ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_incident_event_rule" {
-  name        = "uk-snowfall-ncr-service-now-incident-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-ncr-service-now-incident-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -608,8 +608,8 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_incident_event_target" {
 ###################################### NCR ServiceNow Change Request ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_change_request_event_rule" {
-  name        = "uk-snowfall-ncr-service-now-change-request-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-ncr-service-now-change-request-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -638,8 +638,8 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_change_request_event_tar
 ###################################### NCR ServiceNow Problem Record ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_problem_record_event_rule" {
-  name        = "uk-snowfall-ncr-service-now-problem-record-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-ncr-service-now-problem-record-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -666,8 +666,8 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_problem_record_event_tar
 ###################################### NCR ServiceNow Problem Task ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_problem_task_event_rule" {
-  name        = "uk-snowfall-ncr-service-now-problem-task-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-ncr-service-now-problem-task-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -694,8 +694,8 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_problem_task_event_targe
 ###################################### NCR ServiceNow Knowledge Base ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_knowledge_base_event_rule" {
-  name        = "uk-snowfall-ncr-service-now-knowledge-base-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-ncr-service-now-knowledge-base-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -724,8 +724,8 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_knowledge_base_event_tar
 ###################################### NCR ServiceNow Knowledge ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_knowledge_event_rule" {
-  name        = "uk-snowfall-ncr-service-now-knowledge-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-ncr-service-now-knowledge-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -754,8 +754,8 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_knowledge_event_target" 
 ###################################### NCR ServiceNow Incident Task ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_incident_task_event_rule" {
-  name        = "uk-snowfall-ncr-service-now-incident-task-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-ncr-service-now-incident-task-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -783,8 +783,8 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_incident_task_event_targ
 ###################################### NCR ServiceNow Incident SLA ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_incident_sla_event_rule" {
-  name        = "uk-snowfall-ncr-service-now-incident-sla-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-ncr-service-now-incident-sla-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -812,8 +812,8 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_incident_sla_event_targe
 ###################################### NCR ServiceNow Worknotes ##############################################
 
 resource "aws_cloudwatch_event_rule" "ncr_service_now_worknotes_event_rule" {
-  name        = "uk-snowfall-ncr-service-now-worknotes-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-ncr-service-now-worknotes-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -843,8 +843,8 @@ resource "aws_cloudwatch_event_target" "ncr_service_now_worknotes_event_target" 
 ###################################### service_agent_server_files ##############################################
 
 resource "aws_cloudwatch_event_rule" "service_agent_server_files_event_rule" {
-  name        = "uk-snowfall-service-agent-server-files-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-service-agent-server-files-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -901,8 +901,8 @@ resource "aws_cloudwatch_event_target" "service_agent_server_files_rule_event_ta
 ###################################### HappySignals ##############################################
 
 resource "aws_cloudwatch_event_rule" "happysignals_event_rule" {
-  name        = "uk-snowfall-happysignals-trigger-rule"
-  description = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  name          = "uk-snowfall-happysignals-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
   event_pattern = <<EOF
 {
   "source": ["aws.s3"],
@@ -924,6 +924,35 @@ EOF
 resource "aws_cloudwatch_event_target" "happysignals_event_target" {
   rule     = aws_cloudwatch_event_rule.happysignals_event_rule.name
   arn      = local.workflow_trigger_arns["happysignals"]
+  role_arn = var.role_assumed_arn
+}
+
+###################################### Smartsheet ##############################################
+
+resource "aws_cloudwatch_event_rule" "smartsheet_event_rule" {
+  name          = "uk-snowfall-smartsheet-trigger-rule"
+  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
+  event_pattern = <<EOF
+{
+  "source": ["aws.s3"],
+  "detail": {
+    "bucket": {
+      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
+    },
+    "object": {
+      "key": [ {
+        "prefix": "smartsheet/"
+      } ]
+    }
+  },
+  "detail-type": ["Object Created"]
+}
+EOF
+}
+
+resource "aws_cloudwatch_event_target" "smartsheet_event_target" {
+  rule     = aws_cloudwatch_event_rule.smartsheet_event_rule.name
+  arn      = local.workflow_trigger_arns["smartsheet"]
   role_arn = var.role_assumed_arn
 }
 

@@ -45,6 +45,8 @@ Environment variables (all required unless noted):
     NCR_SOAP_SERVICE_NOW_CREATE_URL  (optional) direct CreateServiceRequest URL override
     NCR_VERIFY_SSL             (optional) "true"/"false" - defaults to "false"
                                   (NCR CERT uses a private CA)
+    NCR_REQUEST_TIMEOUT_SECONDS (optional) defaults to "60". Increase if NCR
+                                  endpoint responses are slow.
 """
 
 import base64
@@ -74,7 +76,7 @@ COUNTRY_CODE = os.environ.get("COUNTRY_CODE", "UK")
 NCR_SOAP_SERVICE_NOW_CREATE_URL = os.environ.get("NCR_SOAP_SERVICE_NOW_CREATE_URL", "").strip()
 VERIFY_SSL = os.environ.get("NCR_VERIFY_SSL", "false").lower() == "true"
 
-REQUEST_TIMEOUT_SECONDS = 30
+REQUEST_TIMEOUT_SECONDS = 50
 
 # Cached NCR credentials (populated on first call)
 _NCR_CREDS = None
@@ -147,6 +149,12 @@ def lambda_handler(event, context):
 
     payload = _build_payload(alert, rule or {})
     print(f"NCR request payload: {json.dumps(payload)}")
+    print("NCR mapping validation (BEGIN)")
+    print(json.dumps(_build_mapping_validation_rows(payload, alert, rule or {}), default=str, indent=2))
+    print("NCR mapping validation (END)")
+    print("NCR rule field mapping reference (BEGIN)")
+    print(json.dumps(_build_rule_field_mapping_reference(), default=str, indent=2))
+    print("NCR rule field mapping reference (END)")
 
     response = _post_to_ncr(payload)
     print(f"NCR response: {json.dumps(response)}")
@@ -206,38 +214,73 @@ def _build_payload(alert: dict, rule: dict) -> dict:
 
     message = str(alert.get("message", "") or "")
     short_description = (
-        str(rule.get("short_description") or rule.get("incident_description") or message)
+        str(rule.get("servicenow_short_description") or rule.get("short_description") or rule.get("incident_description") or message)
         .splitlines()[0][:160]
         or "Snowfall proactive alert"
     )
+    description_text = str(
+        rule.get("incident_description")
+        or rule.get("servicenow_incident_description")
+        or message
+        or short_description
+    )
 
-    customer_ticket_id = str(alert.get("alert_id") or f"SNOWFALL-{uuid.uuid4()}")
+    raw_ticket_id = str(alert.get("alert_id") or f"SNOWFALL{uuid.uuid4().hex}")
+    # NCR's working Postman sample uses a short alphanumeric CustomerTicketID (e.g. "219911").
+    # NCR has rejected long values containing '#' / '-' with a generic 500.
+    # Strip non-alphanumerics and cap to 32 chars to match the known-good shape.
+    customer_ticket_id = "".join(ch for ch in raw_ticket_id if ch.isalnum())[:32] or "SNOWFALL"
     site_number = str(alert.get("restaurant_number") or "").strip()
     # NCR expects UK restaurant numbers zero-padded to exactly 4 digits (e.g. 59 -> "0059").
     # Strip leading zeros first so over-padded values like "04071" become "4071".
     if site_number.isdigit():
         site_number = str(int(site_number)).zfill(4)
 
+    rule_category = rule.get("servicenow_category") or rule.get("category")
+    rule_subcategory = (
+        rule.get("servicenow_subcategory")
+        or rule.get("subcategory")
+        or rule.get("servicenow_Subcategory")
+    )
+    rule_business_service = (
+        rule.get("servicenow_business_service")
+        or rule.get("business_service")
+        or rule.get("BusinessService")
+    )
+    rule_service_offering = (
+        rule.get("servicenow_service_offering")
+        or rule.get("service_offering")
+        or rule.get("ServiceOffering")
+    )
+    rule_request_type = (
+        rule.get("servicenow_request_type")
+        or rule.get("request_type")
+        or rule_category
+        or "Software"
+    )
+    rule_priority = rule.get("servicenow_priority") or rule.get("priority")
+
+    # Field order intentionally matches the known-good NCR Postman sample as closely as possible.
     create_request = {
         "CountryCode": _resolve_country_code(alert.get("restaurant_number", "")),
         "CustomerTicketID": customer_ticket_id,
-        "RequestType": str(rule.get("request_type") or rule.get("category") or "Software"),
-        "Priority": _coerce_int(rule.get("priority"), default=3),
+        "RequestType": str(rule_request_type),
+        "Priority": _coerce_int(rule_priority, default=3),
         "Summary": short_description,
-        "Description": message or short_description,
-        "Category": str(rule.get("category") or "Software"),
-        "Caller": _build_caller(rule),
-        "Site": {"SiteNumber": site_number},
-        "Remark": {"Text": f"Auto-created from Snowfall proactive alert {customer_ticket_id}"},
+        "Description": description_text,
+        "Category": str(rule_category or "Software"),
     }
-
-    subcategory = rule.get("subcategory")
-    if subcategory:
-        create_request["Subcategory"] = str(subcategory)
-
-    service_offering = rule.get("service_offering")
-    if service_offering:
-        create_request["ServiceOffering"] = str(service_offering)
+    if rule_subcategory:
+        create_request["Subcategory"] = str(rule_subcategory)
+    if rule_business_service:
+        create_request["BusinessService"] = str(rule_business_service)
+    if rule_service_offering:
+        create_request["ServiceOffering"] = str(rule_service_offering)
+    create_request["Caller"] = _build_caller(rule)
+    create_request["Site"] = {"SiteNumber": site_number}
+    create_request["Remark"] = {
+        "Text": f"Auto-created from Snowfall proactive alert {customer_ticket_id}"
+    }
 
     return {
         "Header": {
@@ -264,6 +307,210 @@ def _build_caller(rule: dict) -> dict:
     }
 
 
+def _build_mapping_validation_rows(payload: dict, alert: dict, rule: dict) -> list[dict]:
+    create_req = payload.get("CreateServiceRequest", {}) or {}
+    payload_caller = create_req.get("Caller", {}) or {}
+
+    def _str_or_empty(value):
+        return "" if value is None else str(value)
+
+    def _as_candidates(keys):
+        out = []
+        for key in keys:
+            value = rule.get(key)
+            if value not in (None, ""):
+                out.append({"key": key, "value": value})
+        return out
+
+    def _status(payload_value, candidates):
+        payload_norm = _str_or_empty(payload_value).strip().lower()
+        if not candidates:
+            return "NO_RULE_VALUE"
+        for item in candidates:
+            if payload_norm == _str_or_empty(item["value"]).strip().lower():
+                return "MATCH"
+        return "MISMATCH"
+
+    rows = []
+
+    rows.append(
+        {
+            "field": "Category",
+            "payload_value": create_req.get("Category"),
+            "rule_candidates": _as_candidates(["servicenow_category", "category"]),
+        }
+    )
+    rows.append(
+        {
+            "field": "Subcategory",
+            "payload_value": create_req.get("Subcategory"),
+            "rule_candidates": _as_candidates(["servicenow_subcategory", "subcategory", "servicenow_Subcategory"]),
+        }
+    )
+    rows.append(
+        {
+            "field": "BusinessService",
+            "payload_value": create_req.get("BusinessService"),
+            "rule_candidates": _as_candidates(["servicenow_business_service", "business_service", "BusinessService"]),
+        }
+    )
+    rows.append(
+        {
+            "field": "ServiceOffering",
+            "payload_value": create_req.get("ServiceOffering"),
+            "rule_candidates": _as_candidates(["servicenow_service_offering", "service_offering", "ServiceOffering"]),
+        }
+    )
+    rows.append(
+        {
+            "field": "RequestType",
+            "payload_value": create_req.get("RequestType"),
+            "rule_candidates": _as_candidates(["servicenow_request_type", "request_type", "servicenow_category", "category"]),
+        }
+    )
+    rows.append(
+        {
+            "field": "Priority",
+            "payload_value": create_req.get("Priority"),
+            "rule_candidates": _as_candidates(["servicenow_priority", "priority"]),
+        }
+    )
+    rows.append(
+        {
+            "field": "Summary",
+            "payload_value": create_req.get("Summary"),
+            "rule_candidates": _as_candidates(["servicenow_short_description", "short_description", "incident_description"]),
+        }
+    )
+    rows.append(
+        {
+            "field": "Description",
+            "payload_value": create_req.get("Description"),
+            "rule_candidates": _as_candidates(["incident_description", "servicenow_incident_description"]),
+        }
+    )
+    rows.append(
+        {
+            "field": "Caller.FirstName",
+            "payload_value": payload_caller.get("FirstName"),
+            "rule_candidates": _as_candidates(["caller_first_name"]),
+        }
+    )
+    rows.append(
+        {
+            "field": "Caller.LastName",
+            "payload_value": payload_caller.get("LastName"),
+            "rule_candidates": _as_candidates(["caller_last_name"]),
+        }
+    )
+    rows.append(
+        {
+            "field": "Caller.EmailAddress",
+            "payload_value": payload_caller.get("EmailAddress"),
+            "rule_candidates": _as_candidates(["caller_email"]),
+        }
+    )
+
+    for row in rows:
+        row["status"] = _status(row.get("payload_value"), row.get("rule_candidates") or [])
+
+    rows.append(
+        {
+            "field": "CustomerTicketID",
+            "payload_value": create_req.get("CustomerTicketID"),
+            "derived_from": "alert.alert_id",
+            "alert_value": alert.get("alert_id"),
+            "status": "DERIVED",
+        }
+    )
+    rows.append(
+        {
+            "field": "Site.SiteNumber",
+            "payload_value": (create_req.get("Site") or {}).get("SiteNumber"),
+            "derived_from": "alert.restaurant_number (zero-padded)",
+            "alert_value": alert.get("restaurant_number"),
+            "status": "DERIVED",
+        }
+    )
+
+    return rows
+
+
+def _build_rule_field_mapping_reference() -> list[dict]:
+    """Reference table for rule authors: preferred key + accepted aliases.
+
+    This is log-only guidance and does not change payload behavior.
+    """
+    return [
+        {
+            "payload_field": "CreateServiceRequest.Category",
+            "preferred_rule_key": "servicenow_category",
+            "accepted_aliases": ["category"],
+            "notes": "Used directly for Category and as RequestType fallback.",
+        },
+        {
+            "payload_field": "CreateServiceRequest.Subcategory",
+            "preferred_rule_key": "servicenow_subcategory",
+            "accepted_aliases": ["subcategory", "servicenow_Subcategory"],
+            "notes": "Only included when value is present.",
+        },
+        {
+            "payload_field": "CreateServiceRequest.BusinessService",
+            "preferred_rule_key": "servicenow_business_service",
+            "accepted_aliases": ["business_service", "BusinessService"],
+            "notes": "Only included when value is present.",
+        },
+        {
+            "payload_field": "CreateServiceRequest.ServiceOffering",
+            "preferred_rule_key": "servicenow_service_offering",
+            "accepted_aliases": ["service_offering", "ServiceOffering"],
+            "notes": "Only included when value is present.",
+        },
+        {
+            "payload_field": "CreateServiceRequest.RequestType",
+            "preferred_rule_key": "servicenow_request_type",
+            "accepted_aliases": ["request_type"],
+            "notes": "Fallback order: servicenow_request_type -> request_type -> servicenow_category/category -> 'Software'.",
+        },
+        {
+            "payload_field": "CreateServiceRequest.Priority",
+            "preferred_rule_key": "servicenow_priority",
+            "accepted_aliases": ["priority"],
+            "notes": "Defaults to 3 when empty/invalid.",
+        },
+        {
+            "payload_field": "CreateServiceRequest.Summary",
+            "preferred_rule_key": "servicenow_short_description",
+            "accepted_aliases": ["short_description", "incident_description"],
+            "notes": "Fallback order: servicenow_short_description -> short_description -> incident_description -> alert message first line.",
+        },
+        {
+            "payload_field": "CreateServiceRequest.Description",
+            "preferred_rule_key": "incident_description",
+            "accepted_aliases": ["servicenow_incident_description"],
+            "notes": "Fallback order: incident_description -> servicenow_incident_description -> alert.message -> Summary.",
+        },
+        {
+            "payload_field": "CreateServiceRequest.Caller.FirstName",
+            "preferred_rule_key": "caller_first_name",
+            "accepted_aliases": ["caller.first_name"],
+            "notes": "Default 'Snowfall'.",
+        },
+        {
+            "payload_field": "CreateServiceRequest.Caller.LastName",
+            "preferred_rule_key": "caller_last_name",
+            "accepted_aliases": ["caller.last_name"],
+            "notes": "Default 'Alerts'.",
+        },
+        {
+            "payload_field": "CreateServiceRequest.Caller.EmailAddress",
+            "preferred_rule_key": "caller_email",
+            "accepted_aliases": ["caller.email"],
+            "notes": "Default snowfall-proactive-alerts mailbox.",
+        },
+    ]
+
+
 # ---------------------------------------------------------------------------
 # NCR HTTP call
 # ---------------------------------------------------------------------------
@@ -276,7 +523,13 @@ def _post_to_ncr(payload: dict) -> dict:
 
     request = urllib.request.Request(ncr_url, data=body, method="POST")
     request.add_header("Content-Type", "application/json")
-    request.add_header("Accept", "application/json")
+    request.add_header("Accept", "*/*")
+    request.add_header("Accept-Encoding", "identity")
+    request.add_header("Connection", "keep-alive")
+    # NCR's F5 BIG-IP front end can filter requests with the default
+    # "Python-urllib/3.x" user agent. Mimic the Postman/`requests` UA that
+    # is known to succeed against the same endpoint.
+    request.add_header("User-Agent", "PostmanRuntime/7.39.0")
     request.add_header("Authorization", f"Basic {credentials}")
     request.add_header("Content-Length", str(len(body)))
 
@@ -305,7 +558,7 @@ def _post_to_ncr(payload: dict) -> dict:
         }
 
     try:
-        return json.loads(raw)
+        parsed = json.loads(raw)
     except json.JSONDecodeError:
         return {
             "Header": {
@@ -315,6 +568,8 @@ def _post_to_ncr(payload: dict) -> dict:
             "NCRIncidentUpdate": {"NCRTicketID": None},
             "_raw": raw[:2000],
         }
+
+    return parsed
 
 
 # ---------------------------------------------------------------------------
@@ -349,13 +604,30 @@ def _save_ticket(
         "ncr_ticket_id": str(ncr_ticket_id) if ncr_ticket_id else "",
         "ncr_transaction_id": payload.get("Header", {}).get("TransactionID", ""),
         "service_offering": str(
-            create_req.get("ServiceOffering") or rule.get("service_offering") or ""
+            create_req.get("ServiceOffering")
+            or rule.get("service_offering")
+            or rule.get("servicenow_service_offering")
+            or ""
         ),
-        "category": str(create_req.get("Category") or rule.get("category") or ""),
+        "category": str(
+            create_req.get("Category")
+            or rule.get("category")
+            or rule.get("servicenow_category")
+            or ""
+        ),
         "subcategory": str(
-            create_req.get("Subcategory") or rule.get("subcategory") or ""
+            create_req.get("Subcategory")
+            or rule.get("subcategory")
+            or rule.get("servicenow_subcategory")
+            or rule.get("servicenow_Subcategory")
+            or ""
         ),
-        "priority": str(create_req.get("Priority", rule.get("priority", "")) or ""),
+        "priority": str(
+            create_req.get("Priority")
+            or rule.get("servicenow_priority")
+            or rule.get("priority")
+            or ""
+        ),
         "request_type": str(create_req.get("RequestType") or rule.get("request_type") or ""),
         "country_code": str(create_req.get("CountryCode") or ""),
         "site_number": str((create_req.get("Site") or {}).get("SiteNumber") or ""),

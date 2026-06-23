@@ -94,6 +94,9 @@ def lambda_handler(event, context):
     rule = event.get("rule") or {}
     case = event.get("case") or {}
     script_results = event.get("script_results") or []
+    # Optional override note (e.g. when a later proactive run found the issue
+    # cleared and we are closing the ticket without a script remediation).
+    resolution_note = event.get("resolution_note") or ""
 
     if not case:
         print("[ERROR] No 'case' payload in event; nothing to do.")
@@ -120,7 +123,7 @@ def lambda_handler(event, context):
     print(f"Resolved NCR ticket ID: {ncr_ticket_id}")
 
     # Build and send UpdateServiceRequest
-    payload = _build_update_payload(ncr_ticket_id, case, rule, script_results)
+    payload = _build_update_payload(ncr_ticket_id, case, rule, script_results, resolution_note)
     print(f"NCR update request payload: {json.dumps(payload)}")
 
     # The detailed resolution notes we send to NCR are also persisted to the
@@ -263,7 +266,7 @@ def _summarise_script_results(script_results: list) -> str:
     return " | ".join(lines)
 
 
-def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict, script_results: list = None) -> dict:
+def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict, script_results: list = None, resolution_note: str = "") -> dict:
     transaction_id = str(int(datetime.now(timezone.utc).timestamp() * 1000))
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
@@ -279,6 +282,43 @@ def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict, script_res
 
     # Detailed account of what the proactive agents actually executed.
     results_summary = _summarise_script_results(script_results or [])
+
+    # Path 1: explicit override note (issue cleared on a later run, no script
+    # remediation was performed) takes precedence.
+    if resolution_note:
+        resolution_notes = (
+            f"Ticket opened by Snowfall proactive rule '{description}'. "
+            f"{resolution_note} "
+        )
+        if results_summary:
+            resolution_notes += f"Remediation details: {results_summary}. "
+        resolution_notes += "Ticket closed automatically by Snowfall proactive system."
+
+        remark_text = (
+            f"Auto-close request for proactive ticket {ncr_ticket_id}. "
+            f"Rule: {description}. "
+            f"Source alert: {case.get('source_alert_id') or case.get('alert_id') or ''}. "
+            f"{resolution_note}"
+        )
+        if results_summary:
+            remark_text += f" Script outcome(s): {results_summary}."
+        return {
+            "Header": {
+                "TransactionID": transaction_id,
+                "USERID": USER_ID,
+                "SourceSystem": SOURCE_SYSTEM,
+                "TimeStamp": timestamp,
+            },
+            "UpdateServiceRequest": {
+                "CustomerTicketID": customer_ticket_id,
+                "TicketID": ncr_ticket_id,
+                "CountryCode": country_code,
+                "ResolutionNotes": resolution_notes,
+                "Remark": {
+                    "Text": remark_text
+                },
+            },
+        }
 
     if script_name:
         resolution_notes = (

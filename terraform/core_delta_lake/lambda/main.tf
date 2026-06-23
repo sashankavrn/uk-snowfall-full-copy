@@ -1671,3 +1671,56 @@ resource "aws_lambda_function" "uk_snowfall_servicenow_tickets_cleanup" {
     }
   }
 }
+
+
+############################################################################# DYNAMIC SMARTSHEET INTEGRATION LAMBDA ##########################################
+# Fetches Smartsheet data daily at 06:00 UTC and lands JSON into
+# s3://eu-central1-<env>-uk-snowfall-landing-<account>/smartsheet/<sheet_name>.json
+############################################################################################################################################################
+
+data "archive_file" "uk_snowfall_dynamic_smartsheet_intergation" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/dynamic-smartsheet-intergation/"
+  output_path = "${path.module}/scripts/zips/dynamic-smartsheet-intergation.zip"
+}
+
+resource "aws_lambda_function" "uk_snowfall_dynamic_smartsheet_intergation" {
+  filename         = data.archive_file.uk_snowfall_dynamic_smartsheet_intergation.output_path
+  function_name    = "uk-snowfall-dynamic-smartsheet-intergation-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 512
+  timeout          = 300
+  description      = "Daily Smartsheet export to landing bucket /smartsheet/<sheet_name>.json"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_dynamic_smartsheet_intergation.output_path)
+  tags             = var.resource_tags
+
+  environment {
+    variables = {
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      SNS_TOPIC_ARN = var.sns_topic_arn
+    }
+  }
+}
+
+## EventBridge rule – daily 06:00 UTC (controlled per environment via var.smartsheet_6am_schedule)
+resource "aws_cloudwatch_event_rule" "uk_snowfall_dynamic_smartsheet_intergation_schedule" {
+  name                = "uk-snowfall-dynamic-smartsheet-intergation-schedule-${var.environment}"
+  description         = "Triggers the dynamic-smartsheet-intergation Lambda daily at 06:00 UTC"
+  schedule_expression = var.smartsheet_6am_schedule
+}
+
+resource "aws_cloudwatch_event_target" "uk_snowfall_dynamic_smartsheet_intergation_target" {
+  rule      = aws_cloudwatch_event_rule.uk_snowfall_dynamic_smartsheet_intergation_schedule.name
+  target_id = "dynamic-smartsheet-intergation-target"
+  arn       = aws_lambda_function.uk_snowfall_dynamic_smartsheet_intergation.arn
+}
+
+resource "aws_lambda_permission" "uk_snowfall_dynamic_smartsheet_intergation_allow_eventbridge" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.uk_snowfall_dynamic_smartsheet_intergation.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.uk_snowfall_dynamic_smartsheet_intergation_schedule.arn
+}

@@ -10,6 +10,7 @@ variable "meraki_schedule" {}
 variable "newrelic_10min_schedule" {}
 variable "newrelic_5min_schedule" {}
 variable "newrelic_1am_schedule" {}
+variable "smartsheet_6am_schedule" {}
 variable "service_agent_bucket_arn" {}
 variable "stage_name" {}
 variable "ncr_soap_service_now_create_url" {

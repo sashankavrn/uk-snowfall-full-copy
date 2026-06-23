@@ -100,6 +100,12 @@ def lambda_handler(event, context):
 
         records = run_athena(rule["query"])
 
+        # Reconcile any open ticket against the CURRENT violating restaurants.
+        # Closes the ticket when ITS restaurant is no longer violating, even if
+        # other restaurants for the same rule are still in violation.
+        violating_restaurants = get_unique_restaurants(records)
+        close_resolved_case_if_open(rule, violating_restaurants)
+
         if not records:
             continue
 
@@ -156,18 +162,28 @@ def run_athena(query):
 
             data = row["Data"]
 
-            # Support both formats:
-            # 1 column -> message only (global rule)
-            # 2 columns -> restaurant + message
+            # Support three formats (parsed positionally):
+            # 1 column  -> message only (global rule)
+            # 2 columns -> restaurant_number, message
+            # 3 columns -> restaurant_number, device_id, message
+            #              (device_id = server name, e.g. UK04071GSC01)
             if len(data) == 1:
                 records.append({
                     "restaurant_number": None,
+                    "device_id": None,
                     "message": data[0].get("VarCharValue", "")
+                })
+            elif len(data) == 2:
+                records.append({
+                    "restaurant_number": data[0].get("VarCharValue", ""),
+                    "device_id": None,
+                    "message": data[1].get("VarCharValue", "")
                 })
             else:
                 records.append({
                     "restaurant_number": data[0].get("VarCharValue", ""),
-                    "message": data[1].get("VarCharValue", "")
+                    "device_id": data[1].get("VarCharValue", ""),
+                    "message": data[2].get("VarCharValue", "")
                 })
 
         next_token = results.get("NextToken")
@@ -597,7 +613,7 @@ def get_open_servicenow_case(rule_id):
     return max(items, key=alert_sort_key)
 
 
-def close_servicenow_ticket_if_open(rule, script_results=None):
+def close_servicenow_ticket_if_open(rule, script_results=None, resolution_note=None):
     case_item = get_open_servicenow_case(rule["rule_id"])
     if not case_item:
         print(f"No open ServiceNow case for rule {rule['rule_id']}; nothing to close")
@@ -613,10 +629,57 @@ def close_servicenow_ticket_if_open(rule, script_results=None):
     case_item["status"] = "CLOSING"
     case_item["last_updated_at"] = now
 
-    return _invoke_servicenow_close(rule, case_item, script_results)
+    return _invoke_servicenow_close(rule, case_item, script_results, resolution_note)
 
 
-def _invoke_servicenow_close(rule, case_item, script_results=None):
+def close_resolved_case_if_open(rule, violating_restaurants=None):
+    """Close an open ticket when its restaurant is no longer violating.
+
+    Runs every evaluation. Compares the open `SERVICENOW_CASE`'s restaurant
+    against the rule's CURRENT violating restaurants:
+      * Restaurant-scoped case  -> close only if that restaurant has cleared
+        (other restaurants still violating does NOT keep this ticket open).
+      * Non-restaurant rule      -> close only when there are no violations.
+    Invokes the close Lambda with a note explaining the issue self-cleared.
+    """
+    if not rule.get("servicenow_alert"):
+        return False
+
+    case_item = get_open_servicenow_case(rule["rule_id"])
+    if not case_item:
+        return False
+
+    case_restaurant = case_item.get("restaurant_number")
+    violating = {str(r) for r in (violating_restaurants or []) if r}
+
+    if case_restaurant:
+        # Restaurant-scoped: keep open while THIS restaurant still violates.
+        if str(case_restaurant) in violating:
+            return False
+        note = (
+            f"A subsequent Snowfall proactive alert run found no violation for "
+            f"restaurant {case_restaurant} — the previously reported issue has been "
+            "fixed. Closing this ticket automatically."
+        )
+    else:
+        # Non-restaurant rule: only close when nothing is violating.
+        if violating:
+            return False
+        note = (
+            "A subsequent Snowfall proactive alert run found no rule violation — "
+            "the previously reported issue has been fixed. Closing this ticket "
+            "automatically."
+        )
+
+    print(
+        f"Rule {rule['rule_id']} no longer violating for case "
+        f"{case_item.get('alert_id')} (restaurant={case_restaurant or 'N/A'}); "
+        "auto-closing ticket (issue cleared on a later run)."
+    )
+    return close_servicenow_ticket_if_open(rule, resolution_note=note)
+
+
+def _invoke_servicenow_close(rule, case_item, script_results=None, resolution_note=None):
     if not SERVICENOW_CLOSE_LAMBDA:
         print("[WARN] SERVICENOW_CLOSE_LAMBDA env var not set; cannot invoke close Lambda")
         return False
@@ -627,6 +690,9 @@ def _invoke_servicenow_close(rule, case_item, script_results=None):
         # Pass the proactive script outcomes so the close Lambda can record
         # exactly what was remediated in the ServiceNow resolution notes.
         "script_results": _to_json_safe(script_results or []),
+        # Optional override note (e.g. issue cleared on a later run with no
+        # script remediation). Empty string when a script performed the fix.
+        "resolution_note": resolution_note or "",
     }
 
     try:

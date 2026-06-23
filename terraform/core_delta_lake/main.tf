@@ -99,6 +99,7 @@ module "lambda_module" {
   newrelic_10min_schedule         = var.newrelic_10min_schedule
   newrelic_5min_schedule          = var.newrelic_5min_schedule
   newrelic_1am_schedule           = var.newrelic_1am_schedule
+  smartsheet_6am_schedule         = var.smartsheet_6am_schedule
   service_agent_bucket_arn        = module.s3_module_main.service_agent_bucket_arn
   stage_name                      = var.stage_name
   ncr_soap_service_now_create_url = var.ncr_soap_service_now_create_url
