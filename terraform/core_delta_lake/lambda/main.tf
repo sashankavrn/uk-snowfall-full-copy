@@ -978,8 +978,8 @@ data "aws_s3_bucket" "raw_bucket" {
 ## Archive the snowfall-proactive-alerts Python script
 data "archive_file" "uk_snowfall_proactive_alerts" {
   type        = "zip"
-  source_dir  = "${path.module}/scripts/python/snowfall-proactive-alerts/"
-  output_path = "${path.module}/scripts/zips/snowfall-proactive-alerts.zip"
+  source_dir  = "${path.module}/scripts/python/snowfall-proactive-alerts-orchestrator/"
+  output_path = "${path.module}/scripts/zips/snowfall-proactive-alerts-orchestrator.zip"
 }
 
 ## Lambda function - uk-snowfall-proactive-alerts
