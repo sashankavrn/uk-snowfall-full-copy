@@ -985,7 +985,7 @@ data "archive_file" "uk_snowfall_proactive_alerts" {
 ## Lambda function - uk-snowfall-proactive-alerts
 resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
   filename         = data.archive_file.uk_snowfall_proactive_alerts.output_path
-  function_name    = "uk-snowfall-proactive-alerts-${var.environment}"
+  function_name    = "uk-snowfall-proactive-alerts-orchestrator-${var.environment}"
   role             = var.role_assumed_arn
   handler          = "lambda_function.lambda_handler"
   runtime          = "python3.12"
@@ -1668,6 +1668,7 @@ resource "aws_lambda_function" "uk_snowfall_servicenow_tickets_cleanup" {
   environment {
     variables = {
       SERVICE_NOW_TICKETS_TABLE = "uk-snowfall-${var.environment}-service-now-tickets"
+      PROACTIVE_ALERTS_TABLE    = "uk-snowfall-${var.environment}-proactive-alerts"
     }
   }
 }

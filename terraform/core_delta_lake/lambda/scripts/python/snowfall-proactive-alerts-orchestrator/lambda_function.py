@@ -269,10 +269,41 @@ def process_rule(rule, records):
                     "(proactive script succeeded; ticket raised and closed automatically)."
                 )
             else:
-                print(
-                    f"ServiceNow ticket raised for rule {rule['rule_id']}; "
-                    "script failed or not present — ticket left open for engineer dispatch."
-                )
+                # Script did not clear the rule. Two sub-cases produce an NCR
+                # remark update (ticket stays OPEN in both):
+                #   Case 2 - stderr says 'Invalid script_name', result_output empty
+                #            -> 'Attempted to run script <name> - <stderr>'.
+                #   Case 3 - result_output present but no 'COMPLETED SUCCESSFULLY'
+                #            -> 'Ran script <name> - <result_output>'.
+                remark_note = build_non_success_remark(script_results)
+                if remark_note:
+                    if ncr_ticket_id and CLOSE_DELAY_SECONDS > 0:
+                        # Same brief delay as the successful path so NCR has
+                        # time to register the newly-created ticket before
+                        # we push an update to it.
+                        print(
+                            f"Waiting {CLOSE_DELAY_SECONDS}s before updating NCR ticket "
+                            f"{ncr_ticket_id} for rule {rule['rule_id']} "
+                            "(script did not report COMPLETED SUCCESSFULLY)..."
+                        )
+                        time.sleep(CLOSE_DELAY_SECONDS)
+                    elif not ncr_ticket_id:
+                        print(
+                            f"[WARN] No NCR ticket ID returned for rule {rule['rule_id']}; "
+                            "update may be skipped."
+                        )
+                    update_servicenow_ticket_if_open(
+                        rule, script_results, remark_text=remark_note
+                    )
+                    print(
+                        f"Updated ServiceNow ticket for rule {rule['rule_id']} "
+                        f"with script outcome remark (ticket left OPEN): {remark_note}"
+                    )
+                else:
+                    print(
+                        f"ServiceNow ticket raised for rule {rule['rule_id']}; "
+                        "script failed or not present — ticket left open for engineer dispatch."
+                    )
 
 # =============================
 # Cooldown Logic
@@ -679,6 +710,82 @@ def close_resolved_case_if_open(rule, violating_restaurants=None):
     return close_servicenow_ticket_if_open(rule, resolution_note=note)
 
 
+def update_servicenow_ticket_if_open(rule, script_results=None, remark_text=None):
+    """Send a Remark-only UpdateServiceRequest to NCR for the open case.
+
+    Used when the proactive script errored in a way that does not warrant
+    closing the ticket (e.g. 'Invalid script_name') but we still want to
+    attach an attempt note to the ticket so on-call engineers see what was
+    tried. The ticket stays OPEN in NCR and the DDB case status is left
+    unchanged.
+    """
+    case_item = get_open_servicenow_case(rule["rule_id"])
+    if not case_item:
+        print(
+            f"No open ServiceNow case for rule {rule['rule_id']}; "
+            "nothing to update"
+        )
+        return False
+
+    now = datetime.now(ZoneInfo("Europe/London")).isoformat()
+    # Stamp last_updated_at only — do NOT flip status; ticket stays open.
+    try:
+        proactive_alerts_table.update_item(
+            Key={"alert_id": case_item["alert_id"]},
+            UpdateExpression="SET last_updated_at = :ts",
+            ExpressionAttributeValues={":ts": now},
+        )
+        case_item["last_updated_at"] = now
+    except Exception as exc:  # noqa: BLE001
+        print(
+            f"[WARN] Failed to stamp last_updated_at on case "
+            f"{case_item.get('alert_id')}: {exc}"
+        )
+
+    return _invoke_servicenow_update(rule, case_item, script_results, remark_text)
+
+
+def _invoke_servicenow_update(rule, case_item, script_results=None, remark_text=None):
+    """Invoke the ticket-close Lambda in update-only mode.
+
+    Reuses the same Lambda (SERVICENOW_CLOSE_LAMBDA) but tells it to send
+    UpdateServiceRequest with Remark.Text only (no ResolutionNotes) so NCR
+    does not resolve the ticket. The remark payload matches the required
+    format 'Attempted to run script {script_name} - {stderr}'.
+    """
+    if not SERVICENOW_CLOSE_LAMBDA:
+        print("[WARN] SERVICENOW_CLOSE_LAMBDA env var not set; cannot invoke update Lambda")
+        return False
+
+    payload = {
+        "mode": "update",
+        "rule": _to_json_safe(rule),
+        "case": _to_json_safe(case_item),
+        "script_results": _to_json_safe(script_results or []),
+        # The close Lambda reads resolution_note for both close and update
+        # flows; in update mode it becomes the Remark.Text sent to NCR.
+        "resolution_note": remark_text or "",
+    }
+
+    try:
+        response = lambda_client.invoke(
+            FunctionName=SERVICENOW_CLOSE_LAMBDA,
+            InvocationType="Event",
+            Payload=json.dumps(payload).encode("utf-8"),
+        )
+        print(
+            f"Triggered ServiceNow update Lambda (mode=update) for case "
+            f"{case_item.get('alert_id')} (StatusCode={response.get('StatusCode')})"
+        )
+        return True
+    except Exception as exc:  # noqa: BLE001
+        print(
+            f"[ERROR] Failed to invoke ServiceNow update Lambda for case "
+            f"{case_item.get('alert_id')}: {exc}"
+        )
+        return False
+
+
 def _invoke_servicenow_close(rule, case_item, script_results=None, resolution_note=None):
     if not SERVICENOW_CLOSE_LAMBDA:
         print("[WARN] SERVICENOW_CLOSE_LAMBDA env var not set; cannot invoke close Lambda")
@@ -744,6 +851,55 @@ def are_all_script_results_successful(script_results):
             return False
 
     return True
+
+
+def _build_non_success_remark_line(result_item):
+    """Return a single NCR-remark line for a non-successful script result.
+
+    Handles two use cases:
+      Case 2: script could not run and stderr reports 'Invalid script_name'
+              (result_output is empty) -> 'Attempted to run script <name> - <stderr>'.
+      Case 3: script ran (result_output present) but the output does not
+              contain 'COMPLETED SUCCESSFULLY' -> 'Ran script <name> - <result_output>'.
+
+    Returns "" if the result does not match either case (e.g. it was actually
+    successful, or empty/unknown) so callers can skip it.
+    """
+    if not isinstance(result_item, dict):
+        return ""
+
+    script_name = str(result_item.get("script_name", "") or "").strip()
+    stderr_text = str(result_item.get("stderr", "") or "").strip()
+    output_text = str(result_item.get("result_output", "") or "").strip()
+
+    # Case 2: invalid script_name from the client runner. stderr carries the
+    # reason and there is no meaningful result_output.
+    if not output_text and "invalid script_name" in stderr_text.lower():
+        return f"Attempted to run script {script_name} - {stderr_text}"
+
+    # Case 3: script ran and produced output but did not report the expected
+    # 'COMPLETED SUCCESSFULLY' completion marker.
+    if output_text and "COMPLETED SUCCESSFULLY" not in output_text.upper():
+        return f"Ran script {script_name} - {output_text}"
+
+    return ""
+
+
+def build_non_success_remark(script_results):
+    """Build the aggregated NCR remark text for non-successful script results.
+
+    One line per matching result, joined by newlines. Returns "" if nothing
+    matched (in which case the ticket is left open with no auto-update).
+    """
+    if not script_results:
+        return ""
+
+    lines = []
+    for result_item in script_results:
+        line = _build_non_success_remark_line(result_item)
+        if line:
+            lines.append(line)
+    return "\n".join(lines)
 
 
 def escape_html_multiline(value):

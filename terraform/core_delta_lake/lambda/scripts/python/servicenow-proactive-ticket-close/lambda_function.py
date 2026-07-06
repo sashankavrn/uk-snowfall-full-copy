@@ -97,6 +97,17 @@ def lambda_handler(event, context):
     # Optional override note (e.g. when a later proactive run found the issue
     # cleared and we are closing the ticket without a script remediation).
     resolution_note = event.get("resolution_note") or ""
+    # mode:
+    #   "close"  (default) - send UpdateServiceRequest with ResolutionNotes;
+    #                        mark PROACTIVE_ALERTS_TABLE case CLOSED on success.
+    #   "update"           - send UpdateServiceRequest with Remark.Text only
+    #                        (no ResolutionNotes) so the ticket STAYS OPEN;
+    #                        do NOT flip case status. Used e.g. when the
+    #                        proactive script returned 'Invalid script_name'
+    #                        and we want to attach an attempt note to NCR
+    #                        while leaving the ticket open for an engineer.
+    mode = str(event.get("mode") or "close").strip().lower()
+    update_only = mode == "update"
 
     if not case:
         print("[ERROR] No 'case' payload in event; nothing to do.")
@@ -104,7 +115,7 @@ def lambda_handler(event, context):
 
     case_id = case.get("alert_id", "UNKNOWN")
     rule_id = case.get("rule_id", "")
-    print(f"Processing close for case {case_id} (rule={rule_id})")
+    print(f"Processing {'update' if update_only else 'close'} for case {case_id} (rule={rule_id})")
 
     # Resolve NCR ticket ID
     ncr_ticket_id = _resolve_ncr_ticket_id(case)
@@ -112,9 +123,10 @@ def lambda_handler(event, context):
         print(
             f"[WARN] No NCR ticket ID found for case {case_id}. "
             "Ticket may never have been created or creation is still in-flight. "
-            "Marking case as CLOSED without calling NCR."
+            f"Skipping NCR call ({'update' if update_only else 'close'} mode)."
         )
-        _mark_case_closed(case_id, ncr_ticket_id=None, ncr_status="SKIPPED")
+        if not update_only:
+            _mark_case_closed(case_id, ncr_ticket_id=None, ncr_status="SKIPPED")
         return {
             "statusCode": 200,
             "body": json.dumps({"skipped": True, "reason": "no_ncr_ticket_id", "case_id": case_id}),
@@ -123,14 +135,22 @@ def lambda_handler(event, context):
     print(f"Resolved NCR ticket ID: {ncr_ticket_id}")
 
     # Build and send UpdateServiceRequest
-    payload = _build_update_payload(ncr_ticket_id, case, rule, script_results, resolution_note)
+    payload = _build_update_payload(
+        ncr_ticket_id, case, rule, script_results, resolution_note, update_only=update_only
+    )
     print(f"NCR update request payload: {json.dumps(payload)}")
 
-    # The detailed resolution notes we send to NCR are also persisted to the
-    # ticket row so the DynamoDB close_notes reflect what actually happened.
-    resolution_notes = (
-        payload.get("UpdateServiceRequest", {}).get("ResolutionNotes") or RESOLUTION_TEXT
-    )
+    # The detailed note we send to NCR is also persisted to the ticket row so
+    # the DynamoDB record reflects what actually happened. In close mode we
+    # use ResolutionNotes; in update-only mode there is no ResolutionNotes,
+    # so we persist the Remark text instead.
+    update_srv = payload.get("UpdateServiceRequest", {})
+    if update_only:
+        persisted_note = (
+            (update_srv.get("Remark") or {}).get("Text") or ""
+        )
+    else:
+        persisted_note = update_srv.get("ResolutionNotes") or RESOLUTION_TEXT
 
     response = _post_to_ncr(payload)
     print(f"NCR update response: {json.dumps(response)}")
@@ -143,15 +163,26 @@ def lambda_handler(event, context):
     fault_code = fault.get("FaultCode")
     fault_description = fault.get("FaultDescription")
 
-    # Update SERVICE_NOW_TICKETS_TABLE. On success store the detailed remediation
-    # notes; on failure store the fault description so the reason is visible.
-    close_notes = fault_description or resolution_notes
-    _update_ticket_resolved(ncr_ticket_id, ncr_status, close_notes)
+    # Update SERVICE_NOW_TICKETS_TABLE. On failure store the fault description
+    # so the reason is visible. In close mode we also stamp resolved_at; in
+    # update-only mode the ticket is still open, so we only stamp updated_at.
+    persisted_note = fault_description or persisted_note
+    if update_only:
+        _update_ticket_remarked(ncr_ticket_id, ncr_status, persisted_note)
+    else:
+        _update_ticket_resolved(ncr_ticket_id, ncr_status, persisted_note)
 
     success = ncr_status == "SUCCESS"
-    if success:
-        # Update PROACTIVE_ALERTS_TABLE case record only on business success.
+    if success and not update_only:
+        # Update PROACTIVE_ALERTS_TABLE case record only on business success
+        # and only in close mode. Update-only mode leaves the case open so
+        # an engineer can pick it up.
         _mark_case_closed(case_id, ncr_ticket_id=ncr_ticket_id, ncr_status=ncr_status)
+    elif success and update_only:
+        print(
+            f"Update-only mode: NCR ticket {ncr_ticket_id} updated with remark; "
+            f"case {case_id} left in its current state (not closed)."
+        )
     else:
         print(
             f"[WARN] NCR update returned non-success status for case {case_id} "
@@ -266,7 +297,7 @@ def _summarise_script_results(script_results: list) -> str:
     return " | ".join(lines)
 
 
-def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict, script_results: list = None, resolution_note: str = "") -> dict:
+def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict, script_results: list = None, resolution_note: str = "", update_only: bool = False) -> dict:
     transaction_id = str(int(datetime.now(timezone.utc).timestamp() * 1000))
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
@@ -282,6 +313,33 @@ def _build_update_payload(ncr_ticket_id: str, case: dict, rule: dict, script_res
 
     # Detailed account of what the proactive agents actually executed.
     results_summary = _summarise_script_results(script_results or [])
+
+    # Path 0: update-only mode. Ticket stays OPEN in NCR - we just attach a
+    # Remark. No ResolutionNotes so NCR will not resolve the ticket.
+    if update_only:
+        remark_text = resolution_note or (
+            f"Snowfall proactive update for ticket {ncr_ticket_id}. "
+            f"Rule: {description}. "
+            f"Source alert: {case.get('source_alert_id') or case.get('alert_id') or ''}."
+        )
+        if results_summary and results_summary not in remark_text:
+            remark_text += f" Script outcome(s): {results_summary}."
+        return {
+            "Header": {
+                "TransactionID": transaction_id,
+                "USERID": USER_ID,
+                "SourceSystem": SOURCE_SYSTEM,
+                "TimeStamp": timestamp,
+            },
+            "UpdateServiceRequest": {
+                "CustomerTicketID": customer_ticket_id,
+                "TicketID": ncr_ticket_id,
+                "CountryCode": country_code,
+                "Remark": {
+                    "Text": remark_text
+                },
+            },
+        }
 
     # Path 1: explicit override note (issue cleared on a later run, no script
     # remediation was performed) takes precedence.
@@ -472,6 +530,48 @@ def _update_ticket_resolved(ncr_ticket_id: str, ncr_status: str, close_notes):
         print(f"Updated ticket row {ticket_id} → resolved_at set (ncr_status={ncr_status})")
     except Exception as exc:  # noqa: BLE001
         print(f"[WARN] Failed to update ticket row {ticket_id}: {exc}")
+
+
+def _update_ticket_remarked(ncr_ticket_id: str, ncr_status: str, remark_text):
+    """Stamp an update-only remark onto the SERVICE_NOW_TICKETS_TABLE row.
+
+    Ticket remains OPEN in NCR (no ResolutionNotes were sent), so we do NOT
+    set resolved_at. We record the latest remark (last_remark_*) and also
+    append the entry to remarks_history so operators can see every remark
+    that Snowfall has pushed onto the ticket across multiple runs.
+    """
+    ticket_id = f"NCR#{ncr_ticket_id}"
+    now_iso = datetime.now(timezone.utc).isoformat()
+    history_entry = {
+        "timestamp": now_iso,
+        "ncr_update_status": ncr_status,
+        "remark_text": remark_text or "",
+    }
+    try:
+        tickets_table.update_item(
+            Key={"ticket_id": ticket_id},
+            UpdateExpression=(
+                "SET last_remark_at = :ts, ncr_update_status = :cs, "
+                "last_remark_text = :rt, "
+                # if_not_exists seeds an empty list on the first update so
+                # list_append works whether or not the attribute exists.
+                "remarks_history = list_append("
+                "if_not_exists(remarks_history, :empty), :entry)"
+            ),
+            ExpressionAttributeValues={
+                ":ts": now_iso,
+                ":cs": ncr_status,
+                ":rt": remark_text or "",
+                ":entry": [history_entry],
+                ":empty": [],
+            },
+        )
+        print(
+            f"Updated ticket row {ticket_id} → remark appended to remarks_history "
+            f"(ncr_status={ncr_status})"
+        )
+    except Exception as exc:  # noqa: BLE001
+        print(f"[WARN] Failed to add remark to ticket row {ticket_id}: {exc}")
 
 
 def _mark_case_closed(case_id: str, ncr_ticket_id, ncr_status: str):
