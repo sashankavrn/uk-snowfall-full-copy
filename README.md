@@ -36,5 +36,3 @@ Before deploying the infrastructure, ensure that a ServiceNow connector is confi
    c. other_resources
    d. datashare_resources
 
-## Additional Documentation:
-For a detailed Confluence-ready architecture and dataset flow document, see `docs/snowfall-2.0-confluence-page.md`.
