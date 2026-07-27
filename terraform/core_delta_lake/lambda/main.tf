@@ -1699,7 +1699,7 @@ resource "aws_lambda_function" "uk_snowfall_dynamic_smartsheet_intergation" {
 
   environment {
     variables = {
-      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-landing-${var.account_number}"
+      TARGET_BUCKET = "eu-central1-${var.environment}-uk-snowfall-raw-${var.account_number}"
       SNS_TOPIC_ARN = var.sns_topic_arn
     }
   }
