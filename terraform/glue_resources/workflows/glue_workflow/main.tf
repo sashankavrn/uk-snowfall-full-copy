@@ -673,8 +673,11 @@ locals {
       max_concurrent = 1
       batch_size     = 100
       batch_window   = 10
-      trigger_type   = "EVENT"
-      schedule       = null
+      # Smartsheet Lambda runs daily at 06:00 UTC and lands files under
+      # s3://<landing>/smartsheet/. Trigger Glue workflow 30 min later so all
+      # sheet files are guaranteed to be present before processing.
+      trigger_type   = "SCHEDULED"
+      schedule       = "cron(30 6 * * ? *)"
       reporting_date = null
     }
   }

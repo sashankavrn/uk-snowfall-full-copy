@@ -928,32 +928,11 @@ resource "aws_cloudwatch_event_target" "happysignals_event_target" {
 }
 
 ###################################### Smartsheet ##############################################
-
-resource "aws_cloudwatch_event_rule" "smartsheet_event_rule" {
-  name          = "uk-snowfall-smartsheet-trigger-rule"
-  description   = "Object create events on bucket s3://${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"
-  event_pattern = <<EOF
-{
-  "source": ["aws.s3"],
-  "detail": {
-    "bucket": {
-      "name": ["${data.terraform_remote_state.core_module.outputs.raw_bucket_name}"]
-    },
-    "object": {
-      "key": [ {
-        "prefix": "smartsheet/"
-      } ]
-    }
-  },
-  "detail-type": ["Object Created"]
-}
-EOF
-}
-
-resource "aws_cloudwatch_event_target" "smartsheet_event_target" {
-  rule     = aws_cloudwatch_event_rule.smartsheet_event_rule.name
-  arn      = local.workflow_trigger_arns["smartsheet"]
-  role_arn = var.role_assumed_arn
-}
+# NOTE: Smartsheet Glue workflow (`uk-snowfall-smartsheet`) is now SCHEDULED
+# (cron 06:30 UTC daily) — see glue_resources/workflows/glue_workflow/main.tf.
+# Lambda `uk-snowfall-dynamic-smartsheet-intergation` lands files at ~06:00 UTC;
+# the 30 min gap guarantees all sheets are present before Glue runs.
+# The previous S3 Object-Created EventBridge rule/target were removed to avoid
+# double invocations and to give the Lambda time to finish all sheet uploads.
 
 

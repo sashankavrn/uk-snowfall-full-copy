@@ -106,7 +106,7 @@ def export_sheet(sheet_id, token):
     sheet = get_sheet(sheet_id, token)
     sheet_name = sheet.get("name", f"sheet-{sheet_id}")
     safe_name = sanitise_name(sheet_name)
-    key = f"smartsheet/{safe_name}.json"
+    key = f"smartsheet/{safe_name}/{safe_name}.json"
     rows = transform_sheet(sheet)
     payload = {
         "sheet_id": sheet_id,
