@@ -10,4 +10,6 @@ newrelic_5min_schedule  = "cron(0 0 31 2 ? *)"
 newrelic_1am_schedule   = "cron(0 0 31 2 ? *)"
 smartsheet_6am_schedule = "cron(0 0 31 2 ? *)"
 stage_name              = "nprod"
+# ncr_soap_service_now_create_url = "https://osbcert-ha.ncrvoyix.com/ext/CSDI/HSRStandardSyncRestReq/ServiceRequest/CreateServiceRequest"
+# ncr_soap_service_now_update_url = "https://osbcert-ha.ncrvoyix.com/ext/CSDI/HSRStandardSyncRestReq/ServiceRequest/UpdateServiceRequest" 
 
