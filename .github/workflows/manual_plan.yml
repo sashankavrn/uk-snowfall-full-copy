@@ -1,0 +1,137 @@
+name: Manual Plan
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run plan from"
+        required: true
+        default: "main"
+      target_env:
+        description: "Environment to plan against"
+        required: true
+        type: choice
+        options:
+          - prod
+          - nonprod
+        default: prod
+
+
+# Prevent overlapping runs on same ref
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_type }}-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  manual-prod-plan:
+    runs-on: ubuntu-latest
+
+    # Set the GitHub Actions environment based on prod/nonprod
+    environment:
+      name: ${{ github.event.inputs.target_env }}
+
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      TFVARS_FILE: ${{ github.event.inputs.target_env == 'prod' && 'terraform/prod.tfvars' || 'terraform/nprod.tfvars' }}
+
+    steps:
+      - name: Checkout selected branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.4
+
+      - name: Load AWS Role and State Bucket
+        id: loadvars
+        shell: bash
+        run: |
+          set -euo pipefail
+          VAR_FILE="${TFVARS_FILE}"
+
+          if [[ ! -f "$VAR_FILE" ]]; then
+            echo "Missing prod.tfvars at $VAR_FILE"
+            exit 1
+          fi
+
+          AWS_ROLE_TO_ASSUME=$(grep -E '^\s*aws_role_to_assume\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
+          STATE_BUCKET=$(grep -E '^\s*terraform_bucket_name\s*=' "$VAR_FILE" | cut -d '=' -f2 | tr -d ' "')
+
+          if [[ -z "${AWS_ROLE_TO_ASSUME}" || -z "${STATE_BUCKET}" ]]; then
+            echo "Missing aws_role_to_assume or terraform_bucket_name in prod.tfvars"
+            exit 1
+          fi
+
+          echo "AWS_ROLE_TO_ASSUME=$AWS_ROLE_TO_ASSUME" >> "$GITHUB_ENV"
+          echo "STATE_BUCKET=$STATE_BUCKET" >> "$GITHUB_ENV"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          role-session-name: gha-manual-prod-plan
+          audience: sts.amazonaws.com
+
+      - name: Set module list
+        id: modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODULES=$'core_delta_lake\ndatashare_resources\nglue_resources\nother_resources'
+          {
+            echo "list<<EOF"
+            printf '%s\n' "${MODULES}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Terraform Plan (ALL modules)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Running Terraform plans using remote state bucket: ${STATE_BUCKET}"
+          mkdir -p plan_artifacts
+
+          MODULES="${{ steps.modules.outputs.list }}"
+
+          while IFS= read -r stage; do
+            [[ -z "$stage" ]] && continue
+
+            echo "=== PLAN: $stage ==="
+            pushd "terraform/$stage" >/dev/null
+
+            STATE_KEY="snowfall-data-pipeline/${stage}/terraform.tfstate"
+            STATE_URI="s3://${STATE_BUCKET}/${STATE_KEY}"
+            echo "Using remote state: ${STATE_URI}"
+
+            if aws s3 ls "${STATE_URI}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+              echo "Found existing remote state at ${STATE_URI}"
+            else
+              echo "::notice::No existing state — Terraform will create it if needed."
+            fi
+
+            BACKEND_OPTS="-backend-config=bucket=${STATE_BUCKET} \
+                          -backend-config=key=${STATE_KEY} \
+                          -backend-config=region=${AWS_REGION}"
+
+            TFVARS_BASENAME=$(basename "${TFVARS_FILE}")
+            terraform init ${BACKEND_OPTS}
+            terraform plan -var-file="../${TFVARS_BASENAME}" -no-color > "../../plan_artifacts/plan_${stage}.txt"
+            popd >/dev/null
+
+          done <<< "$MODULES"
+
+      - name: Upload plan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-plan-${{ github.sha }}
+          path: plan_artifacts
+          if-no-files-found: warn
