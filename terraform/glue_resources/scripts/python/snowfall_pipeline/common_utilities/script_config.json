@@ -854,6 +854,15 @@
             "sys_created_on": "timestamp",
             "cdc_timestamp": "timestamp"
         }  
+    },
+    "smartsheet": {
+        "process_timestamp": [
+            "cdc_timestamp"
+        ],
+        "primary_key": "sheet_id",
+        "change_column_data_type": {
+            "cdc_timestamp": "timestamp"
+        }  
     }
 }
 

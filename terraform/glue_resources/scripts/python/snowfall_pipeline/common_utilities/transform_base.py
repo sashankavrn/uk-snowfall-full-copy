@@ -1238,5 +1238,96 @@ class TransformBase:
             df = df.withColumn(col_name, F.trim(F.col(col_name)))
 
         return df
+    
+    @transformation_timer
+    def apply_retention_policy(self, retention_days: int, s3_paths: list):
+        """
+        Apply retention policy on Delta tables stored in S3 by deleting old records
+        and running VACUUM.
+
+        Args:
+            retention_days (int): Number of days to retain data.
+            s3_paths (list): List of S3 Delta table paths.
+
+        Returns:
+            None
+        """
+
+        self.logger.info("Running the apply_retention_policy function")
+
+        if isinstance(retention_days, int) and retention_days > 0:
+
+            for s3_path in s3_paths:
+                self.logger.info(f"Applying retention policy on: {s3_path}")
+
+                delta_table = DeltaTable.forPath(self.spark, s3_path)
+
+                # Delete records older than retention period
+                delta_table.delete(
+                    F.col("cdc_timestamp") <
+                    F.current_timestamp() - F.expr(f"INTERVAL {retention_days} DAYS")
+                )
+
+                # Vacuum old files
+                delta_table.vacuum(retentionHours=48)
+
+                self.logger.info(f"Retention applied successfully on: {s3_path}")
+
+        else:
+            self.logger.info(
+                f"Invalid retention days: {retention_days}. It must be an integer greater than 0."
+            )
+    @transformation_timer
+    def check_data_freshness(self, threshold_hours: int, s3_path: str):
+        """
+        Check Delta table freshness using cdc_timestamp.
+
+        Args:
+            threshold_hours (int): Max allowed delay in hours.
+            s3_path (str): S3 Delta table path.
+
+        Returns:
+            bool: True = stale (fail), False = within threshold
+        """
+
+        from datetime import datetime, timedelta
+        from pyspark.sql.functions import max as spark_max
+
+        self.logger.info("Running the check_data_freshness function")
+
+        if isinstance(threshold_hours, int) and threshold_hours > 0:
+
+            self.logger.info(f"Checking freshness for: {s3_path}")
+
+            try:
+                df = self.spark.read.format("delta").load(s3_path)
+
+                last_ts = df.select(spark_max("cdc_timestamp")).collect()[0][0]
+
+                if last_ts is None:
+                    self.logger.warning(f"No timestamp found in: {s3_path}")
+                    return True
+
+                now = datetime.now()
+                last_ts = last_ts.replace(tzinfo=None)
+
+                is_stale = (now - last_ts) >= timedelta(hours=threshold_hours)
+
+                if is_stale:
+                    self.logger.error(f"Data stale (> {threshold_hours}h) at: {s3_path}")
+                else:
+                    self.logger.info(f"Data fresh within threshold at: {s3_path}")
+
+                return is_stale
+
+            except Exception as e:
+                self.logger.error(f"Failed to read Delta table at {s3_path}: {str(e)}")
+                return True  # treat as failure
+
+        else:
+            self.logger.info(
+                f"Invalid threshold_hours: {threshold_hours}. Must be > 0."
+            )
+            return True
 
 
