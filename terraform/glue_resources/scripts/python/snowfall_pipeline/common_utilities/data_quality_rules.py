@@ -221,5 +221,11 @@ dq_rules = {
         RowCount > 0,
         IsComplete "number",
         IsComplete "sys_created_on"
+    ]""",
+    "smartsheet":"""Rules = [
+        ColumnCount <= 50,
+        RowCount > 0,
+        IsComplete "sheet_id",
+        IsComplete "sheet_name"
     ]"""
 }

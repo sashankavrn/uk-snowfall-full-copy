@@ -3,7 +3,7 @@ from snowfall_pipeline.common_utilities.decorators import transformation_timer
 from delta.tables import DeltaTable
 from datetime import datetime
 
-class ProcessedServiceAgentWorkerJob(TransformBase):
+class ProcessedSmartsheetWorkerJob(TransformBase):
 
     def __init__(self, spark, sc, glueContext, dataset=None, sub_dataset=None, extension=None):
         super().__init__(spark, sc, glueContext, dataset, 'processed')

@@ -38,8 +38,8 @@ class PreparationServiceAgentWorkerJob(TransformBase):
 
         This method executes the following steps:        
         1. Capture the full input file path in 'host_name'
-        2. (XML only) Flatten nested DataFrame structure
-        3. (XML only) Drop unnecessary nested field ("_VALUE")
+        2. (XML only) Drop unnecessary nested field ("_VALUE")
+        3. (XML only) Flatten nested DataFrame structure
         4. (XML only) Convert complex nested columns into JSON strings
         5. Extract file timestamp from input path (UTC)
         6. Extract host folder name
@@ -62,11 +62,14 @@ class PreparationServiceAgentWorkerJob(TransformBase):
         df = df.withColumn("host_name", F.input_file_name())
 
         if self.extension == 'xml':
-            # Step 2: Flatten nested DataFrame structure
-            df = self.flatten_nest_df(df)
+            new_cols = [c.replace(":", "_") for c in df.columns]
+            df = df.toDF(*new_cols)
 
-            # Step 3: Drop unnecessary nested field "_VALUE"
+            # Step 2: Drop unnecessary nested field "_VALUE"
             df = self.drop_nested_field(df, "_VALUE")
+
+            # Step 3: Flatten nested DataFrame structure
+            df = self.flatten_nest_df(df)
     
             # Step 4: Convert complex nested types into JSON strings, and cast simple types to string.
             df = df.select(*[
@@ -142,6 +145,10 @@ class PreparationServiceAgentWorkerJob(TransformBase):
             message = "Records in the error folder that have failed DQ rules"
             self.aws_instance.send_sns_message(message)
         
+        s3_paths = [f"s3://{self.preparation_bucket_name}/{self.file_path}/"]
+
+        self.apply_retention_policy(60, s3_paths)
+
         self.logger.info(f'Finished running the {self.__class__.__name__} pipeline!')
 
     def extract_root_tag(self, bucket_name, prefix):
