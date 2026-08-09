@@ -73,13 +73,34 @@ results_table = dynamodb.Table(RESULTS_TABLE_NAME) if RESULTS_TABLE_NAME else No
 
 athena = boto3.client("athena")
 lambda_client = boto3.client("lambda")
+sns_client = boto3.client("sns")
 
 SERVICENOW_TICKET_LAMBDA = os.environ.get("SERVICENOW_TICKET_LAMBDA", "")
 SERVICENOW_CLOSE_LAMBDA = os.environ.get("SERVICENOW_CLOSE_LAMBDA", "")
+SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN", "")
 
 # Seconds to wait after creating an NCR ticket before requesting its closure.
 # Gives NCR time to register the new ticket so the close call is not skipped.
 CLOSE_DELAY_SECONDS = 15
+
+
+def notify_ops_failure(subject, message):
+    if not SNS_TOPIC_ARN:
+        print("[WARN] SNS_TOPIC_ARN is not set; cannot publish failure alert")
+        return
+
+    try:
+        sns_client.publish(TopicArn=SNS_TOPIC_ARN, Subject=subject, Message=message)
+        print(f"[INFO] Published failure alert to SNS: {subject}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[ERROR] Failed to publish SNS alert: {exc}")
+
+
+def truncate_text(value, limit=1200):
+    text = str(value or "")
+    if len(text) <= limit:
+        return text
+    return f"{text[:limit]}..."
 
 # =============================
 # Lambda Entry
@@ -90,26 +111,48 @@ def lambda_handler(event, context):
     print("Starting rule execution")
 
     rules = scan_all_items(rules_table)
+    failed_rule_ids = []
 
     for rule in rules:
 
-        if not rule.get("active"):
-            continue
+        rule_id = rule.get("rule_id", "unknown")
 
-        print(f"Evaluating rule {rule['rule_id']}")
+        try:
 
-        records = run_athena(rule["query"])
+            if not rule.get("active"):
+                continue
 
-        # Reconcile any open ticket against the CURRENT violating restaurants.
-        # Closes the ticket when ITS restaurant is no longer violating, even if
-        # other restaurants for the same rule are still in violation.
-        violating_restaurants = get_unique_restaurants(records)
-        close_resolved_case_if_open(rule, violating_restaurants)
+            print(f"Evaluating rule {rule_id}")
 
-        if not records:
-            continue
+            records = run_athena(rule["query"])
 
-        process_rule(rule, records)
+            # Reconcile any open ticket against the CURRENT violating restaurants.
+            # Closes the ticket when ITS restaurant is no longer violating, even if
+            # other restaurants for the same rule are still in violation.
+            violating_restaurants = get_unique_restaurants(records)
+            close_resolved_case_if_open(rule, violating_restaurants)
+
+            if not records:
+                continue
+
+            process_rule(rule, records)
+        except Exception as exc:  # noqa: BLE001
+            failed_rule_ids.append(rule_id)
+            error_msg = (
+                f"[ERROR] Proactive alerts rule failed\n"
+                f"Rule: {rule_id}\n"
+                f"Error: {exc}"
+            )
+            print(error_msg)
+            notify_ops_failure("Snowfall Proactive Alert Rule Failure", error_msg)
+
+    if failed_rule_ids:
+        summary = (
+            "One or more proactive alert rules failed this run. "
+            f"Failed rules: {', '.join(failed_rule_ids)}"
+        )
+        print(f"[WARN] {summary}")
+        return {"status": "completed_with_errors", "failed_rules": failed_rule_ids}
 
     return {"status": "completed"}
 
@@ -504,7 +547,9 @@ def trigger_servicenow_ticket(rule, alert_item):
         print("[WARN] SERVICENOW_TICKET_LAMBDA env var not set; skipping ticket creation")
         return None
 
-    # Case should already exist from process_rule().
+    # Case should already exist from process_rule(). A DynamoDB scan is
+    # eventually consistent, so a case written moments ago may not appear yet;
+    # log only (no SNS) to avoid false-positive alerts on this benign race.
     existing_case = get_open_servicenow_case(rule["rule_id"])
     if not existing_case:
         print(
@@ -532,6 +577,18 @@ def trigger_servicenow_ticket(rule, alert_item):
             f"{alert_item.get('alert_id')}: {raw_payload[:500]}"
         )
 
+        invoke_failed = status_code != 200 or bool(response.get("FunctionError"))
+        if invoke_failed:
+            notify_ops_failure(
+                "Snowfall ServiceNow Ticket Create Invoke Failure",
+                (
+                    f"Ticket-create Lambda invoke returned non-success for rule {rule['rule_id']}\n"
+                    f"StatusCode: {status_code}\n"
+                    f"FunctionError: {response.get('FunctionError', '')}\n"
+                    f"Payload: {truncate_text(raw_payload)}"
+                ),
+            )
+
         ncr_ticket_id = _extract_ncr_ticket_id(raw_payload)
         if ncr_ticket_id:
             _store_ncr_ticket_id_on_case(existing_case.get("alert_id"), ncr_ticket_id)
@@ -544,11 +601,28 @@ def trigger_servicenow_ticket(rule, alert_item):
                 f"[WARN] No NCR ticket ID returned for alert {alert_item.get('alert_id')}; "
                 "ticket creation may have failed."
             )
+            # Only alert when the invoke itself succeeded but NCR still returned
+            # no ticket ID. If the invoke already failed above, that alert has
+            # fired and this branch would only duplicate it.
+            if not invoke_failed:
+                notify_ops_failure(
+                    "Snowfall ServiceNow Ticket Create No Ticket ID",
+                    (
+                        f"Ticket-create Lambda succeeded but returned no NCR ticket ID for rule {rule['rule_id']}\n"
+                        f"Alert: {alert_item.get('alert_id')}\n"
+                        f"Payload: {truncate_text(raw_payload)}"
+                    ),
+                )
         return ncr_ticket_id
     except Exception as exc:  # noqa: BLE001
-        print(
+        error_msg = (
             f"[ERROR] Failed to invoke ServiceNow ticket Lambda for alert "
             f"{alert_item.get('alert_id')}: {exc}"
+        )
+        print(error_msg)
+        notify_ops_failure(
+            "Snowfall ServiceNow Ticket Create Invoke Error",
+            f"{error_msg}\nRule: {rule.get('rule_id')}"
         )
         return None
 
@@ -777,11 +851,26 @@ def _invoke_servicenow_update(rule, case_item, script_results=None, remark_text=
             f"Triggered ServiceNow update Lambda (mode=update) for case "
             f"{case_item.get('alert_id')} (StatusCode={response.get('StatusCode')})"
         )
+        if response.get("StatusCode") != 202 or response.get("FunctionError"):
+            notify_ops_failure(
+                "Snowfall ServiceNow Update Invoke Failure",
+                (
+                    f"Update invoke returned non-success for rule {rule['rule_id']}\n"
+                    f"Case: {case_item.get('alert_id')}\n"
+                    f"StatusCode: {response.get('StatusCode')}\n"
+                    f"FunctionError: {response.get('FunctionError', '')}"
+                ),
+            )
         return True
     except Exception as exc:  # noqa: BLE001
-        print(
+        error_msg = (
             f"[ERROR] Failed to invoke ServiceNow update Lambda for case "
             f"{case_item.get('alert_id')}: {exc}"
+        )
+        print(error_msg)
+        notify_ops_failure(
+            "Snowfall ServiceNow Update Invoke Error",
+            f"{error_msg}\nRule: {rule.get('rule_id')}"
         )
         return False
 
@@ -812,11 +901,26 @@ def _invoke_servicenow_close(rule, case_item, script_results=None, resolution_no
             f"Triggered ServiceNow close Lambda for case {case_item.get('alert_id')} "
             f"(StatusCode={response.get('StatusCode')})"
         )
+        if response.get("StatusCode") != 202 or response.get("FunctionError"):
+            notify_ops_failure(
+                "Snowfall ServiceNow Close Invoke Failure",
+                (
+                    f"Close invoke returned non-success for rule {rule['rule_id']}\n"
+                    f"Case: {case_item.get('alert_id')}\n"
+                    f"StatusCode: {response.get('StatusCode')}\n"
+                    f"FunctionError: {response.get('FunctionError', '')}"
+                ),
+            )
         return True
     except Exception as exc:  # noqa: BLE001
-        print(
+        error_msg = (
             f"[ERROR] Failed to invoke ServiceNow close Lambda for case "
             f"{case_item.get('alert_id')}: {exc}"
+        )
+        print(error_msg)
+        notify_ops_failure(
+            "Snowfall ServiceNow Close Invoke Error",
+            f"{error_msg}\nRule: {rule.get('rule_id')}"
         )
         return False
 
