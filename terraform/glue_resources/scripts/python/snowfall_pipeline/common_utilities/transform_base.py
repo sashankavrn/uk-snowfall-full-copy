@@ -1127,6 +1127,7 @@ class TransformBase:
 
     @transformation_timer
     def flatten_nest_df(self, df):
+
         fields = self.flatten_schema(df.schema)
         new_fields = [item.replace(".", "_").replace(":", "_") for item in fields]
         df = df.select(fields).toDF(*new_fields)
@@ -1135,30 +1136,86 @@ class TransformBase:
 
         return df
 
+    # @transformation_timer
+    # def drop_nested_field(self, df: DataFrame, drop_field_name: str) -> DataFrame:
+    #     def process(schema, prefix=""):
+    #         exprs = []
+    #         for field in schema.fields:
+    #             field_name = field.name
+    #             full_name = f"{prefix}.{field_name}" if prefix else field_name
+
+    #             if field_name == drop_field_name:
+    #                 continue  # skip this field
+
+    #             if isinstance(field.dataType, StructType):
+    #                 nested_expr = process(field.dataType, full_name)
+    #                 exprs.append(f"struct({', '.join(nested_expr)}) as {field_name}")
+    #             elif isinstance(field.dataType, ArrayType) and isinstance(field.dataType.elementType, StructType):
+    #                 nested_expr = process(field.dataType.elementType, "x")
+    #                 exprs.append(f"transform({full_name}, x -> struct({', '.join(nested_expr)})) as {field_name}")
+    #             else:
+    #                 exprs.append(full_name)
+    #         return exprs
+
+    #     top_level_exprs = process(df.schema)
+    #     return df.selectExpr(*top_level_exprs)
+
+
     @transformation_timer
-    def drop_nested_field(self, df: DataFrame, drop_field_name: str) -> DataFrame:
+    def drop_nested_field(self, df, drop_field_name):
+
         def process(schema, prefix=""):
             exprs = []
+
             for field in schema.fields:
+
                 field_name = field.name
-                full_name = f"{prefix}.{field_name}" if prefix else field_name
 
+                # Rename problematic field names
+                safe_field_name = field_name.replace(".", "_")
+
+                # Quote field references that contain dots
+                field_ref = f"`{field_name}`" if "." in field_name else field_name
+
+                full_name = f"{prefix}.{field_ref}" if prefix else field_ref
+
+                # Skip field to be dropped
                 if field_name == drop_field_name:
-                    continue  # skip this field
+                    continue
 
+                # Nested Struct
                 if isinstance(field.dataType, StructType):
+
                     nested_expr = process(field.dataType, full_name)
-                    exprs.append(f"struct({', '.join(nested_expr)}) as {field_name}")
-                elif isinstance(field.dataType, ArrayType) and isinstance(field.dataType.elementType, StructType):
+
+                    exprs.append(
+                        f"struct({', '.join(nested_expr)}) as `{safe_field_name}`"
+                    )
+
+                # Array of Structs
+                elif (
+                    isinstance(field.dataType, ArrayType)
+                    and isinstance(field.dataType.elementType, StructType)
+                ):
+
                     nested_expr = process(field.dataType.elementType, "x")
-                    exprs.append(f"transform({full_name}, x -> struct({', '.join(nested_expr)})) as {field_name}")
+
+                    exprs.append(
+                        f"transform({full_name}, "
+                        f"x -> struct({', '.join(nested_expr)})) as `{safe_field_name}`"
+                    )
+
+                # Primitive columns
                 else:
                     exprs.append(full_name)
+
             return exprs
 
         top_level_exprs = process(df.schema)
+
         return df.selectExpr(*top_level_exprs)
-    
+
+
     @transformation_timer
     def convert_date_column(self, df, input_columns):
         """
