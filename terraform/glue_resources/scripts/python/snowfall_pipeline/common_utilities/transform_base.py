@@ -1127,6 +1127,7 @@ class TransformBase:
 
     @transformation_timer
     def flatten_nest_df(self, df):
+
         fields = self.flatten_schema(df.schema)
         new_fields = [item.replace(".", "_").replace(":", "_") for item in fields]
         df = df.select(fields).toDF(*new_fields)
