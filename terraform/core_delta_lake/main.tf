@@ -17,26 +17,26 @@ terraform {
 
 #Picks up from secrets in github
 provider "aws" {
-  region      = var.AWS_REGION
+  region = var.AWS_REGION
 }
 
 
 
-  # Picks up from secrets in github
-  # provider "aws" {
-  #   region      = var.AWS_REGION
-  #   access_key = ""
-  #   secret_key = "1"
-  #   token = ""
-  # }
-  
+# Picks up from secrets in github
+# provider "aws" {
+#   region      = var.AWS_REGION
+#   access_key = ""
+#   secret_key = "1"
+#   token = ""
+# }
+
 
 # Triggering the S3 Module
 module "s3_module_main" {
   source                          = "./s3/main_bucket"
   environment                     = var.environment
   account_number                  = var.account_number
-  resource_tags                   = merge(var.resource_tags, { Environment = var.environment,DataClassification = "highly restricted" })
+  resource_tags                   = merge(var.resource_tags, { Environment = var.environment, DataClassification = "highly restricted" })
   role_assumed_arn                = var.role_assumed_arn
   lambda_landing_func_arn         = module.lambda_module.landing_trigger_arn
   lambda_permission               = module.lambda_module.lambda_s3_permission
@@ -50,77 +50,87 @@ module "s3_module_main" {
 
 # Triggering the SNS Module, will have to change to fix endpoint as email
 module "sns_module" {
-  source        = "./sns"
-  environment   = var.environment
-  resource_tags = merge(var.resource_tags, { Environment = var.environment })
-  prod_email     = var.prod_email  
+  source         = "./sns"
+  environment    = var.environment
+  resource_tags  = merge(var.resource_tags, { Environment = var.environment })
+  prod_email     = var.prod_email
   not_prod_email = var.not_prod_email
 }
 
 module "appflow_module" {
-  source        = "./appflow"
-  environment             = var.environment
-  resource_tags           = merge(var.resource_tags, { Environment = var.environment })
-  role_assumed_arn        = var.role_assumed_arn
-  landing_bucket_arn      = module.s3_module_main.landing_bucket_arn
-  sns_topic_arn           = module.sns_module.snowfall_topic_arn
-  account_number          = var.account_number
-  connector_profile_name  = var.connector_profile_name
-  landing_bucket_name     = module.s3_module_main.landing_bucket_name
+  source                 = "./appflow"
+  environment            = var.environment
+  resource_tags          = merge(var.resource_tags, { Environment = var.environment })
+  role_assumed_arn       = var.role_assumed_arn
+  landing_bucket_arn     = module.s3_module_main.landing_bucket_arn
+  sns_topic_arn          = module.sns_module.snowfall_topic_arn
+  account_number         = var.account_number
+  connector_profile_name = var.connector_profile_name
+  landing_bucket_name    = module.s3_module_main.landing_bucket_name
 }
 
 module "api_module" {
-  source        = "./api"
-  environment             = var.environment
-  resource_tags           = merge(var.resource_tags, { Environment = var.environment })
-  role_assumed_arn        = var.role_assumed_arn
-  account_number          = var.account_number
-  stage_name = var.stage_name
-  # # NEW — pass the Lambda ARNs
-  # service_agent_func_arn = var.service_agent_arn
-  service_agent_upload_s3_arn             = module.lambda_module.service_agent_upload_s3_arn
+  source                                     = "./api"
+  environment                                = var.environment
+  resource_tags                              = merge(var.resource_tags, { Environment = var.environment })
+  role_assumed_arn                           = var.role_assumed_arn
+  account_number                             = var.account_number
+  stage_name                                 = var.stage_name
+  service_agent_upload_s3_arn                = module.lambda_module.service_agent_upload_s3_arn
   service_agent_upload_s3_jwt_authorizer_arn = module.lambda_module.service_agent_upload_s3_jwt_authorizer_arn
+  thousandeyes_alerts_arn                    = module.lambda_module.thousandeyes_alerts_arn
+  thousandeyes_alerts_jwt_authorizer_arn     = module.lambda_module.thousandeyes_alerts_jwt_authorizer_arn
 
   depends_on = [module.lambda_module]
 }
 
 # Triggering the Lambda module
 module "lambda_module" {
-  source             = "./lambda"
-  environment        = var.environment
-  resource_tags      = merge(var.resource_tags, { Environment = var.environment })
-  role_assumed_arn   = var.role_assumed_arn
-  landing_bucket_arn = module.s3_module_main.landing_bucket_arn
-  raw_bucket_arn = module.s3_module_main.raw_bucket_arn
-  sns_topic_arn      = module.sns_module.snowfall_topic_arn
-  account_number     = var.account_number
-  artifact_bucket_arn = module.s3_module_main.artifact_bucket_bucket_arn
-  meraki_schedule = var.meraki_schedule
-  newrelic_10min_schedule = var.newrelic_10min_schedule
-  newrelic_5min_schedule = var.newrelic_5min_schedule
-  newrelic_1am_schedule = var.newrelic_1am_schedule
-  service_agent_bucket_arn = module.s3_module_main.service_agent_bucket_arn
-  stage_name = var.stage_name
-  # websocket_endpoint = "wss://vugx1b0qef.execute-api.eu-central-1.amazonaws.com/dev"
-  # websocket_endpoint = module.websocket_api_module.proactive_healing_websocket_api_endpoint #CHNAGE THISN TO HTTPS https://obeggrryoa.execute-api.eu-central-1.amazonaws.com
+  source                          = "./lambda"
+  environment                     = var.environment
+  resource_tags                   = merge(var.resource_tags, { Environment = var.environment })
+  role_assumed_arn                = var.role_assumed_arn
+  landing_bucket_arn              = module.s3_module_main.landing_bucket_arn
+  raw_bucket_arn                  = module.s3_module_main.raw_bucket_arn
+  sns_topic_arn                   = module.sns_module.snowfall_topic_arn
+  account_number                  = var.account_number
+  artifact_bucket_arn             = module.s3_module_main.artifact_bucket_bucket_arn
+  meraki_schedule                 = var.meraki_schedule
+  newrelic_10min_schedule         = var.newrelic_10min_schedule
+  newrelic_5min_schedule          = var.newrelic_5min_schedule
+  newrelic_1am_schedule           = var.newrelic_1am_schedule
+  smartsheet_6am_schedule         = var.smartsheet_6am_schedule
+  service_agent_bucket_arn        = module.s3_module_main.service_agent_bucket_arn
+  stage_name                      = var.stage_name
+  ncr_soap_service_now_create_url = var.ncr_soap_service_now_create_url
+  ncr_soap_service_now_update_url = var.ncr_soap_service_now_update_url
+  jwt_layer_arn                   = module.lambda_layer_module.lambda_jwt_layer_arn
+}
 
-}   
+module "websocket_api_module" {
+  source = "./websocketapi"
 
- module "websocket_api_module" {
-   source = "./websocketapi"
+  environment           = var.environment
+  resource_tags         = merge(var.resource_tags, { Environment = var.environment })
+  role_assumed_arn      = var.role_assumed_arn
+  stage_name            = var.stage_name
+  account_number        = var.account_number
+  connect_lambda_arn    = module.lambda_module.connect_lambda_arn
+  disconnect_lambda_arn = module.lambda_module.disconnect_lambda_arn
+  default_lambda_arn    = module.lambda_module.default_lambda_arn
 
-   environment        = var.environment
-   resource_tags      = merge(var.resource_tags, { Environment = var.environment })
-   role_assumed_arn   = var.role_assumed_arn
-   stage_name         = var.stage_name
-   account_number     = var.account_number
+  depends_on = [module.lambda_module]
+}
 
-   connect_lambda_arn    = module.lambda_module.connect_lambda_arn
-   disconnect_lambda_arn = module.lambda_module.disconnect_lambda_arn
-   default_lambda_arn    = module.lambda_module.default_lambda_arn
 
-    depends_on = [module.lambda_module]
- }
+module "lambda_layer_module" {
+  source              = "./lambda_layers"
+  layer_name          = "jwt-layer"
+  compatible_runtimes = ["python3.12"]
+}
+
+
+
 
 
 

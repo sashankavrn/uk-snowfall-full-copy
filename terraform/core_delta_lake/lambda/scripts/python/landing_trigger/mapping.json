@@ -199,6 +199,10 @@
         {
             "fileName": "happysignals",
             "destinationPath": "happysignals"
+        },
+        {
+            "fileName": "smartsheet",
+            "destinationPath": "smartsheet"
         }
     ]
 }

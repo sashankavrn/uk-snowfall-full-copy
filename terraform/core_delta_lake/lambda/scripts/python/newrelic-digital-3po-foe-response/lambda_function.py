@@ -112,7 +112,7 @@ def lambda_handler(event, context):
     # Build NRQL Query with dynamic SINCE and UNTIL
     query = f"""
         SELECT uniqueCount(aparse(message, '%VALUES%, *,%')) as Count
-        FROM Log
+        FROM Log_3PO
         WHERE application = 'hds'
           and market in ('uk','ie')
           and (message like '%FOE returned foeErrorCode:%' or message like '%FOERespon%')
@@ -123,7 +123,8 @@ def lambda_handler(event, context):
           aparse(message, '%VALUES%,%,%, *,%') as 'Restaurant', 
           aparse(message,'%VALUES%,%,%,%,%,%,%,% *,%') as 'FOE Response',
           aparse(message, '%VALUES%,%,%,%,%,%,%,%,% *,%') as '3PO Response',
-          aparse(message, '%VALUES%,%,%,%,%,%,%,%,%,% *, Sql%') as '3PO Response Description'
+          aparse(message, '%VALUES%,%,%,%,%,%,%,%,%,% *, Sql%') as '3PO Response Description',
+          aparse(service.name, '*OrderService') as 'Vendor'
        SINCE '{since_str} [Europe/London]' UNTIL '{until_str} [Europe/London]'
         LIMIT MAX
     """

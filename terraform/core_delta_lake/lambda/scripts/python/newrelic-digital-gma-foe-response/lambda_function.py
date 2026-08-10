@@ -135,12 +135,12 @@ def lambda_handler(event, context):
 
         # Dynamic NRQL query
         query = f"""
-            SELECT uniqueCount(substring(aparse(message, '%ORDER * :%'), 1, 36)) as 'Count' 
+            SELECT uniqueCount(audit.Orders.OrderId) as 'Count' 
             FROM Log 
             WHERE market = 'uk' 
             AND message LIKE '%UpdateOrderStateAsync : MARKET UK : ORDER%' 
             AND (message LIKE '%UpdateOrderStatusAsync%' OR message LIKE '%DoFoeStoreStaging%') 
-            FACET aparse(message, '%DoFoeStoreStaging : * :%'),  
+            FACET audit.Orders.StoreId,  
             IF(length(aparse(message, '%FAULT : * :%')) > 0, aparse(message, '%FAULT : *'), 'No Fault') 
             SINCE '{since_str} [Europe/London]' UNTIL '{until_str} [Europe/London]' 
             LIMIT MAX
