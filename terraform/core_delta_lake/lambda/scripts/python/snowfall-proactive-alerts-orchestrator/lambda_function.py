@@ -83,6 +83,9 @@ SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN", "")
 # Gives NCR time to register the new ticket so the close call is not skipped.
 CLOSE_DELAY_SECONDS = 15
 
+# Sentinel for optional restaurant filtering (None means "global/no restaurant").
+_NO_ARG = object()
+
 
 def notify_ops_failure(subject, message):
     if not SNS_TOPIC_ARN:
@@ -272,81 +275,107 @@ def process_rule(rule, records):
     # STEP 4 Record alert (always, regardless of email_alert flag)
     alert_item = record_email_alert(rule, records, email_sent=email_sent)
 
-    # STEP 5 Trigger ServiceNow ticket creation (only if rule has servicenow_alert)
+    # STEP 5 Trigger ServiceNow ticket creation (one ticket per violating restaurant)
     if rule.get("servicenow_alert") and alert_item:
-        # Create a new case only if no OPEN case exists (prevents duplicate tickets).
-        existing_case = get_open_servicenow_case(rule["rule_id"])
-        if existing_case:
+        for violation_alert in _build_violation_alert_items(records, alert_item):
+            _process_servicenow_violation(rule, violation_alert, script_results)
+
+
+def _process_servicenow_violation(rule, alert_item, script_results):
+    """Create (and possibly close/update) a ServiceNow ticket for one violation.
+
+    Scoped to a single restaurant so multiple violations from the same rule
+    each raise their own ticket. Duplicate creation is prevented per
+    (rule_id + restaurant_number); the self-heal close and script-outcome
+    remark use only that restaurant's script results.
+    """
+    restaurant_number = alert_item.get("restaurant_number")
+    scoped_results = _filter_script_results_for_restaurant(
+        script_results, restaurant_number
+    )
+
+    # Create a new case only if no OPEN case exists for this restaurant
+    # (prevents duplicate tickets for the same violating restaurant).
+    existing_case = get_open_servicenow_case(rule["rule_id"], restaurant_number)
+    if existing_case:
+        print(
+            f"Open ServiceNow case {existing_case.get('alert_id')} already exists for rule "
+            f"{rule['rule_id']} restaurant {restaurant_number or 'N/A'}; "
+            "skipping duplicate ticket creation."
+        )
+        return
+
+    case_item = record_servicenow_case(rule, alert_item)
+    print(
+        f"Created ServiceNow case {case_item.get('alert_id')} for rule "
+        f"{rule['rule_id']} restaurant {restaurant_number or 'N/A'}"
+    )
+
+    # Always raise an NCR ticket for the new case (issue occurred, record it).
+    # Synchronous: waits for NCR to create the ticket and stores the
+    # ncr_ticket_id on the case so a later close can find it.
+    ncr_ticket_id = trigger_servicenow_ticket(rule, alert_item)
+
+    # If the proactive script ran and succeeded, close the ticket (issue self-healed).
+    if scoped_results and are_all_script_results_successful(scoped_results):
+        if ncr_ticket_id and CLOSE_DELAY_SECONDS > 0:
+            # Brief delay so NCR finishes registering the new ticket
+            # before we immediately request its closure (prevents the
+            # close Lambda from skipping with 'No NCR ticket ID found').
             print(
-                f"Open ServiceNow case {existing_case.get('alert_id')} already exists for rule "
-                f"{rule['rule_id']}; skipping duplicate ticket creation."
+                f"Waiting {CLOSE_DELAY_SECONDS}s before closing NCR ticket "
+                f"{ncr_ticket_id} for rule {rule['rule_id']}..."
+            )
+            time.sleep(CLOSE_DELAY_SECONDS)
+        elif not ncr_ticket_id:
+            print(
+                f"[WARN] No NCR ticket ID returned for rule {rule['rule_id']}; "
+                "close may be skipped."
+            )
+        close_servicenow_ticket_if_open(
+            rule, scoped_results, restaurant_number=restaurant_number
+        )
+        print(
+            f"Closed ServiceNow case for rule {rule['rule_id']} "
+            "(proactive script succeeded; ticket raised and closed automatically)."
+        )
+    else:
+        # Script did not clear the rule. Two sub-cases produce an NCR
+        # remark update (ticket stays OPEN in both):
+        #   Case 2 - stderr says 'Invalid script_name', result_output empty
+        #            -> 'Attempted to run script <name> - <stderr>'.
+        #   Case 3 - result_output present but no 'COMPLETED SUCCESSFULLY'
+        #            -> 'Ran script <name> - <result_output>'.
+        remark_note = build_non_success_remark(scoped_results)
+        if remark_note:
+            if ncr_ticket_id and CLOSE_DELAY_SECONDS > 0:
+                # Same brief delay as the successful path so NCR has
+                # time to register the newly-created ticket before
+                # we push an update to it.
+                print(
+                    f"Waiting {CLOSE_DELAY_SECONDS}s before updating NCR ticket "
+                    f"{ncr_ticket_id} for rule {rule['rule_id']} "
+                    "(script did not report COMPLETED SUCCESSFULLY)..."
+                )
+                time.sleep(CLOSE_DELAY_SECONDS)
+            elif not ncr_ticket_id:
+                print(
+                    f"[WARN] No NCR ticket ID returned for rule {rule['rule_id']}; "
+                    "update may be skipped."
+                )
+            update_servicenow_ticket_if_open(
+                rule, scoped_results, remark_text=remark_note,
+                restaurant_number=restaurant_number,
+            )
+            print(
+                f"Updated ServiceNow ticket for rule {rule['rule_id']} "
+                f"with script outcome remark (ticket left OPEN): {remark_note}"
             )
         else:
-            case_item = record_servicenow_case(rule, alert_item)
-            print(f"Created ServiceNow case {case_item.get('alert_id')} for rule {rule['rule_id']}")
-
-            # Always raise an NCR ticket for the new case (issue occurred, record it).
-            # Synchronous: waits for NCR to create the ticket and stores the
-            # ncr_ticket_id on the case so a later close can find it.
-            ncr_ticket_id = trigger_servicenow_ticket(rule, alert_item)
-
-            # If the proactive script ran and succeeded, close the ticket (issue self-healed).
-            if script_results and are_all_script_results_successful(script_results):
-                if ncr_ticket_id and CLOSE_DELAY_SECONDS > 0:
-                    # Brief delay so NCR finishes registering the new ticket
-                    # before we immediately request its closure (prevents the
-                    # close Lambda from skipping with 'No NCR ticket ID found').
-                    print(
-                        f"Waiting {CLOSE_DELAY_SECONDS}s before closing NCR ticket "
-                        f"{ncr_ticket_id} for rule {rule['rule_id']}..."
-                    )
-                    time.sleep(CLOSE_DELAY_SECONDS)
-                elif not ncr_ticket_id:
-                    print(
-                        f"[WARN] No NCR ticket ID returned for rule {rule['rule_id']}; "
-                        "close may be skipped."
-                    )
-                close_servicenow_ticket_if_open(rule, script_results)
-                print(
-                    f"Closed ServiceNow case for rule {rule['rule_id']} "
-                    "(proactive script succeeded; ticket raised and closed automatically)."
-                )
-            else:
-                # Script did not clear the rule. Two sub-cases produce an NCR
-                # remark update (ticket stays OPEN in both):
-                #   Case 2 - stderr says 'Invalid script_name', result_output empty
-                #            -> 'Attempted to run script <name> - <stderr>'.
-                #   Case 3 - result_output present but no 'COMPLETED SUCCESSFULLY'
-                #            -> 'Ran script <name> - <result_output>'.
-                remark_note = build_non_success_remark(script_results)
-                if remark_note:
-                    if ncr_ticket_id and CLOSE_DELAY_SECONDS > 0:
-                        # Same brief delay as the successful path so NCR has
-                        # time to register the newly-created ticket before
-                        # we push an update to it.
-                        print(
-                            f"Waiting {CLOSE_DELAY_SECONDS}s before updating NCR ticket "
-                            f"{ncr_ticket_id} for rule {rule['rule_id']} "
-                            "(script did not report COMPLETED SUCCESSFULLY)..."
-                        )
-                        time.sleep(CLOSE_DELAY_SECONDS)
-                    elif not ncr_ticket_id:
-                        print(
-                            f"[WARN] No NCR ticket ID returned for rule {rule['rule_id']}; "
-                            "update may be skipped."
-                        )
-                    update_servicenow_ticket_if_open(
-                        rule, script_results, remark_text=remark_note
-                    )
-                    print(
-                        f"Updated ServiceNow ticket for rule {rule['rule_id']} "
-                        f"with script outcome remark (ticket left OPEN): {remark_note}"
-                    )
-                else:
-                    print(
-                        f"ServiceNow ticket raised for rule {rule['rule_id']}; "
-                        "script failed or not present — ticket left open for engineer dispatch."
-                    )
+            print(
+                f"ServiceNow ticket raised for rule {rule['rule_id']}; "
+                "script failed or not present — ticket left open for engineer dispatch."
+            )
 
 # =============================
 # Cooldown Logic
@@ -433,6 +462,46 @@ def get_unique_restaurants(records):
             restaurants.append(restaurant_number)
 
     return restaurants
+
+
+def _build_violation_alert_items(records, source_alert_item):
+    """One alert item per violating restaurant (deduped by restaurant number).
+
+    Each item carries that restaurant's own message so a distinct ServiceNow
+    ticket can be raised per violation. Rows with no restaurant_number collapse
+    into a single global item (one ticket per rule), preserving the original
+    single-ticket behaviour for non-restaurant rules.
+    """
+    items = []
+    seen = set()
+
+    for record in records:
+        restaurant = record.get("restaurant_number")
+        key = str(restaurant) if restaurant else "__GLOBAL__"
+        if key in seen:
+            continue
+        seen.add(key)
+
+        items.append({
+            **source_alert_item,
+            "restaurant_number": restaurant,
+            "message": record.get("message", ""),
+        })
+
+    return items
+
+
+def _filter_script_results_for_restaurant(script_results, restaurant_number):
+    """Script results for a single restaurant (all results for global rules)."""
+    if not script_results:
+        return []
+    if not restaurant_number:
+        return script_results
+    target = str(restaurant_number)
+    return [
+        r for r in script_results
+        if str(r.get("restaurant_number") or "") == target
+    ]
 
 def parse_alert_time(timestamp_value):
 
@@ -550,7 +619,9 @@ def trigger_servicenow_ticket(rule, alert_item):
     # Case should already exist from process_rule(). A DynamoDB scan is
     # eventually consistent, so a case written moments ago may not appear yet;
     # log only (no SNS) to avoid false-positive alerts on this benign race.
-    existing_case = get_open_servicenow_case(rule["rule_id"])
+    existing_case = get_open_servicenow_case(
+        rule["rule_id"], alert_item.get("restaurant_number")
+    )
     if not existing_case:
         print(
             f"[WARN] No open ServiceNow case found for rule {rule['rule_id']}; "
@@ -703,13 +774,28 @@ def record_servicenow_case(rule, alert_item):
     return item
 
 
-def get_open_servicenow_case(rule_id):
-    items = scan_all_items(
+def get_open_servicenow_cases(rule_id):
+    """All OPEN ServiceNow cases for a rule (one per violating restaurant)."""
+    return scan_all_items(
         proactive_alerts_table,
         Attr("rule_id").eq(rule_id)
         & Attr("record_type").eq(RECORD_TYPE_SERVICENOW_CASE)
         & Attr("status").eq("OPEN")
     )
+
+
+def get_open_servicenow_case(rule_id, restaurant_number=_NO_ARG):
+    """Most recent OPEN case for a rule.
+
+    When ``restaurant_number`` is supplied the result is scoped to that
+    restaurant (an empty/None value matches global, non-restaurant cases).
+    Omitting it returns the most recent OPEN case regardless of restaurant.
+    """
+    items = get_open_servicenow_cases(rule_id)
+
+    if restaurant_number is not _NO_ARG:
+        target = str(restaurant_number) if restaurant_number else ""
+        items = [i for i in items if str(i.get("restaurant_number") or "") == target]
 
     if not items:
         return None
@@ -718,8 +804,9 @@ def get_open_servicenow_case(rule_id):
     return max(items, key=alert_sort_key)
 
 
-def close_servicenow_ticket_if_open(rule, script_results=None, resolution_note=None):
-    case_item = get_open_servicenow_case(rule["rule_id"])
+def close_servicenow_ticket_if_open(rule, script_results=None, resolution_note=None,
+                                    restaurant_number=_NO_ARG):
+    case_item = get_open_servicenow_case(rule["rule_id"], restaurant_number)
     if not case_item:
         print(f"No open ServiceNow case for rule {rule['rule_id']}; nothing to close")
         return False
@@ -738,10 +825,11 @@ def close_servicenow_ticket_if_open(rule, script_results=None, resolution_note=N
 
 
 def close_resolved_case_if_open(rule, violating_restaurants=None):
-    """Close an open ticket when its restaurant is no longer violating.
+    """Close open tickets whose restaurant is no longer violating.
 
-    Runs every evaluation. Compares the open `SERVICENOW_CASE`'s restaurant
-    against the rule's CURRENT violating restaurants:
+    Runs every evaluation. Reconciles EVERY open `SERVICENOW_CASE` for the rule
+    (one per violating restaurant) against the rule's CURRENT violating
+    restaurants:
       * Restaurant-scoped case  -> close only if that restaurant has cleared
         (other restaurants still violating does NOT keep this ticket open).
       * Non-restaurant rule      -> close only when there are no violations.
@@ -750,41 +838,50 @@ def close_resolved_case_if_open(rule, violating_restaurants=None):
     if not rule.get("servicenow_alert"):
         return False
 
-    case_item = get_open_servicenow_case(rule["rule_id"])
-    if not case_item:
+    open_cases = get_open_servicenow_cases(rule["rule_id"])
+    if not open_cases:
         return False
 
-    case_restaurant = case_item.get("restaurant_number")
     violating = {str(r) for r in (violating_restaurants or []) if r}
+    closed_any = False
 
-    if case_restaurant:
-        # Restaurant-scoped: keep open while THIS restaurant still violates.
-        if str(case_restaurant) in violating:
-            return False
-        note = (
-            f"A subsequent Snowfall proactive alert run found no violation for "
-            f"restaurant {case_restaurant} — the previously reported issue has been "
-            "fixed. Closing this ticket automatically."
+    for case_item in open_cases:
+        case_restaurant = case_item.get("restaurant_number")
+
+        if case_restaurant:
+            # Restaurant-scoped: keep open while THIS restaurant still violates.
+            if str(case_restaurant) in violating:
+                continue
+            note = (
+                f"A subsequent Snowfall proactive alert run found no violation for "
+                f"restaurant {case_restaurant} — the previously reported issue has been "
+                "fixed. Closing this ticket automatically."
+            )
+        else:
+            # Non-restaurant rule: only close when nothing is violating.
+            if violating:
+                continue
+            note = (
+                "A subsequent Snowfall proactive alert run found no rule violation — "
+                "the previously reported issue has been fixed. Closing this ticket "
+                "automatically."
+            )
+
+        print(
+            f"Rule {rule['rule_id']} no longer violating for case "
+            f"{case_item.get('alert_id')} (restaurant={case_restaurant or 'N/A'}); "
+            "auto-closing ticket (issue cleared on a later run)."
         )
-    else:
-        # Non-restaurant rule: only close when nothing is violating.
-        if violating:
-            return False
-        note = (
-            "A subsequent Snowfall proactive alert run found no rule violation — "
-            "the previously reported issue has been fixed. Closing this ticket "
-            "automatically."
+        close_servicenow_ticket_if_open(
+            rule, resolution_note=note, restaurant_number=case_restaurant
         )
+        closed_any = True
 
-    print(
-        f"Rule {rule['rule_id']} no longer violating for case "
-        f"{case_item.get('alert_id')} (restaurant={case_restaurant or 'N/A'}); "
-        "auto-closing ticket (issue cleared on a later run)."
-    )
-    return close_servicenow_ticket_if_open(rule, resolution_note=note)
+    return closed_any
 
 
-def update_servicenow_ticket_if_open(rule, script_results=None, remark_text=None):
+def update_servicenow_ticket_if_open(rule, script_results=None, remark_text=None,
+                                     restaurant_number=_NO_ARG):
     """Send a Remark-only UpdateServiceRequest to NCR for the open case.
 
     Used when the proactive script errored in a way that does not warrant
@@ -793,7 +890,7 @@ def update_servicenow_ticket_if_open(rule, script_results=None, remark_text=None
     tried. The ticket stays OPEN in NCR and the DDB case status is left
     unchanged.
     """
-    case_item = get_open_servicenow_case(rule["rule_id"])
+    case_item = get_open_servicenow_case(rule["rule_id"], restaurant_number)
     if not case_item:
         print(
             f"No open ServiceNow case for rule {rule['rule_id']}; "
