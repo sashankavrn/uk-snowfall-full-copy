@@ -1640,38 +1640,38 @@ resource "aws_dynamodb_table" "thousandeyes_alerts" {
 
 
 
-# ############################################
-# ## ServiceNow Tickets Cleanup Lambda (DEV utility)
-# ##  Manual-invoke only. Bulk-deletes rows from the service-now-tickets
-# ##  DDB table by ticket_id prefix. Defaults to dry-run for safety.
-# ## Source: scripts/python/servicenow-tickets-cleanup/
-# ############################################
+############################################
+## ServiceNow Tickets Cleanup Lambda (DEV utility)
+##  Manual-invoke only. Bulk-deletes rows from the service-now-tickets
+##  DDB table by ticket_id prefix. Defaults to dry-run for safety.
+## Source: scripts/python/servicenow-tickets-cleanup/
+############################################
 
-# data "archive_file" "uk_snowfall_servicenow_tickets_cleanup" {
-#   type        = "zip"
-#   source_dir  = "${path.module}/scripts/python/servicenow-tickets-cleanup/"
-#   output_path = "${path.module}/scripts/zips/servicenow-tickets-cleanup.zip"
-# }
+data "archive_file" "uk_snowfall_servicenow_tickets_cleanup" {
+  type        = "zip"
+  source_dir  = "${path.module}/scripts/python/servicenow-tickets-cleanup/"
+  output_path = "${path.module}/scripts/zips/servicenow-tickets-cleanup.zip"
+}
 
-# resource "aws_lambda_function" "uk_snowfall_servicenow_tickets_cleanup" {
-#   filename         = data.archive_file.uk_snowfall_servicenow_tickets_cleanup.output_path
-#   function_name    = "uk-snowfall-servicenow-tickets-cleanup-${var.environment}"
-#   role             = var.role_assumed_arn
-#   handler          = "lambda_function.lambda_handler"
-#   runtime          = "python3.12"
-#   memory_size      = 256
-#   timeout          = 300
-#   description      = "Bulk-delete rows from service-now-tickets DynamoDB table (manual invoke only)"
-#   source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_servicenow_tickets_cleanup.output_path)
-#   tags             = var.resource_tags
+resource "aws_lambda_function" "uk_snowfall_servicenow_tickets_cleanup" {
+  filename         = data.archive_file.uk_snowfall_servicenow_tickets_cleanup.output_path
+  function_name    = "uk-snowfall-servicenow-tickets-cleanup-${var.environment}"
+  role             = var.role_assumed_arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "python3.12"
+  memory_size      = 256
+  timeout          = 300
+  description      = "Bulk-delete rows from service-now-tickets DynamoDB table (manual invoke only)"
+  source_code_hash = filebase64sha256(data.archive_file.uk_snowfall_servicenow_tickets_cleanup.output_path)
+  tags             = var.resource_tags
 
-#   environment {
-#     variables = {
-#       SERVICE_NOW_TICKETS_TABLE = "uk-snowfall-${var.environment}-service-now-tickets"
-#       PROACTIVE_ALERTS_TABLE    = "uk-snowfall-${var.environment}-proactive-alerts"
-#     }
-#   }
-# }
+  environment {
+    variables = {
+      SERVICE_NOW_TICKETS_TABLE = "uk-snowfall-${var.environment}-service-now-tickets"
+      PROACTIVE_ALERTS_TABLE    = "uk-snowfall-${var.environment}-proactive-alerts"
+    }
+  }
+}
 
 
 ############################################################################# DYNAMIC SMARTSHEET INTEGRATION LAMBDA ##########################################
