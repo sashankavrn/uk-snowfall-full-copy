@@ -9,7 +9,7 @@ Flow:
        status = 'SUCCESS' AND ncr_ticket_id <> '' AND attribute_not_exists(closed_at)
   2. Batch the NCR case numbers (default 100 per Athena query).
   3. Query Athena view `uk_snowfall_semantic.ncr_service_now_service_case_latest`
-     for any rows with state IN ('Closed','Resolved') for those case numbers.
+    for any rows with inactive states for those case numbers.
   4. For each closed/resolved case → update_item on DDB to set
         closed_at, ncr_state, close_notes, resolution_code, resolved_at.
   5. For engineer-only tickets, also flip the matching SERVICENOW_CASE row in
@@ -59,7 +59,7 @@ MAX_TICKETS_PER_RUN = int(os.environ.get("MAX_TICKETS_PER_RUN", "500"))
 QUERY_POLL_INTERVAL_SEC = float(os.environ.get("QUERY_POLL_INTERVAL_SEC", "2"))
 QUERY_TIMEOUT_SEC = int(os.environ.get("QUERY_TIMEOUT_SEC", "60"))
 
-CLOSED_STATES = ("Closed", "Resolved")
+CLOSED_STATES = ("Closed", "Resolved", "Cancelled", "Canceled", "Cerrado")
 
 # Case-row reconciliation (engineer-only tickets)
 RECORD_TYPE_SERVICENOW_CASE = "SERVICENOW_CASE"
