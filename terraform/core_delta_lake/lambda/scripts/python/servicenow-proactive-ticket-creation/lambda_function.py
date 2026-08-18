@@ -212,18 +212,21 @@ def _build_payload(alert: dict, rule: dict) -> dict:
     transaction_id = str(int(datetime.now(timezone.utc).timestamp() * 1000))
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
-    message = str(alert.get("message", "") or "")
+    raw_message = alert.get("message", "")
+    if isinstance(raw_message, str):
+        message = raw_message.strip()
+    elif isinstance(raw_message, (int, float, bool)):
+        message = str(raw_message).strip()
+    else:
+        message = ""
     short_description = (
         str(rule.get("servicenow_short_description") or rule.get("short_description") or rule.get("incident_description") or message)
         .splitlines()[0][:160]
         or "Snowfall proactive alert"
     )
-    description_text = str(
-        rule.get("incident_description")
-        or rule.get("servicenow_incident_description")
-        or message
-        or short_description
-    )
+    # SF-752: NCR Description must come from the SQL-returned alert message,
+    # with Summary as fallback if message is missing/unusable.
+    description_text = message or short_description
 
     raw_ticket_id = str(alert.get("alert_id") or f"SNOWFALL{uuid.uuid4().hex}")
     # NCR's working Postman sample uses a short alphanumeric CustomerTicketID (e.g. "219911").
@@ -386,7 +389,11 @@ def _build_mapping_validation_rows(payload: dict, alert: dict, rule: dict) -> li
         {
             "field": "Description",
             "payload_value": create_req.get("Description"),
-            "rule_candidates": _as_candidates(["incident_description", "servicenow_incident_description"]),
+            "rule_candidates": (
+                [{"key": "alert.message", "value": alert.get("message")}]
+                if alert.get("message") not in (None, "")
+                else [{"key": "CreateServiceRequest.Summary", "value": create_req.get("Summary")}]
+            ),
         }
     )
     rows.append(
@@ -486,9 +493,9 @@ def _build_rule_field_mapping_reference() -> list[dict]:
         },
         {
             "payload_field": "CreateServiceRequest.Description",
-            "preferred_rule_key": "incident_description",
-            "accepted_aliases": ["servicenow_incident_description"],
-            "notes": "Fallback order: incident_description -> servicenow_incident_description -> alert.message -> Summary.",
+            "preferred_rule_key": "alert.message",
+            "accepted_aliases": [],
+            "notes": "Fallback order: alert.message -> Summary.",
         },
         {
             "payload_field": "CreateServiceRequest.Caller.FirstName",
