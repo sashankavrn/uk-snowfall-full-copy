@@ -1,28 +1,32 @@
 """
 ServiceNow Tickets Cleanup Lambda (DEV utility)
 -----------------------------------------------
-Bulk-deletes rows from `uk-snowfall-<env>-service-now-tickets` that match
-an optional `ticket_id` prefix filter (e.g. "EMAIL#", "FAILED#", "NCR#").
+Bulk-deletes rows from the ServiceNow tickets table and/or the proactive-alerts
+table (which holds EMAIL_ALERT and SERVICENOW_CASE records).
 
 DEFAULT BEHAVIOR:
-    - Invoking without payload deletes all rows in the table.
-    - You can still use prefix/status to narrow the rows.
-    - MAX_DELETE caps how many rows can be deleted per invocation.
-  - Only operates on the table named in SERVICE_NOW_TICKETS_TABLE env var.
+    - Invoking without payload deletes all rows in the tickets table only.
+    - Use `target` to also (or instead) clear the proactive-alerts table.
+    - You can still use prefix/status (tickets) or record_type (alerts) to narrow.
+    - max_delete caps how many rows can be deleted per table per invocation.
 
 Invocation event (all fields optional):
     {
-    "prefix": "EMAIL#",        // optional ticket_id prefix filter
-    "status": "FAILED",        // optional status filter (e.g. FAILED, SUCCESS)
+    "target": "tickets",        // "tickets" (default) | "alerts" | "all"
+    "prefix": "EMAIL#",        // tickets only: ticket_id prefix filter
+    "status": "FAILED",        // tickets only: status filter (FAILED, SUCCESS)
+    "record_type": "SERVICENOW_CASE", // alerts only: record_type filter
     "dry_run": false,           // default false
-    "max_delete": 10000         // default 10000
+    "max_delete": 10000         // default 10000 (per table)
     }
 
 Response:
-    { "scanned": N, "matched": N, "deleted": N, "dry_run": true|false }
+    { "target": "...", "results": { "<table>": {scanned, matched, deleted} },
+      "dry_run": true|false }
 
 Environment variables:
     SERVICE_NOW_TICKETS_TABLE   e.g. uk-snowfall-dev-service-now-tickets
+    PROACTIVE_ALERTS_TABLE      e.g. uk-snowfall-dev-proactive-alerts
 """
 
 import os
@@ -31,9 +35,11 @@ import boto3
 from boto3.dynamodb.conditions import Attr
 
 SERVICE_NOW_TICKETS_TABLE = os.environ["SERVICE_NOW_TICKETS_TABLE"]
+PROACTIVE_ALERTS_TABLE = os.environ.get("PROACTIVE_ALERTS_TABLE", "")
 
 dynamodb = boto3.resource("dynamodb")
 tickets_table = dynamodb.Table(SERVICE_NOW_TICKETS_TABLE)
+alerts_table = dynamodb.Table(PROACTIVE_ALERTS_TABLE) if PROACTIVE_ALERTS_TABLE else None
 
 
 def _coerce_bool(value, default: bool = False) -> bool:
@@ -51,36 +57,21 @@ def _coerce_bool(value, default: bool = False) -> bool:
     return default
 
 
-def lambda_handler(event, context):  # noqa: ARG001
-    event = event or {}
-    prefix = str(event.get("prefix", "")).strip()
-    status = str(event.get("status", "")).strip().upper()
-    dry_run = _coerce_bool(event.get("dry_run", False), default=False)
-    max_delete = int(event.get("max_delete", 10000))
-
-    print(f"[INFO] Cleanup starting. table={SERVICE_NOW_TICKETS_TABLE} "
-          f"prefix={prefix!r} status={status!r} dry_run={dry_run} max_delete={max_delete}")
-
-    # Default behavior: no filter -> delete all rows (FAILED + SUCCESS + others).
-    scan_kwargs = {"ProjectionExpression": "ticket_id"}
-    filter_expr = None
-    if prefix:
-        filter_expr = Attr("ticket_id").begins_with(prefix)
-    if status:
-        status_expr = Attr("status").eq(status)
-        filter_expr = status_expr if filter_expr is None else (filter_expr & status_expr)
+def _cleanup_table(table, key_attr, filter_expr, dry_run, max_delete):
+    """Scan `table` for rows matching `filter_expr` and delete them by `key_attr`."""
+    scan_kwargs = {"ProjectionExpression": key_attr}
     if filter_expr is not None:
         scan_kwargs["FilterExpression"] = filter_expr
 
     matched_keys = []
     scanned = 0
     while True:
-        resp = tickets_table.scan(**scan_kwargs)
+        resp = table.scan(**scan_kwargs)
         scanned += resp.get("ScannedCount", 0)
         for item in resp.get("Items", []):
-            tid = item.get("ticket_id")
-            if tid:
-                matched_keys.append(tid)
+            key_val = item.get(key_attr)
+            if key_val:
+                matched_keys.append(key_val)
                 if len(matched_keys) >= max_delete:
                     break
         if len(matched_keys) >= max_delete or "LastEvaluatedKey" not in resp:
@@ -88,34 +79,68 @@ def lambda_handler(event, context):  # noqa: ARG001
         scan_kwargs["ExclusiveStartKey"] = resp["LastEvaluatedKey"]
 
     matched = len(matched_keys)
-    print(f"[INFO] Scanned={scanned} Matched={matched}")
+    print(f"[INFO] {table.name}: Scanned={scanned} Matched={matched}")
 
     if dry_run:
-        print("[INFO] DRY RUN - no deletions performed. "
+        print(f"[INFO] {table.name}: DRY RUN - no deletions. "
               f"Sample of first 5: {matched_keys[:5]}")
         return {
             "scanned": scanned,
             "matched": matched,
             "deleted": 0,
-            "dry_run": True,
-            "status": status,
-            "prefix": prefix,
             "sample": matched_keys[:5],
         }
 
     deleted = 0
-    for tid in matched_keys:
-        tickets_table.delete_item(Key={"ticket_id": tid})
+    for key_val in matched_keys:
+        table.delete_item(Key={key_attr: key_val})
         deleted += 1
         if deleted % 25 == 0:
-            print(f"[INFO] Deleted {deleted}/{matched}")
+            print(f"[INFO] {table.name}: Deleted {deleted}/{matched}")
 
-    print(f"[INFO] Cleanup complete. deleted={deleted}")
-    return {
-        "scanned": scanned,
-        "matched": matched,
-        "deleted": deleted,
-        "dry_run": False,
-        "status": status,
-        "prefix": prefix,
-    }
+    print(f"[INFO] {table.name}: Cleanup complete. deleted={deleted}")
+    return {"scanned": scanned, "matched": matched, "deleted": deleted}
+
+
+def lambda_handler(event, context):  # noqa: ARG001
+    event = event or {}
+    target = str(event.get("target", "tickets")).strip().lower()
+    prefix = str(event.get("prefix", "")).strip()
+    status = str(event.get("status", "")).strip().upper()
+    record_type = str(event.get("record_type", "")).strip()
+    dry_run = _coerce_bool(event.get("dry_run", False), default=False)
+    max_delete = int(event.get("max_delete", 10000))
+
+    print(f"[INFO] Cleanup starting. target={target!r} "
+          f"prefix={prefix!r} status={status!r} record_type={record_type!r} "
+          f"dry_run={dry_run} max_delete={max_delete}")
+
+    results = {}
+
+    if target in ("tickets", "all", "both"):
+        ticket_filter = None
+        if prefix:
+            ticket_filter = Attr("ticket_id").begins_with(prefix)
+        if status:
+            status_expr = Attr("status").eq(status)
+            ticket_filter = status_expr if ticket_filter is None else (ticket_filter & status_expr)
+        results[SERVICE_NOW_TICKETS_TABLE] = _cleanup_table(
+            tickets_table, "ticket_id", ticket_filter, dry_run, max_delete
+        )
+
+    if target in ("alerts", "all", "both"):
+        if alerts_table is None:
+            raise RuntimeError(
+                "PROACTIVE_ALERTS_TABLE env var not set; cannot clean alerts table."
+            )
+        alert_filter = Attr("record_type").eq(record_type) if record_type else None
+        results[PROACTIVE_ALERTS_TABLE] = _cleanup_table(
+            alerts_table, "alert_id", alert_filter, dry_run, max_delete
+        )
+
+    if not results:
+        raise ValueError(
+            f"Invalid target {target!r}; expected 'tickets', 'alerts', or 'all'."
+        )
+
+    return {"target": target, "dry_run": dry_run, "results": results}

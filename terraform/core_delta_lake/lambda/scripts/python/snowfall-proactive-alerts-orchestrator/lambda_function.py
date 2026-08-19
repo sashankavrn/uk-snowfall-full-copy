@@ -277,7 +277,12 @@ def process_rule(rule, records):
 
     # STEP 5 Trigger ServiceNow ticket creation (one ticket per violating restaurant)
     if rule.get("servicenow_alert") and alert_item:
-        for violation_alert in _build_violation_alert_items(records, alert_item):
+        violation_alerts = _build_violation_alert_items(records, alert_item)
+        print(
+            f"Rule {rule['rule_id']} generated {len(violation_alerts)} ServiceNow violation item(s) "
+            f"from {len(records)} Athena record(s)."
+        )
+        for violation_alert in violation_alerts:
             _process_servicenow_violation(rule, violation_alert, script_results)
 
 
@@ -294,9 +299,13 @@ def _process_servicenow_violation(rule, alert_item, script_results):
         script_results, restaurant_number
     )
 
-    # Create a new case only if no OPEN case exists for this restaurant
-    # (prevents duplicate tickets for the same violating restaurant).
-    existing_case = get_open_servicenow_case(rule["rule_id"], restaurant_number)
+    # Create a new case only if no OPEN case already matches the same exact
+    # violation fingerprint. This allows a single rule to raise multiple tickets
+    # when Athena returns multiple rows, while still preventing duplicates for an
+    # already-open case for the same restaurant/message/device.
+    existing_case = get_open_servicenow_case(
+        rule["rule_id"], restaurant_number, alert_item
+    )
     if existing_case:
         print(
             f"Open ServiceNow case {existing_case.get('alert_id')} already exists for rule "
@@ -465,27 +474,40 @@ def get_unique_restaurants(records):
 
 
 def _build_violation_alert_items(records, source_alert_item):
-    """One alert item per violating restaurant (deduped by restaurant number).
+    """One alert item per Athena row, not one per rule.
 
-    Each item carries that restaurant's own message so a distinct ServiceNow
-    ticket can be raised per violation. Rows with no restaurant_number collapse
-    into a single global item (one ticket per rule), preserving the original
-    single-ticket behaviour for non-restaurant rules.
+    This keeps the behavior aligned with the actual data: when a single rule
+    returns multiple rows from Athena, each row is treated as a separate
+    violation and can raise its own ServiceNow ticket.
+
+    Duplicate rows in the same run are still collapsed by a full row fingerprint
+    so we do not create repeated tickets for the same violation.
     """
     items = []
     seen = set()
 
-    for record in records:
+    for idx, record in enumerate(records):
         restaurant = record.get("restaurant_number")
-        key = str(restaurant) if restaurant else "__GLOBAL__"
+        message = record.get("message", "")
+        device_id = record.get("device_id")
+        key = (
+            str(restaurant) if restaurant else "__GLOBAL__",
+            str(message),
+            str(device_id or ""),
+        )
         if key in seen:
             continue
         seen.add(key)
 
+        suffix = f"{restaurant or 'GLOBAL'}-{device_id or 'NODVC'}-{idx}"
+        unique_alert_id = f"{source_alert_item.get('alert_id', 'ALERT')}::{suffix}"
         items.append({
             **source_alert_item,
+            "alert_id": unique_alert_id,
+            "source_alert_id": source_alert_item.get("alert_id"),
             "restaurant_number": restaurant,
-            "message": record.get("message", ""),
+            "device_id": device_id,
+            "message": message,
         })
 
     return items
@@ -569,6 +591,9 @@ def alert_sort_key(item):
 
 def record_email_alert(rule, records, email_sent=True):
 
+    if not records:
+        raise ValueError(f"No records supplied to record_email_alert for rule {rule.get('rule_id')}")
+
     restaurants = get_unique_restaurants(records)
 
     first_record = records[0]
@@ -620,7 +645,9 @@ def trigger_servicenow_ticket(rule, alert_item):
     # eventually consistent, so a case written moments ago may not appear yet;
     # log only (no SNS) to avoid false-positive alerts on this benign race.
     existing_case = get_open_servicenow_case(
-        rule["rule_id"], alert_item.get("restaurant_number")
+        rule["rule_id"],
+        alert_item.get("restaurant_number"),
+        alert_item,
     )
     if not existing_case:
         print(
@@ -784,18 +811,28 @@ def get_open_servicenow_cases(rule_id):
     )
 
 
-def get_open_servicenow_case(rule_id, restaurant_number=_NO_ARG):
+def get_open_servicenow_case(rule_id, restaurant_number=_NO_ARG, alert_item=None):
     """Most recent OPEN case for a rule.
 
     When ``restaurant_number`` is supplied the result is scoped to that
-    restaurant (an empty/None value matches global, non-restaurant cases).
-    Omitting it returns the most recent OPEN case regardless of restaurant.
+    restaurant. For multi-row Athena results we also compare the exact message
+    and device so one rule can open multiple tickets when it returns multiple
+    distinct violations.
     """
     items = get_open_servicenow_cases(rule_id)
 
     if restaurant_number is not _NO_ARG:
         target = str(restaurant_number) if restaurant_number else ""
         items = [i for i in items if str(i.get("restaurant_number") or "") == target]
+
+    if alert_item is not None:
+        target_message = str(alert_item.get("message") or "")
+        target_device = str(alert_item.get("device_id") or "")
+        items = [
+            i for i in items
+            if str(i.get("message") or "") == target_message
+            and str(i.get("device_id") or "") == target_device
+        ]
 
     if not items:
         return None
