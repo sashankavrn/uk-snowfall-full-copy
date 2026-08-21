@@ -50,6 +50,7 @@ Environment variables (all required unless noted):
 """
 
 import base64
+import hashlib
 import json
 import os
 import ssl
@@ -207,9 +208,26 @@ def _extract_alert_and_rule(event):
 # Payload construction
 # ---------------------------------------------------------------------------
 
+def _build_customer_ticket_id(alert_id: str) -> str:
+    """Return a short, deterministic, unique alphanumeric ticket ID.
+
+    NCR treats CustomerTicketID as an idempotency key. We must ensure each
+    proactive alert row gets a unique value even when two rows share the same
+    base alert ID prefix. Truncate only after mixing in a hash so the suffix is
+    still unique across the full alert ID.
+    """
+    raw = "".join(ch for ch in str(alert_id or "") if ch.isalnum()) or "SNOWFALL"
+    if len(raw) <= 32:
+        return raw
+
+    digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
+    return f"{raw[:20]}{digest}"[:32]
+
+
 def _build_payload(alert: dict, rule: dict) -> dict:
     """Build the NCR CreateServiceRequest JSON payload from the alert + rule."""
-    transaction_id = str(int(datetime.now(timezone.utc).timestamp() * 1000))
+    timestamp_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    transaction_id = f"{timestamp_ms}-{uuid.uuid4().hex[:12]}"
     timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
 
     raw_message = alert.get("message", "")
@@ -229,10 +247,10 @@ def _build_payload(alert: dict, rule: dict) -> dict:
     description_text = message or short_description
 
     raw_ticket_id = str(alert.get("alert_id") or f"SNOWFALL{uuid.uuid4().hex}")
-    # NCR's working Postman sample uses a short alphanumeric CustomerTicketID (e.g. "219911").
-    # NCR has rejected long values containing '#' / '-' with a generic 500.
-    # Strip non-alphanumerics and cap to 32 chars to match the known-good shape.
-    customer_ticket_id = "".join(ch for ch in raw_ticket_id if ch.isalnum())[:32] or "SNOWFALL"
+    # NCR's working Postman sample uses a short alphanumeric CustomerTicketID.
+    # To avoid collisions when multiple rows share the same base alert prefix,
+    # include a SHA-1 tail from the full alert ID before truncating to 32 chars.
+    customer_ticket_id = _build_customer_ticket_id(raw_ticket_id)
     site_number = str(alert.get("restaurant_number") or "").strip()
     # NCR expects UK restaurant numbers zero-padded to exactly 4 digits (e.g. 59 -> "0059").
     # Strip leading zeros first so over-padded values like "04071" become "4071".
