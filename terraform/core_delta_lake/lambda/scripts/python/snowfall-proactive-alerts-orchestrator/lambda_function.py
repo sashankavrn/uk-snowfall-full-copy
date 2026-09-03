@@ -79,6 +79,10 @@ SERVICENOW_TICKET_LAMBDA = os.environ.get("SERVICENOW_TICKET_LAMBDA", "")
 SERVICENOW_CLOSE_LAMBDA = os.environ.get("SERVICENOW_CLOSE_LAMBDA", "")
 SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN", "")
 
+# Default email cooldown used when cooldown_type is configured on a rule.
+# Override via env var if needed.
+DEFAULT_EMAIL_COOLDOWN_HOURS = float(os.environ.get("DEFAULT_EMAIL_COOLDOWN_HOURS", "4"))
+
 # Seconds to wait after creating an NCR ticket before requesting its closure.
 # Gives NCR time to register the new ticket so the close call is not skipped.
 CLOSE_DELAY_SECONDS = 15
@@ -392,6 +396,13 @@ def _process_servicenow_violation(rule, alert_item, script_results):
 
 def should_send_alert(rule, restaurants):
 
+    cooldown_type = str(rule.get("cooldown_type") or "").strip().upper()
+
+    # Backward-compatibility requirement: if cooldown_type is not configured,
+    # do not apply cooldown checks.
+    if not cooldown_type:
+        return True
+
     cooldown_hours = get_cooldown_hours(rule)
 
     if cooldown_hours <= 0:
@@ -419,6 +430,13 @@ def should_send_alert(rule, restaurants):
 
     # If no restaurant rules → always allow based on cooldown only
     if not restaurants:
+        if last_time:
+            elapsed = (now - last_time).total_seconds() / 3600
+            return elapsed >= cooldown_hours
+        return True
+
+    # HARD cooldown: always honor cooldown window even if results changed.
+    if cooldown_type == "HARD":
         if last_time:
             elapsed = (now - last_time).total_seconds() / 3600
             return elapsed >= cooldown_hours
@@ -537,7 +555,7 @@ def parse_alert_time(timestamp_value):
 
 def get_cooldown_hours(rule):
 
-    raw_value = rule.get("email_cooldown_hours") or 0
+    raw_value = os.environ.get("EMAIL_COOLDOWN_HOURS", DEFAULT_EMAIL_COOLDOWN_HOURS)
 
     try:
         return max(float(raw_value), 0.0)

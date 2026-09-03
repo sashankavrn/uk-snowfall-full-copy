@@ -1003,6 +1003,7 @@ resource "aws_lambda_function" "uk_snowfall_proactive_alerts" {
       RESULTS_TABLE_NAME       = "uk-snowfall-${var.environment}-proactive-websocket-connections-results"
       ATHENA_REGION            = "eu-central-1"
       ATHENA_OUTPUT_S3         = "s3://eu-central1-${var.environment}-uk-snowfall-temp-${var.account_number}/alerts/"
+      EMAIL_COOLDOWN_HOURS     = "4"
       SNS_TOPIC_ARN            = var.sns_topic_arn
       STAGE_NAME               = var.stage_name
       TABLE_NAME               = "uk-snowfall-${var.environment}-proactive-websocket-connections"
