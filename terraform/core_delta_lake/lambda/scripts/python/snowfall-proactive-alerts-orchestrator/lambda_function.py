@@ -555,7 +555,12 @@ def parse_alert_time(timestamp_value):
 
 def get_cooldown_hours(rule):
 
-    raw_value = os.environ.get("EMAIL_COOLDOWN_HOURS", DEFAULT_EMAIL_COOLDOWN_HOURS)
+    # Prefer the rule's own email_cooldown_hours column when present; fall back
+    # to the environment variable only if the attribute is missing/empty.
+    if "email_cooldown_hours" in rule and rule.get("email_cooldown_hours") not in (None, ""):
+        raw_value = rule.get("email_cooldown_hours")
+    else:
+        raw_value = os.environ.get("EMAIL_COOLDOWN_HOURS", DEFAULT_EMAIL_COOLDOWN_HOURS)
 
     try:
         return max(float(raw_value), 0.0)
