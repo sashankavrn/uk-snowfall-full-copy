@@ -50,12 +50,4 @@ output "service_agent_upload_s3_arn" {
   value = aws_lambda_function.uk_snowfall_service_agent_function.arn
 }
 
-output "thousandeyes_alerts_arn" {
-  value = aws_lambda_function.uk_snowfall_thousandeyes_alerts.arn
-}
-
-output "thousandeyes_alerts_jwt_authorizer_arn" {
-  value = aws_lambda_function.uk_snowfall_thousandeyes_alerts_jwt_authorizer.arn
-}
-
 

@@ -78,8 +78,6 @@ module "api_module" {
   stage_name                                 = var.stage_name
   service_agent_upload_s3_arn                = module.lambda_module.service_agent_upload_s3_arn
   service_agent_upload_s3_jwt_authorizer_arn = module.lambda_module.service_agent_upload_s3_jwt_authorizer_arn
-  thousandeyes_alerts_arn                    = module.lambda_module.thousandeyes_alerts_arn
-  thousandeyes_alerts_jwt_authorizer_arn     = module.lambda_module.thousandeyes_alerts_jwt_authorizer_arn
 
   depends_on = [module.lambda_module]
 }
