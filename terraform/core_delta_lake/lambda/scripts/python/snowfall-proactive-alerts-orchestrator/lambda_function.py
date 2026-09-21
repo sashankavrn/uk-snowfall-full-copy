@@ -418,13 +418,6 @@ def should_send_alert(rule, restaurants):
     if not items:
         return True
 
-    # HARD cooldown: only the very first alert is ever sent for this rule.
-    # Once one has been SENT, suppress all future alerts permanently, even
-    # after the cooldown window elapses or new/different restaurants violate.
-    if cooldown_type == "HARD":
-        print("HARD cooldown: alert already sent once; suppressing further alerts.")
-        return False
-
     last_ticket = max(items, key=alert_sort_key)
 
     last_restaurants = set(last_ticket.get("violating_restaurants", []))
@@ -435,13 +428,21 @@ def should_send_alert(rule, restaurants):
     last_time = parse_alert_time(last_time_str)
     now = datetime.now(ZoneInfo("Europe/London"))
 
-    # If no restaurant rules → always allow based on cooldown only
+    # HARD cooldown: only elapsed time matters — never resend early just
+    # because the violating restaurants/results changed (unlike SOFT below).
+    if cooldown_type == "HARD":
+        if last_time:
+            elapsed = (now - last_time).total_seconds() / 3600
+            return elapsed >= cooldown_hours
+        return True
+
+    # SOFT cooldown (default): if no restaurant rules → allow based on cooldown only
     if not restaurants:
         if last_time:
             elapsed = (now - last_time).total_seconds() / 3600
             return elapsed >= cooldown_hours
         return True
-        
+
     if not current_restaurants.issubset(last_restaurants):
         print("New restaurant detected")
         return True
