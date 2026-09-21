@@ -5,5 +5,3 @@ variable "role_assumed_arn" {}
 variable "stage_name" {}
 variable "service_agent_upload_s3_arn" {}
 variable "service_agent_upload_s3_jwt_authorizer_arn" {}
-variable "thousandeyes_alerts_arn" {}
-variable "thousandeyes_alerts_jwt_authorizer_arn" {}
