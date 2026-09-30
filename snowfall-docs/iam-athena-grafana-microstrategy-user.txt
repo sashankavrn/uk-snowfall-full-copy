@@ -1,0 +1,33 @@
+Title: IAM Permission Update – uk-snowfall-microstrategy-user (PROD) – Athena Permissions for Grafana Integration
+
+An IAM permission update is required for the IAM user uk-snowfall-microstrategy-user in the AWS Prod account.
+
+The Global Observability Team requires Grafana to connect to Snowfall data. To facilitate this, additional Athena permissions are needed on the existing inline policy for this user.
+
+Action Required
+
+Please add the following actions to the existing inline policy for IAM user uk-snowfall-microstrategy-user:
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AthenaGrafanaAccess",
+      "Effect": "Allow",
+      "Action": [
+        "athena:StopQueryExecution",
+        "athena:ListTableMetadata",
+        "athena:GetTableMetadata"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+
+Further Details
+
+Project:        Snowfall
+Environment:    Prod only
+IAM User:       uk-snowfall-microstrategy-user
+Purpose:        Allow Grafana (Global Observability Team) to query Snowfall data via Athena
+Impact if not approved: Grafana will be unable to retrieve Snowfall data for observability dashboards

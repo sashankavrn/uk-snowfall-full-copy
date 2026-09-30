@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant EB as EventBridge (5 min)
+    participant Orc as orchestrator
+    participant Ath as Athena
+    participant WS as WebSocket API
+    participant Dev as Restaurant device
+    participant DDB as proactive-alerts (DynamoDB)
+    participant Mail as Mailjet SMTP
+    participant NCR as ServiceNow/NCR create-close
+
+    EB->>Orc: invoke
+    Orc->>Ath: run rule query
+    Ath-->>Orc: violating restaurants
+    Orc->>DDB: check should_send_alert() / duplicate guard
+    Orc->>WS: push remediation script (if configured)
+    WS->>Dev: command_id
+    Dev-->>WS: save_results (healing-default)
+    Orc->>Mail: send HTML alert (if not on cooldown)
+    Orc->>NCR: async invoke create/close ticket
+    Orc->>DDB: write EMAIL_ALERT / SERVICENOW_CASE row

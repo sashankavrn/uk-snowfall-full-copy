@@ -1,0 +1,194 @@
+############################################
+## CONNECT LAMBDA
+############################################
+
+data "aws_lambda_function" "proactive_healing_connect" {
+  function_name = "uk-snowfall-proactive-healing-connect-${var.environment}"
+}
+
+resource "aws_lambda_permission" "api_gateway_connect" {
+  statement_id  = "AllowConnectExecution"
+  action        = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.proactive_healing_connect.arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.execution_arn}/*"
+}
+
+############################################
+## DISCONNECT LAMBDA
+############################################
+
+data "aws_lambda_function" "proactive_healing_disconnect" {
+  function_name = "uk-snowfall-proactive-healing-disconnect-${var.environment}"
+}
+
+resource "aws_lambda_permission" "api_gateway_disconnect" {
+  statement_id  = "AllowDisconnectExecution"
+  action        = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.proactive_healing_disconnect.arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.execution_arn}/*"
+}
+
+############################################
+## DEFAULT LAMBDA
+############################################
+
+data "aws_lambda_function" "proactive_healing_default" {
+  function_name = "uk-snowfall-proactive-healing-default-${var.environment}"
+}
+
+resource "aws_lambda_permission" "api_gateway_default" {
+  statement_id  = "AllowDefaultExecution"
+  action        = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.proactive_healing_default.arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.execution_arn}/*"
+}
+
+
+############################################
+## JWT AUTHORIZER LAMBDA 
+############################################
+
+data "aws_lambda_function" "proactive_healing_jwt_authorizer" {
+  function_name = "uk-snowfall-proactive-healing-jwt-authorizer-${var.environment}"
+}
+
+############################################
+## Permission: Allow API Gateway to Invoke JWT Authorizer
+############################################
+resource "aws_lambda_permission" "api_gateway_jwt_authorizer" {
+  statement_id  = "AllowJWTAuthorizerExecution"
+  action        = "lambda:InvokeFunction"
+  function_name = data.aws_lambda_function.proactive_healing_jwt_authorizer.arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.execution_arn}/*"
+}
+
+
+############################################
+## PROACTIVE HEALING: WebSocket API
+############################################
+
+resource "aws_apigatewayv2_api" "uk_snowfall_proactive_healing_websocket_api" {
+  name                       = "uk-snowfall-proactive-healing-websocket-${var.environment}"
+  protocol_type              = "WEBSOCKET"
+  route_selection_expression = "$request.body.action"
+}
+
+
+############################################
+## API Gateway Authorizer: JWT (WebSocket)
+############################################
+resource "aws_apigatewayv2_authorizer" "uk_snowfall_proactive_healing_websocket_jwt_authorizer" {
+  api_id           = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
+  authorizer_type  = "REQUEST"
+  authorizer_uri = data.aws_lambda_function.proactive_healing_jwt_authorizer.invoke_arn
+  identity_sources = ["route.request.header.Authorization"]
+  name             = "uk-snowfall-proactive-healing-jwt-authorizer-${var.environment}"
+
+#   depends_on = [
+#     aws_lambda_permission.uk_snowfall_proactive_healing_api_gateway_jwt_authorizer
+#   ]
+}
+
+
+
+
+
+
+# resource "aws_api_gateway_account" "gateway_account" {
+#   cloudwatch_role_arn = "arn:aws:iam::295446674139:role/UK-MKT-DEV-GLUE-ROLE-CASE12585936411"
+# }
+
+
+############################################
+## ROUTES
+############################################
+
+resource "aws_apigatewayv2_route" "uk_snowfall_proactive_healing_connect_route" {
+  api_id    = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
+  route_key = "$connect"
+  target    = "integrations/${aws_apigatewayv2_integration.uk_snowfall_proactive_healing_connect_integration.id}"
+  authorization_type = "CUSTOM"
+  authorizer_id      = aws_apigatewayv2_authorizer.uk_snowfall_proactive_healing_websocket_jwt_authorizer.id
+}
+
+resource "aws_apigatewayv2_route" "uk_snowfall_proactive_healing_disconnect_route" {
+  api_id    = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
+  route_key = "$disconnect"
+  target    = "integrations/${aws_apigatewayv2_integration.uk_snowfall_proactive_healing_disconnect_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "uk_snowfall_proactive_healing_default_route" {
+  api_id    = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
+  route_key = "$default"
+  target    = "integrations/${aws_apigatewayv2_integration.uk_snowfall_proactive_healing_default_integration.id}"
+}
+
+############################################
+## INTEGRATIONS (Using Passed‑In Lambda ARNs)
+############################################
+
+resource "aws_apigatewayv2_integration" "uk_snowfall_proactive_healing_connect_integration" {
+  api_id           = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = var.connect_lambda_arn
+}
+
+resource "aws_apigatewayv2_integration" "uk_snowfall_proactive_healing_disconnect_integration" {
+  api_id           = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = var.disconnect_lambda_arn
+}
+
+resource "aws_apigatewayv2_integration" "uk_snowfall_proactive_healing_default_integration" {
+  api_id           = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = var.default_lambda_arn
+}
+
+# ############################################
+# ## STAGE
+# ############################################
+
+# resource "aws_apigatewayv2_stage" "uk_snowfall_proactive_healing_websocket_stage" {
+#   api_id      = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
+#   name        = var.stage_name
+#   auto_deploy = true
+# }
+
+############################################
+## CLOUDWATCH LOG GROUP
+############################################
+
+resource "aws_cloudwatch_log_group" "uk_snowfall_proactive_healing_websocket_logs" {
+  name              = "/aws/apigatewayv2/uk-snowfall-proactive-healing-websocket-${var.environment}"
+  retention_in_days = 30
+}
+
+############################################
+## STAGE (WITH CLOUDWATCH LOGGING)
+############################################
+
+resource "aws_apigatewayv2_stage" "uk_snowfall_proactive_healing_websocket_stage" {
+  api_id      = aws_apigatewayv2_api.uk_snowfall_proactive_healing_websocket_api.id
+  name        = var.stage_name
+  auto_deploy = true
+
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.uk_snowfall_proactive_healing_websocket_logs.arn
+
+    format = jsonencode({
+      requestId         = "$context.requestId"
+      eventType         = "$context.eventType"
+      routeKey          = "$context.routeKey"
+      status            = "$context.status"
+      integrationStatus = "$context.integrationStatus"
+      connectionId      = "$context.connectionId"
+      requestTime       = "$context.requestTime"
+      errorMessage      = "$context.error.message"
+    })
+  }
+}

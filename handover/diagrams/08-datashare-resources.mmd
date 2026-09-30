@@ -1,0 +1,6 @@
+flowchart LR
+    EB1[EventBridge :30 hourly] --> LT[datashare_landing_trigger]
+    LT -->|.parquet, all datasets| Target[TARGET_BUCKET]
+    LT -->|NCR ServiceNow prefixes only| Tech360[TECH360_TARGET_BUCKET]
+    EB2[EventBridge every 5 min /\nS3 event on processed bucket] --> PT[datashare_processed_trigger]
+    PT -->|diff LastModified/Size| Datashare[Datashare bucket]

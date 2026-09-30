@@ -1,0 +1,7 @@
+flowchart LR
+    EB[EventBridge schedule] --> L[RMP Lambda]
+    L -->|GraphQL NRQL query| NR[New Relic API]
+    NR --> L
+    L -->|JSON| S3[Landing bucket\nnewrelic/newrelic_rmp_*/]
+    L -.on failure.-> SNS[SNS topic]
+    S3 --> Glue[Glue workflow] --> Athena

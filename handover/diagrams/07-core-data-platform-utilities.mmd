@@ -1,0 +1,10 @@
+flowchart LR
+    SQL[.sql file uploaded] -->|S3 event| Views[create_athena_views]
+    Views --> Athena
+    Any[Any file] -->|S3 event on landing bucket| Landing[landing_trigger]
+    Landing -->|mapping.json match| Raw[Raw bucket, per dataset]
+    Landing -.no match.-> Err[error prefix + SNS]
+    ODS[ods/user_data/*.csv] -.-> ODSL[ods-user-data-to-datashare]
+    ODSL --> Datashare[ods_user_data/ in datashare bucket]
+    Cron[EventBridge 06:00 UTC] --> SS[dynamic-smartsheet-intergation]
+    SS -->|Smartsheet API| Landing2[landing bucket smartsheet/&lt;name&gt;/&lt;name&gt;.json]

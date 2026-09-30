@@ -1,0 +1,61 @@
+A policy update is required for the Lambda execution role UK-MKT-SNowfall-Prod-GLUE-SERV-ROLE in the AWS Prod account (868442188363).
+This Lambda function sends script payloads and real‑time operational messages to the snowfall service agent (client) using API Gateway WebSocket APIs.
+
+To support this workflow, the Lambda requires full execute-api permissions and API Gateway management permissions scoped to the account. These permissions are necessary for:
+
+Sending messages to connected snowfall service agent (client) devices
+
+Managing WebSocket connections
+
+Invoking API Gateway routes
+
+Supporting future API Gateway changes without requiring additional IAM updates
+
+Without this update, the Lambda cannot call PostToConnection, resulting in ForbiddenException errors and blocking script delivery to the snowfall service agent (client).
+
+Action Required
+Please update the existing inline policy UK-MKT-SNowfall-Prod-GLUE-SERV-inline-policy, or create a new inline policy if one does not already exist, to ensure the Lambda has the required permissions for this API Gateway WebSocket/REST API.
+{
+"Version": "2012-10-17",
+"Statement": [
+{
+"Sid": "FullExecuteApiAccess",
+"Effect": "Allow",
+"Action": [
+"execute-api:*"
+],
+"Resource": [
+"arn:aws:execute-api:eu-central-1:868442188363:*/*"
+]
+},
+{
+"Sid": "FullApiGatewayAccess",
+"Effect": "Allow",
+"Action": [
+"apigateway:GET",
+"apigateway:POST",
+"apigateway:PUT",
+"apigateway:PATCH",
+"apigateway:DELETE",
+"apigateway:HEAD",
+"apigateway:OPTIONS"
+],
+"Resource": [
+"arn:aws:apigateway:eu-central-1::/restapis/*",
+"arn:aws:apigateway:eu-central-1::/apis/*"
+]
+}
+]
+}
+Further Details
+Project: Snowfall
+
+Owner: Taylor, Camille (UK)
+
+Environment: Prod
+
+Purpose: Enable Lambda to send scripts and operational messages to the snowfall service agent (client)
+
+Impact if not approved: Snowfall automation workflows will fail due to inability to communicate with connected clients
+Role ARN
+arn:aws:iam::868442188363:role/UK-MKT-SNowfall-Prod-GLUE-SERV-ROLE
