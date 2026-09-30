@@ -1,0 +1,9 @@
+flowchart LR
+    Cron[EventBridge 01:30 UTC] --> Extract[service-agent-server-list-extract]
+    Extract -->|Athena query| CSV[server_list/List of Restaurant Servers.csv]
+    Agent[Service Agent on restaurant PC] -->|POST + Bearer JWT| Auth[service-agent-upload-s3-jwt-authorizer]
+    Auth -->|checks| CSV
+    Auth -->|Allow + machine context| Upload[service-agent-upload-s3]
+    Upload --> S3u[uploads/ prefix]
+    S3u -->|S3 event| Copy[service-agent-server-files]
+    Copy --> S3t[service_agent_server_files/uploads/]

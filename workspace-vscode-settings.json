@@ -1,0 +1,19 @@
+{
+    "atlascode.bitbucket.enabled": false,
+    "files.watcherExclude": {
+        "**/.venv/**": true,
+        "**/.terraform/**": true,
+        "**/scripts/zips/**": true
+    },
+    "search.exclude": {
+        "**/.venv/**": true,
+        "**/.terraform/**": true,
+        "**/scripts/zips/**": true
+    },
+    "python.analysis.exclude": [
+        "**/.venv/**"
+    ],
+    "terminal.integrated.enablePersistentSessions": false,
+    "python.terminal.activateEnvironment": false,
+    "task.reconnection": false
+}

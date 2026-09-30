@@ -1,0 +1,118 @@
+Logical Flow
+
+Snowfall Rules Run - Check for new Violations
+
+Rules run, violations found for rules with “Proactive ServiceNow” ticket enabled
+
+Check DynamoDB table if an active Proactive Case already exists. If so, do nothing.
+
+Create Proactive Case in ServiceNow via SOUP interface. 
+
+Record Proactive Case details (Case Number / Primary Key) in DynamoDB table.
+
+Snowfall Rules Run - Check Previous Violations
+
+Rules run, check if any active Proactive Case in DynamoDB table is no longer in violation. 
+
+Close Proactive Case in ServiceNow via SOUP integration.
+
+Close Proactive Case record in DynamoDB table.
+
+ServiceNow - Proactive Case Closed
+
+Check Case records incoming though existing pipeline for matches with out Proactive Cases in DynamoDB table. 
+
+If Case has been “Resolved”, “Cancelled” or “Closed” in ServiceNow, update DynamoDB table to remove record (or mark as not active). 
+
+
+
+Required fields for ServiceNow
+
+The following fields should be included in the payload sent to ServiceNow to create high quality, accurate tickets.
+
+Short Description 
+
+Restaurant Number (from the “restaruant_number” response from the rule)
+
+Description (long form multi-line text field. Ideally the “message” response from the rule)
+
+Service Offering
+
+Category
+
+Subcategory (optional)
+
+Priority (optional, but nice to have)
+
+
+
+mapping:
+
+
+
+Field Name
+
+Payload Field Name
+
+Notes
+
+Short Description
+
+Summary
+
+string - limit 255
+
+Restaurant Number
+
+SiteNumber
+
+string - prefix with leading zeros when required
+
+Description
+
+Description
+
+string
+
+Service Offering
+
+ 
+
+[Not exposed]
+
+Category
+
+Category
+
+string
+
+Subcategory
+
+SubCategory
+
+string
+
+Priority
+
+Priority
+
+integer [1, 2, 3, 4]
+
+Country Code
+
+CountryCode
+
+[UK, IE] (If restaurant_id < 7000 then UK else IE)
+
+Customer Ticket ID
+
+CustomerTicketID
+
+string
+
+Request Type
+
+RequestType
+
+string [Hardware, Software]
+

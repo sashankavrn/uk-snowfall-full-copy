@@ -1,0 +1,7 @@
+flowchart LR
+    EB[EventBridge, hourly :05] --> P3[newrelic-digital-3po-foe-response]
+    EB --> GMA[newrelic-digital-gma-foe-response]
+    P3 -->|digital account ID| NR[New Relic API]
+    GMA -->|digital account ID| NR
+    P3 --> S3a[newrelic_digital_3po_foe_response/]
+    GMA --> S3b[newrelic_digital_gma_foe_response/]

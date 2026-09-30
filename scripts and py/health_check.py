@@ -1,0 +1,16 @@
+import platform
+import socket
+import os
+import time
+
+def main():
+    print("=== Device Health Check ===")
+    print(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"OS: {platform.system()} {platform.release()}")
+    print(f"Processor: {platform.processor()}")
+    hostname = socket.gethostname()
+    print(f"Hostname: {hostname}")
+    print("\nHealth Check Completed Successfully")
+
+if __name__ == "__main__":
+    main()

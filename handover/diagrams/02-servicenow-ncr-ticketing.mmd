@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant Orc as orchestrator
+    participant Cre as ticket-creation
+    participant NCR as NCR CSDI REST API
+    participant DDB as service-now-tickets
+    participant Clo as ticket-close
+    participant Sync as ticket-sync (hourly)
+    participant Ath as Athena (service_case view)
+
+    Orc->>Cre: async invoke (alert + rule)
+    Cre->>NCR: POST CreateServiceRequest (Basic Auth)
+    NCR-->>Cre: sync response (NCRTicketID, Header.Status)
+    Cre->>DDB: write ticket row + flip case to OPEN
+    Orc->>Clo: async invoke (after CLOSE_DELAY_SECONDS)
+    Clo->>NCR: POST Resolve/UpdateServiceRequest
+    Clo->>DDB: resolved_at, ncr_close_status, case -> CLOSED
+    Sync->>DDB: scan tickets we think are open
+    Sync->>Ath: query service_case_latest for those NCR case numbers
+    Ath-->>Sync: Closed/Resolved/Cancelled cases
+    Sync->>DDB: reconcile ticket + case rows

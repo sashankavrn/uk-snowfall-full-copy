@@ -1,0 +1,30 @@
+The Thousand Eyes platform will send alerts to Snowfall via a webhook. 
+
+* When an alert is received it should be immediately sent to ServiceNow as a proactive Cases.
+* When an issue is resolved, Thousand Eyes will send an update to Snowfall that the issue is closed. In this case. In this case, the associated Case should be updated (marked as resolved).
+
+h2. Thousand Eyes Documentation
+
+Custom Webhooks:
+
+[https://docs.thousandeyes.com/product-documentation/integration-guides/custom-webhooks|https://urldefense.com/v3/__https:/docs.thousandeyes.com/product-documentation/integration-guides/custom-webhooks__;!!JZ0iVwK7KX4!DesNU1oMGa8AGW7cpf2Bm_8FG_UbOCha-8mjOuvTsJDwnjy6Z6L7j_w3WfbZRcLo_ZBl--stU7nbKNXXGBI896A$]
+
+Custom Webhooks Examples:
+
+[https://docs.thousandeyes.com/product-documentation/integration-guides/custom-webhook-examples|https://urldefense.com/v3/__https:/docs.thousandeyes.com/product-documentation/integration-guides/custom-webhook-examples__;!!JZ0iVwK7KX4!DesNU1oMGa8AGW7cpf2Bm_8FG_UbOCha-8mjOuvTsJDwnjy6Z6L7j_w3WfbZRcLo_ZBl--stU7nbKNXXMyESqeY$]
+
+Custom Built Integrations:
+
+[https://docs.thousandeyes.com/product-documentation/integration-guides/custom-built-integrations|https://urldefense.com/v3/__https:/docs.thousandeyes.com/product-documentation/integration-guides/custom-built-integrations__;!!JZ0iVwK7KX4!DesNU1oMGa8AGW7cpf2Bm_8FG_UbOCha-8mjOuvTsJDwnjy6Z6L7j_w3WfbZRcLo_ZBl--stU7nbKNXX4aVFJy4$]
+
+OpenTelemetry:
+
+[https://docs.thousandeyes.com/product-documentation/integration-guides/opentelemetry|https://urldefense.com/v3/__https:/docs.thousandeyes.com/product-documentation/integration-guides/opentelemetry__;!!JZ0iVwK7KX4!DesNU1oMGa8AGW7cpf2Bm_8FG_UbOCha-8mjOuvTsJDwnjy6Z6L7j_w3WfbZRcLo_ZBl--stU7nbKNXXtBvgNKg$]
+
+ThousandEyes MCP Server:
+
+[https://docs.thousandeyes.com/product-documentation/integration-guides/thousandeyes-mcp-server|https://urldefense.com/v3/__https:/docs.thousandeyes.com/product-documentation/integration-guides/thousandeyes-mcp-server__;!!JZ0iVwK7KX4!DesNU1oMGa8AGW7cpf2Bm_8FG_UbOCha-8mjOuvTsJDwnjy6Z6L7j_w3WfbZRcLo_ZBl--stU7nbKNXXy7pjQ-8$]
+
+!dd21d14b-f843-429c-976b-8d5a81567765|width=683%,alt="image-20260313-111335.png"!
+
+Alerts from ThousandEyes must at minimum contain the restaurant number, summary of the issue (to be used as “Short Description” in SNow), and details of the issue (to be added to Case “Description” in SNow. 
